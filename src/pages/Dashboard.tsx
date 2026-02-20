@@ -11,6 +11,7 @@ import { Plus, TrendingUp, TrendingDown, Target, Trophy, DollarSign, BarChart3, 
 import { cn } from '@/lib/utils';
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { TradingViewModal } from '@/components/scanner/TradingViewModal';
+import { LiveTradeAnalysis } from '@/components/dashboard/LiveTradeAnalysis';
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -299,6 +300,10 @@ export default function Dashboard() {
                         );
                       })()}
                     </div>
+                  )}
+                  {/* Live AI Analysis for open trades */}
+                  {t.status === 'open' && (
+                    <LiveTradeAnalysis trade={t} currentPrice={unrealized?.price ?? null} />
                   )}
                 </div>
               );
