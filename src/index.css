@@ -1,0 +1,312 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Pro-Grade Crypto Scanner Design System */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@layer base {
+  :root {
+    /* Dark terminal-inspired background */
+    --background: 220 20% 6%;
+    --foreground: 210 20% 92%;
+
+    /* Cards with subtle elevation */
+    --card: 220 18% 10%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 18% 12%;
+    --popover-foreground: 210 20% 92%;
+
+    /* Cyan accent for primary actions */
+    --primary: 185 100% 50%;
+    --primary-foreground: 220 20% 6%;
+
+    /* Muted purple-gray for secondary */
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 215 15% 55%;
+
+    --accent: 185 80% 45%;
+    --accent-foreground: 220 20% 6%;
+
+    /* Red for bearish/destructive */
+    --destructive: 0 85% 55%;
+    --destructive-foreground: 210 20% 98%;
+
+    /* Bullish green */
+    --bullish: 145 75% 50%;
+    --bullish-foreground: 220 20% 6%;
+
+    /* Bearish red */
+    --bearish: 0 85% 55%;
+    --bearish-foreground: 210 20% 98%;
+
+    /* Warning orange */
+    --warning: 35 95% 55%;
+    --warning-foreground: 220 20% 6%;
+
+    /* Borders and inputs */
+    --border: 220 15% 18%;
+    --input: 220 15% 15%;
+    --ring: 185 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 220 18% 8%;
+    --sidebar-foreground: 210 20% 85%;
+    --sidebar-primary: 185 100% 50%;
+    --sidebar-primary-foreground: 220 20% 6%;
+    --sidebar-accent: 220 15% 15%;
+    --sidebar-accent-foreground: 210 20% 92%;
+    --sidebar-border: 220 15% 15%;
+    --sidebar-ring: 185 100% 50%;
+
+    /* Glow effects */
+    --glow-primary: 185 100% 50%;
+    --glow-bullish: 145 75% 50%;
+    --glow-bearish: 0 85% 55%;
+
+    /* Chart colors */
+    --chart-1: 185 100% 50%;
+    --chart-2: 145 75% 50%;
+    --chart-3: 0 85% 55%;
+    --chart-4: 35 95% 55%;
+    --chart-5: 270 70% 60%;
+
+    /* Glass effect */
+    --glass: 220 18% 12% / 0.6;
+    --glass-border: 220 15% 25% / 0.5;
+  }
+
+  .dark {
+    --background: 220 20% 6%;
+    --foreground: 210 20% 92%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Mono font for data/numbers */
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card */
+  .card-glass {
+    @apply relative overflow-hidden rounded-xl;
+    background: hsl(var(--glass));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--glass-border));
+  }
+
+  /* Glowing card effect */
+  .card-glow {
+    @apply relative overflow-hidden;
+    box-shadow: 0 0 0 1px hsl(var(--border)),
+                0 4px 24px -4px hsl(var(--glow-primary) / 0.08),
+                0 0 60px -12px hsl(var(--glow-primary) / 0.04);
+  }
+
+  .card-glow::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--glow-primary) / 0.08) 0%,
+      transparent 60%
+    );
+  }
+
+  .card-glow:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Bullish card */
+  .card-bullish {
+    box-shadow: 0 0 0 1px hsl(var(--bullish) / 0.25),
+                0 4px 24px -4px hsl(var(--bullish) / 0.15),
+                inset 0 1px 0 0 hsl(var(--bullish) / 0.1);
+  }
+
+  /* Bearish card */
+  .card-bearish {
+    box-shadow: 0 0 0 1px hsl(var(--bearish) / 0.25),
+                0 4px 24px -4px hsl(var(--bearish) / 0.15),
+                inset 0 1px 0 0 hsl(var(--bearish) / 0.1);
+  }
+
+  /* Scanner pulse animation */
+  .scanner-pulse {
+    @apply relative overflow-hidden;
+    animation: scanner-pulse 2s ease-in-out infinite;
+  }
+
+  .scanner-pulse::after {
+    content: '';
+    @apply absolute inset-0 pointer-events-none;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.1), transparent);
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  @keyframes scanner-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+    }
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* Live indicator dot */
+  .live-dot {
+    @apply relative;
+  }
+
+  .live-dot::after {
+    content: '';
+    @apply absolute w-2 h-2 rounded-full bg-bullish;
+    animation: live-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes live-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.2);
+    }
+  }
+
+  /* Gradient text */
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(185 80% 70%) 50%,
+      hsl(270 70% 65%) 100%
+    );
+  }
+
+  /* Scrollbar styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+
+  /* Data grid lines */
+  .grid-lines {
+    background-image: 
+      linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Terminal effect */
+  .terminal-bg {
+    background: 
+      radial-gradient(ellipse at 50% 0%, hsl(var(--primary) / 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, hsl(270 70% 60% / 0.03) 0%, transparent 40%),
+      hsl(var(--background));
+  }
+
+  /* Animated gradient border */
+  .gradient-border {
+    @apply relative;
+  }
+
+  .gradient-border::before {
+    content: '';
+    @apply absolute -inset-px rounded-xl pointer-events-none;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.3), transparent, hsl(270 70% 60% / 0.3));
+    z-index: -1;
+  }
+
+  /* Mobile bottom action bar */
+  .mobile-action-bar {
+    @apply fixed bottom-0 left-0 right-0 z-40 p-3 border-t;
+    background: hsl(var(--glass));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: hsl(var(--glass-border));
+  }
+}
+
+@layer utilities {
+  .text-bullish {
+    color: hsl(var(--bullish));
+  }
+
+  .text-bearish {
+    color: hsl(var(--bearish));
+  }
+
+  .bg-bullish {
+    background-color: hsl(var(--bullish));
+  }
+
+  .bg-bearish {
+    background-color: hsl(var(--bearish));
+  }
+
+  .border-bullish {
+    border-color: hsl(var(--bullish));
+  }
+
+  .border-bearish {
+    border-color: hsl(var(--bearish));
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3),
+                0 0 40px hsl(var(--primary) / 0.1);
+  }
+
+  .glow-bullish {
+    box-shadow: 0 0 20px hsl(var(--bullish) / 0.3);
+  }
+
+  .glow-bearish {
+    box-shadow: 0 0 20px hsl(var(--bearish) / 0.3);
+  }
+
+  /* Stagger animation delays for cards */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+}
