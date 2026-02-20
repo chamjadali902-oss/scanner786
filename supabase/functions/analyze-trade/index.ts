@@ -1,20 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
-
+async function getSystemPrompt(key: string, fallback: string): Promise<string> {
   try {
-    const { symbol, price, priceChange24h, volume24h, indicatorValues, matchReasons, isBullish, timeframe } = await req.json();
-    
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const { data } = await supabase.from('ai_prompts').select('system_prompt').eq('key', key).single();
+    return data?.system_prompt || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
-    const systemPrompt = `You are an elite cryptocurrency technical analyst. Analyze the given coin data and provide a comprehensive trading recommendation.
+const FALLBACK_PROMPT = `You are an elite cryptocurrency technical analyst. Analyze the given coin data and provide a comprehensive trading recommendation.
 
 IMPORTANT: You MUST respond in valid JSON format only. No markdown, no code blocks, just raw JSON.
 
@@ -50,6 +55,17 @@ Consider:
 - Key support/resistance levels
 - Potential warnings and invalidation scenarios`;
 
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
+  try {
+    const { symbol, price, priceChange24h, volume24h, indicatorValues, matchReasons, isBullish, timeframe } = await req.json();
+    
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const systemPrompt = await getSystemPrompt('scanner_ai', FALLBACK_PROMPT);
+
     const userPrompt = `Analyze ${symbol} for a ${timeframe} timeframe trade:
 
 Price: $${price}
@@ -84,17 +100,17 @@ Provide your analysis with entry, take profit levels, and stop loss.`;
         if (response.ok) return response;
 
         if (response.status === 402) {
-          return response; // Don't retry billing errors
+          return response;
         }
 
         if (response.status === 429 && attempt < retries - 1) {
           console.log(`Rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
           await new Promise(r => setTimeout(r, delay));
-          delay *= 2; // Exponential backoff
+          delay *= 2;
           continue;
         }
 
-        return response; // Return last failed response
+        return response;
       }
     };
 
@@ -119,7 +135,6 @@ Provide your analysis with entry, take profit levels, and stop loss.`;
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
     
-    // Parse JSON from response (handle markdown code blocks)
     let analysis;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);

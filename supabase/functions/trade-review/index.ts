@@ -1,19 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
-
+async function getSystemPrompt(key: string, fallback: string): Promise<string> {
   try {
-    const { trades, stats } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const { data } = await supabase.from('ai_prompts').select('system_prompt').eq('key', key).single();
+    return data?.system_prompt || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
-    const systemPrompt = `You are a professional trading coach reviewing a trader's performance journal. Provide honest, actionable feedback.
+const FALLBACK_PROMPT = `You are a professional trading coach reviewing a trader's performance journal. Provide honest, actionable feedback.
 
 IMPORTANT: Respond in valid JSON only. No markdown, no code blocks.
 
@@ -56,6 +62,16 @@ Analyze:
 - Emotional trading signs (revenge trades, FOMO entries)
 - Best/worst performing setups
 - Time-of-day patterns`;
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
+  try {
+    const { trades, stats } = await req.json();
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const systemPrompt = await getSystemPrompt('journal_ai', FALLBACK_PROMPT);
 
     const tradesData = trades.map((t: any) => 
       `${t.symbol} ${t.side.toUpperCase()}: Entry $${t.entry_price}, Exit $${t.exit_price || 'OPEN'}, PnL ${t.pnl ? `$${t.pnl.toFixed(2)} (${t.pnl_percent?.toFixed(1)}%)` : 'N/A'}, SL $${t.stop_loss || 'None'}, TP $${t.take_profit || 'None'}, Status: ${t.status}, Notes: ${t.notes || 'None'}`

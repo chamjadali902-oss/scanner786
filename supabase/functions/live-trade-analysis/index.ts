@@ -1,9 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+async function getSystemPrompt(key: string, fallback: string): Promise<string> {
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const { data } = await supabase.from('ai_prompts').select('system_prompt').eq('key', key).single();
+    return data?.system_prompt || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 interface TimeframeData {
   tf: string;
@@ -55,28 +69,7 @@ function detectTrend(closes: number[], ema20: number, ema50: number): 'up' | 'do
   return 'sideways';
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
-
-  try {
-    const { symbol, side, entryPrice, stopLoss, takeProfit, quantity, timeframeData } = await req.json();
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const currentPrice = timeframeData?.[0]?.currentPrice || entryPrice;
-    const pnl = side === 'long'
-      ? (currentPrice - entryPrice) * quantity
-      : (entryPrice - currentPrice) * quantity;
-    const pnlPct = side === 'long'
-      ? ((currentPrice - entryPrice) / entryPrice) * 100
-      : ((entryPrice - currentPrice) / entryPrice) * 100;
-
-    const tfSummary = (timeframeData as TimeframeData[])
-      .map(tf => `[${tf.tf}] Price: $${tf.currentPrice.toFixed(4)} | RSI: ${tf.rsi.toFixed(1)} | MACD: ${tf.macd > 0 ? '+' : ''}${tf.macd.toFixed(4)} | EMA20: $${tf.ema20.toFixed(4)} | EMA50: $${tf.ema50.toFixed(4)} | Trend: ${tf.trend.toUpperCase()}`)
-      .join('\n');
-
-    const systemPrompt = `You are an elite crypto trading analyst specializing in active trade management. 
+const FALLBACK_PROMPT = `You are an elite crypto trading analyst specializing in active trade management. 
 Analyze an OPEN trade across multiple timeframes and provide precise, actionable advice.
 
 IMPORTANT: Respond in valid JSON only. No markdown. No code blocks.
@@ -100,6 +93,29 @@ Response format:
   "reasons": ["string", "string", "string"] (3 key reasons for the decision),
   "warning": "string | null" (critical risk warning if any)
 }`;
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
+  try {
+    const { symbol, side, entryPrice, stopLoss, takeProfit, quantity, timeframeData } = await req.json();
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const systemPrompt = await getSystemPrompt('dashboard_ai', FALLBACK_PROMPT);
+
+    const currentPrice = timeframeData?.[0]?.currentPrice || entryPrice;
+    const pnl = side === 'long'
+      ? (currentPrice - entryPrice) * quantity
+      : (entryPrice - currentPrice) * quantity;
+    const pnlPct = side === 'long'
+      ? ((currentPrice - entryPrice) / entryPrice) * 100
+      : ((entryPrice - currentPrice) / entryPrice) * 100;
+
+    const tfSummary = (timeframeData as TimeframeData[])
+      .map(tf => `[${tf.tf}] Price: $${tf.currentPrice.toFixed(4)} | RSI: ${tf.rsi.toFixed(1)} | MACD: ${tf.macd > 0 ? '+' : ''}${tf.macd.toFixed(4)} | EMA20: $${tf.ema20.toFixed(4)} | EMA50: $${tf.ema50.toFixed(4)} | Trend: ${tf.trend.toUpperCase()}`)
+      .join('\n');
 
     const userPrompt = `Active Trade Analysis Request:
 

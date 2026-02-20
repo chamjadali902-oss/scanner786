@@ -1,7 +1,7 @@
 import { useAdmin } from '@/hooks/useAdmin';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
-import { Shield, Users, BarChart3, Settings, Globe, ArrowLeft, LogOut, Database, TrendingUp } from 'lucide-react';
+import { Shield, Users, BarChart3, Settings, Globe, ArrowLeft, LogOut, Database, TrendingUp, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,6 +11,7 @@ const ADMIN_NAV = [
   { title: 'Users', path: '/admin/users', icon: Users },
   { title: 'Strategies', path: '/admin/strategies', icon: Globe },
   { title: 'Trades', path: '/admin/trades', icon: TrendingUp },
+  { title: 'AI Prompts', path: '/admin/prompts', icon: Brain },
   { title: 'Database', path: '/admin/database', icon: Database },
   { title: 'Settings', path: '/admin/settings', icon: Settings },
 ];
