@@ -1,19 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
-
+async function getSystemPrompt(key: string, fallback: string): Promise<string> {
   try {
-    const { coins } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const { data } = await supabase.from('ai_prompts').select('system_prompt').eq('key', key).single();
+    return data?.system_prompt || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
-    const systemPrompt = `You are an elite cryptocurrency trading analyst specializing in THREE key analysis pillars:
+const FALLBACK_PROMPT = `You are an elite cryptocurrency trading analyst specializing in THREE key analysis pillars:
 1. TECHNICAL INDICATORS (RSI, MACD, EMA, Bollinger Bands, Stochastic, ADX, ATR)
 2. PRICE ACTION PATTERNS (Doji, Hammer, Engulfing, Morning/Evening Star, Harami, Marubozu, Inside Bar, Three White Soldiers, Three Black Crows)
 3. SMART MONEY CONCEPTS (BOS, ChoCH, Order Blocks, Fair Value Gaps, Liquidity Sweeps, Equal Highs/Lows, Premium/Discount Zones)
@@ -58,6 +64,16 @@ Signal Generation Rules:
 - SMC concepts like Order Blocks and FVGs provide precise entry zones - USE them for entry/SL levels
 - Liquidity sweeps and equal highs/lows indicate potential reversal zones
 - Premium/Discount zones help determine trade direction bias`;
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
+  try {
+    const { coins } = await req.json();
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const systemPrompt = await getSystemPrompt('smart_signals_ai', FALLBACK_PROMPT);
 
     const coinsData = coins.map((c: any) => {
       const parts = [

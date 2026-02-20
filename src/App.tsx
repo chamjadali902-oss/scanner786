@@ -19,6 +19,7 @@ import AdminStrategies from "./pages/admin/AdminStrategies";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminDatabase from "./pages/admin/AdminDatabase";
 import AdminTrades from "./pages/admin/AdminTrades";
+import AdminPrompts from "./pages/admin/AdminPrompts";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="users" element={<AdminUsers />} />
             <Route path="strategies" element={<AdminStrategies />} />
             <Route path="trades" element={<AdminTrades />} />
+            <Route path="prompts" element={<AdminPrompts />} />
             <Route path="database" element={<AdminDatabase />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
