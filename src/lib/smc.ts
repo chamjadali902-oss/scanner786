@@ -327,3 +327,23 @@ export function detectBreakerBlock(candles: Candle[]): boolean {
   
   return false;
 }
+
+// Volume Spike - Current volume significantly higher than average
+export function detectVolumeSpike(candles: Candle[], multiplier: number = 2): boolean {
+  if (candles.length < 20) return false;
+  
+  const lookback = Math.min(20, candles.length - 1);
+  const previousCandles = candles.slice(-lookback - 1, -1);
+  const currentCandle = candles[candles.length - 1];
+  
+  // Need volume data
+  if (!currentCandle.volume || currentCandle.volume === 0) return false;
+  
+  const volumes = previousCandles.map(c => c.volume || 0).filter(v => v > 0);
+  if (volumes.length < 5) return false;
+  
+  const avgVolume = volumes.reduce((sum, v) => sum + v, 0) / volumes.length;
+  
+  // Current volume is X times (default 2x) higher than average
+  return currentCandle.volume >= avgVolume * multiplier;
+}
