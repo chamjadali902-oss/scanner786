@@ -83,7 +83,7 @@ export default function AdminPrompts() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
             <Brain className="w-5 h-5 text-primary" />
@@ -108,12 +108,12 @@ export default function AdminPrompts() {
             <Card key={prompt.id} className="border-border overflow-hidden">
               {/* Header */}
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/20 transition-colors"
+                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-4 cursor-pointer hover:bg-muted/20 transition-colors"
                 onClick={() => setExpanded(isExpanded ? null : prompt.key)}
               >
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-sm text-foreground">{prompt.name}</span>
                       {dirty && (
                         <Badge variant="outline" className="text-[9px] text-warning border-warning/40 py-0">
@@ -140,7 +140,7 @@ export default function AdminPrompts() {
               {/* Expanded editor */}
               {isExpanded && (
                 <div className="border-t border-border p-4 space-y-3 bg-card/50">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">System Prompt</p>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span>{(edits[prompt.key] || '').length} chars</span>
@@ -156,7 +156,7 @@ export default function AdminPrompts() {
                     placeholder="System prompt yahan likhein..."
                   />
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] text-muted-foreground">
                       ⚠️ Prompt change karne ke baad AI ka behaviour immediately update ho jaega
                     </p>

@@ -107,12 +107,12 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <aside className="hidden md:flex w-60 border-r border-border bg-card/50 flex-col">
+      <aside className="hidden lg:flex w-60 border-r border-border bg-card/50 flex-col">
         <SidebarContent />
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="md:hidden sticky top-0 z-40 border-b border-border bg-card/70 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+        <header className="lg:hidden sticky top-0 z-40 border-b border-border bg-card/70 backdrop-blur supports-[backdrop-filter]:bg-card/60">
           <div className="px-3 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">

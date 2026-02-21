@@ -96,12 +96,12 @@ export default function AdminTrades() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold text-foreground">Trades Management</h2>
           <p className="text-sm text-muted-foreground">{trades.length} trades • Total PnL: <span className={totalPnl >= 0 ? 'text-bullish' : 'text-bearish'}>${totalPnl.toFixed(2)}</span></p>
         </div>
-        <div className="relative w-64">
+        <div className="relative w-full sm:w-64">
           <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search symbol..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8" />
         </div>

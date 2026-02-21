@@ -156,9 +156,9 @@ export default function AdminDatabase() {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <Select value={selectedTable} onValueChange={(v) => setSelectedTable(v as TableName)}>
-          <SelectTrigger className="w-52">
+          <SelectTrigger className="w-full sm:w-52">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -168,7 +168,7 @@ export default function AdminDatabase() {
           </SelectContent>
         </Select>
 
-        <div className="relative flex-1 max-w-xs">
+        <div className="relative w-full sm:flex-1 sm:max-w-xs">
           <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search records..."
@@ -238,7 +238,7 @@ export default function AdminDatabase() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-xs text-muted-foreground">
             Page {page + 1} of {totalPages}
           </span>
