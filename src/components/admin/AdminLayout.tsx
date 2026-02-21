@@ -127,7 +127,7 @@ export default function AdminLayout() {
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 bg-card border-border p-0">
+              <SheetContent side="left" className="w-[85vw] max-w-xs bg-card border-border p-0">
                 <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
                 <SidebarContent onNavigate={() => setMobileNavOpen(false)} />
               </SheetContent>
@@ -135,7 +135,7 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto overflow-x-hidden">
           <Outlet />
         </main>
       </div>

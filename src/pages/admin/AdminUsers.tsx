@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Shield, User, Trash2 } from 'lucide-react';
+import { Shield, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Profile {
@@ -56,48 +56,75 @@ export default function AdminUsers() {
       </div>
 
       <Card className="border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
-            ) : profiles.map(profile => (
-              <TableRow key={profile.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{profile.username || 'No username'}</span>
+        {loading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
+        ) : (
+          <>
+            <div className="space-y-3 p-3 md:hidden">
+              {profiles.map(profile => (
+                <div key={profile.id} className="rounded-lg border border-border p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="font-medium text-foreground truncate">{profile.username || 'No username'}</span>
+                    </div>
+                    {roles[profile.user_id]?.includes('admin') ? (
+                      <Badge className="bg-primary/10 text-primary border-primary/20">Admin</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">User</Badge>
+                    )}
                   </div>
-                </TableCell>
-                <TableCell>
-                  {roles[profile.user_id]?.includes('admin') ? (
-                    <Badge className="bg-primary/10 text-primary border-primary/20">Admin</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-muted-foreground">User</Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {new Date(profile.created_at).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => toggleAdmin(profile.user_id)} className="gap-1 text-xs">
+                  <p className="text-xs text-muted-foreground">Joined: {new Date(profile.created_at).toLocaleDateString()}</p>
+                  <Button variant="outline" size="sm" onClick={() => toggleAdmin(profile.user_id)} className="w-full gap-1 text-xs">
                     <Shield className="w-3.5 h-3.5" />
                     {roles[profile.user_id]?.includes('admin') ? 'Remove Admin' : 'Make Admin'}
                   </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          </Table>
-        </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {profiles.map(profile => (
+                    <TableRow key={profile.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium text-foreground">{profile.username || 'No username'}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {roles[profile.user_id]?.includes('admin') ? (
+                          <Badge className="bg-primary/10 text-primary border-primary/20">Admin</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">User</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {new Date(profile.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => toggleAdmin(profile.user_id)} className="gap-1 text-xs">
+                          <Shield className="w-3.5 h-3.5" />
+                          {roles[profile.user_id]?.includes('admin') ? 'Remove Admin' : 'Make Admin'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
       </Card>
     </div>
   );
