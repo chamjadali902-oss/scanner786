@@ -6,22 +6,32 @@ import { Badge } from '@/components/ui/badge';
 import { Brain, Loader2, AlertTriangle, TrendingUp, TrendingDown, Shield, Target, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const BINANCE_DATA_API = 'https://data-api.binance.vision/api/v3';
+const BINANCE_API = 'https://api.binance.com/api/v3';
 
 const SHORT_TFS = ['1m', '5m', '15m', '30m'];
 const LONG_TFS = ['1h', '4h', '1d'];
 const ALL_TFS = [...SHORT_TFS, ...LONG_TFS];
 
+// Wilder's Smoothed RSI (matches TradingView)
 function calcRSI(closes: number[], period = 14): number {
   if (closes.length < period + 1) return 50;
-  let gains = 0, losses = 0;
-  for (let i = closes.length - period; i < closes.length; i++) {
+  let avgGain = 0, avgLoss = 0;
+  // Initial SMA for first period
+  for (let i = 1; i <= period; i++) {
     const diff = closes[i] - closes[i - 1];
-    if (diff > 0) gains += diff;
-    else losses += Math.abs(diff);
+    if (diff > 0) avgGain += diff;
+    else avgLoss += Math.abs(diff);
   }
-  const avgGain = gains / period;
-  const avgLoss = losses / period;
+  avgGain /= period;
+  avgLoss /= period;
+  // Wilder's smoothing for remaining data
+  for (let i = period + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? Math.abs(diff) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+  }
   if (avgLoss === 0) return 100;
   const rs = avgGain / avgLoss;
   return 100 - (100 / (1 + rs));
@@ -102,7 +112,7 @@ export function LiveTradeAnalysis({ trade, currentPrice }: Props) {
       const klineResults = await Promise.all(
         ALL_TFS.map(async (tf) => {
           try {
-            const res = await fetch(`${BINANCE_DATA_API}/klines?symbol=${trade.symbol}&interval=${tf}&limit=100`);
+            const res = await fetch(`${BINANCE_API}/klines?symbol=${trade.symbol}&interval=${tf}&limit=500`);
             if (!res.ok) return null;
             const raw: any[][] = await res.json();
             return { tf, candles: raw.map(c => ({ open: +c[1], high: +c[2], low: +c[3], close: +c[4], volume: +c[5] })) };
