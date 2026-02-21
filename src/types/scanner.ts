@@ -167,6 +167,7 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'premium_zone', name: 'Premium Zone', category: 'smc', description: 'Price > 0.5 Fib of range', defaultMode: 'value', settingsType: 'smc' },
   { id: 'discount_zone', name: 'Discount Zone', category: 'smc', description: 'Price < 0.5 Fib of range', defaultMode: 'value', settingsType: 'smc' },
   { id: 'breaker_block', name: 'Breaker Block', category: 'smc', description: 'Failed Order Block', defaultMode: 'value', settingsType: 'smc' },
+  { id: 'volume_spike', name: 'Volume Spike', category: 'smc', description: 'Abnormally high volume (2x+ average)', defaultMode: 'value', settingsType: 'smc' },
 ];
 
 export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [

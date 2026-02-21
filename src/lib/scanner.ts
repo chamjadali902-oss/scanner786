@@ -176,6 +176,7 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.premium_zone = smc.detectPremiumZone(candles);
   values.discount_zone = smc.detectDiscountZone(candles);
   values.breaker_block = smc.detectBreakerBlock(candles);
+  values.volume_spike = smc.detectVolumeSpike(candles);
   
   return values;
 }

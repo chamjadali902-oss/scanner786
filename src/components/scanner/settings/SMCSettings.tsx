@@ -43,6 +43,8 @@ export function SMCSettings({ feature }: SMCSettingsProps) {
         return 'Price is in discount zone (below 50% of range) - typically better for buying.';
       case 'breaker_block':
         return 'Failed Order Block that was broken through - now acts as the opposite type of S/R.';
+      case 'volume_spike':
+        return 'Volume Spike detects when current candle volume is 2x or more than the 20-period average - often confirms breakouts, reversals, or smart money activity.';
       default:
         return feature.description;
     }
