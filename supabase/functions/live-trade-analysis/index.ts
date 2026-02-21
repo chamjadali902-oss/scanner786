@@ -1,11 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// =====================================================
+// CORS Configuration
+// =====================================================
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// =====================================================
+// AI Gateway Configuration
+// Change these to switch AI providers
+// =====================================================
+const AI_GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+const AI_MODEL = 'google/gemini-2.5-flash';
+
+// =====================================================
+// Database Helpers
+// =====================================================
 async function getSystemPrompt(key: string, fallback: string): Promise<string> {
   try {
     const supabase = createClient(
@@ -19,6 +32,9 @@ async function getSystemPrompt(key: string, fallback: string): Promise<string> {
   }
 }
 
+// =====================================================
+// Types
+// =====================================================
 interface TimeframeData {
   tf: string;
   rsi: number;
@@ -30,53 +46,9 @@ interface TimeframeData {
   lastCandles: { open: number; high: number; low: number; close: number; volume: number }[];
 }
 
-// Wilder's Smoothed RSI (matches TradingView)
-function calcRSI(closes: number[], period = 14): number {
-  if (closes.length < period + 1) return 50;
-  let avgGain = 0, avgLoss = 0;
-  for (let i = 1; i <= period; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff > 0) avgGain += diff;
-    else avgLoss += Math.abs(diff);
-  }
-  avgGain /= period;
-  avgLoss /= period;
-  for (let i = period + 1; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1];
-    const gain = diff > 0 ? diff : 0;
-    const loss = diff < 0 ? Math.abs(diff) : 0;
-    avgGain = (avgGain * (period - 1) + gain) / period;
-    avgLoss = (avgLoss * (period - 1) + loss) / period;
-  }
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return 100 - (100 / (1 + rs));
-}
-
-function calcEMA(closes: number[], period: number): number {
-  if (closes.length < period) return closes[closes.length - 1];
-  const k = 2 / (period + 1);
-  let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
-  for (let i = period; i < closes.length; i++) {
-    ema = closes[i] * k + ema * (1 - k);
-  }
-  return ema;
-}
-
-function calcMACD(closes: number[]): number {
-  if (closes.length < 26) return 0;
-  const ema12 = calcEMA(closes, 12);
-  const ema26 = calcEMA(closes, 26);
-  return ema12 - ema26;
-}
-
-function detectTrend(closes: number[], ema20: number, ema50: number): 'up' | 'down' | 'sideways' {
-  const price = closes[closes.length - 1];
-  if (price > ema20 && ema20 > ema50) return 'up';
-  if (price < ema20 && ema20 < ema50) return 'down';
-  return 'sideways';
-}
-
+// =====================================================
+// Default Prompt (used as fallback if DB prompt not found)
+// =====================================================
 const FALLBACK_PROMPT = `You are an elite crypto trading analyst specializing in active trade management. 
 Analyze an OPEN trade across multiple timeframes and provide precise, actionable advice.
 
@@ -102,6 +74,9 @@ Response format:
   "warning": "string | null" (critical risk warning if any)
 }`;
 
+// =====================================================
+// Main Handler
+// =====================================================
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -113,6 +88,7 @@ serve(async (req) => {
 
     const systemPrompt = await getSystemPrompt('dashboard_ai', FALLBACK_PROMPT);
 
+    // Calculate P&L
     const currentPrice = timeframeData?.[0]?.currentPrice || entryPrice;
     const pnl = side === 'long'
       ? (currentPrice - entryPrice) * quantity
@@ -121,6 +97,7 @@ serve(async (req) => {
       ? ((currentPrice - entryPrice) / entryPrice) * 100
       : ((entryPrice - currentPrice) / entryPrice) * 100;
 
+    // Build timeframe summary
     const tfSummary = (timeframeData as TimeframeData[])
       .map(tf => `[${tf.tf}] Price: $${tf.currentPrice.toFixed(4)} | RSI: ${tf.rsi.toFixed(1)} | MACD: ${tf.macd > 0 ? '+' : ''}${tf.macd.toFixed(4)} | EMA20: $${tf.ema20.toFixed(4)} | EMA50: $${tf.ema50.toFixed(4)} | Trend: ${tf.trend.toUpperCase()}`)
       .join('\n');
@@ -143,14 +120,15 @@ Short timeframes (1m-30m) show immediate momentum.
 Long timeframes (1h-1d) show macro trend.
 Provide your decision on whether to hold, exit, or adjust this ${side} trade.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Call AI Gateway
+    const response = await fetch(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: AI_MODEL,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -168,6 +146,7 @@ Provide your decision on whether to hold, exit, or adjust this ${side} trade.`;
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
 
+    // Parse AI response
     let analysis;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);

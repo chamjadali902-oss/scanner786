@@ -11,7 +11,7 @@ import { Plus, TrendingUp, TrendingDown, Target, Trophy, DollarSign, BarChart3, 
 import { cn } from '@/lib/utils';
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { TradingViewModal } from '@/components/scanner/TradingViewModal';
-import { LiveTradeAnalysis } from '@/components/dashboard/LiveTradeAnalysis';
+import { LiveTradeAnalysis } from '@/components/dashboard/LiveTradeAnalysis/index';
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
