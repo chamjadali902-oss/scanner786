@@ -32,7 +32,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
         <h2 className="text-xl font-bold text-foreground">Dashboard</h2>
         <p className="text-sm text-muted-foreground">Overview of your platform</p>

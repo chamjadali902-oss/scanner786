@@ -45,14 +45,15 @@ export default function AdminStrategies() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
         <h2 className="text-xl font-bold text-foreground">Strategy Management</h2>
         <p className="text-sm text-muted-foreground">{strategies.length} community strategies</p>
       </div>
 
       <Card className="border-border overflow-hidden">
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -91,7 +92,8 @@ export default function AdminStrategies() {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
       </Card>
     </div>
   );

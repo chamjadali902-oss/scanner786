@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
+import { ADMIN_SESSION_KEY } from '@/lib/adminAccess';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -41,6 +42,9 @@ export function useAuth() {
   };
 
   const signOut = async () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(ADMIN_SESSION_KEY);
+    }
     await supabase.auth.signOut();
   };
 

@@ -49,14 +49,15 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
         <h2 className="text-xl font-bold text-foreground">User Management</h2>
         <p className="text-sm text-muted-foreground">{profiles.length} registered users</p>
       </div>
 
       <Card className="border-border overflow-hidden">
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
@@ -95,7 +96,8 @@ export default function AdminUsers() {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
       </Card>
     </div>
   );

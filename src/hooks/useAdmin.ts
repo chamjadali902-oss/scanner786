@@ -1,6 +1,20 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { ADMIN_SESSION_KEY, isPrimaryAdminEmail } from '@/lib/adminAccess';
+
+const hasAdminAccessSession = () => {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+};
+
+export const setAdminAccessSession = (allowed: boolean) => {
+  if (typeof window === 'undefined') return;
+  if (allowed) {
+    window.localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+    return;
+  }
+  window.localStorage.removeItem(ADMIN_SESSION_KEY);
+};
 
 export function useAdmin() {
   const { user, loading: authLoading } = useAuth();
@@ -9,22 +23,16 @@ export function useAdmin() {
 
   useEffect(() => {
     if (authLoading) return;
+
     if (!user) {
       setIsAdmin(false);
       setLoading(false);
       return;
     }
 
-    const checkAdmin = async () => {
-      const { data, error } = await supabase.rpc('has_role', {
-        _user_id: user.id,
-        _role: 'admin',
-      });
-      setIsAdmin(!error && data === true);
-      setLoading(false);
-    };
-
-    checkAdmin();
+    const canAccessAdmin = isPrimaryAdminEmail(user.email) && hasAdminAccessSession();
+    setIsAdmin(canAccessAdmin);
+    setLoading(false);
   }, [user, authLoading]);
 
   return { isAdmin, loading: loading || authLoading, user };

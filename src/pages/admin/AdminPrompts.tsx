@@ -82,7 +82,7 @@ export default function AdminPrompts() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-foreground flex items-center gap-2">

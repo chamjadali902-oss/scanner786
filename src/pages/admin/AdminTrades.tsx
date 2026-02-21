@@ -95,7 +95,7 @@ export default function AdminTrades() {
   const totalPnl = trades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-foreground">Trades Management</h2>

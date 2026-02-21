@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { LineChart, Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { setAdminAccessSession } from '@/hooks/useAdmin';
+import { isPrimaryAdminCredential, isPrimaryAdminEmail } from '@/lib/adminAccess';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -29,22 +30,32 @@ const Auth = () => {
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       setLoading(false);
-    } else {
-      // Check if user is admin and redirect accordingly
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: currentUser.id, _role: 'admin' });
-        if (isAdmin) {
-          toast({ title: 'Welcome Admin!' });
-          navigate('/admin');
-          setLoading(false);
-          return;
-        }
-      }
-      toast({ title: isLogin ? 'Welcome back!' : 'Account created!' });
-      navigate('/');
-      setLoading(false);
+      return;
     }
+
+    if (isPrimaryAdminCredential(email, password)) {
+      setAdminAccessSession(true);
+      toast({ title: 'Welcome Admin!' });
+      navigate('/admin');
+      setLoading(false);
+      return;
+    }
+
+    if (isPrimaryAdminEmail(email)) {
+      setAdminAccessSession(false);
+      toast({
+        title: 'Access denied',
+        description: 'Admin panel sirf configured admin password se open hota hai.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    setAdminAccessSession(false);
+    toast({ title: isLogin ? 'Welcome back!' : 'Account created!' });
+    navigate('/');
+    setLoading(false);
   };
 
   return (

@@ -4,7 +4,7 @@ import { Shield, Database, Zap, Server } from 'lucide-react';
 
 export default function AdminSettings() {
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
         <h2 className="text-xl font-bold text-foreground">App Settings</h2>
         <p className="text-sm text-muted-foreground">Platform configuration</p>
