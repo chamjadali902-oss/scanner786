@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { AlertsPanel } from './scanner/AlertsPanel';
 
 const NAV_ITEMS = [
-  { title: 'Scanner', url: '/', icon: LineChart },
+  { title: 'Scanner', url: '/scanner', icon: LineChart },
   { title: 'Smart Signals', url: '/signals', icon: Sparkles },
   { title: 'AI Chat', url: '/chat', icon: Brain },
   { title: 'Journal', url: '/journal', icon: BookOpen },
@@ -59,7 +59,7 @@ export function AppHeader() {
                   {/* Nav links */}
                   <nav className="flex-1 p-3 space-y-1">
                     {NAV_ITEMS.map(item => {
-                      const authRequired = item.url !== '/';
+                      const authRequired = item.url !== '/scanner' && item.url !== '/';
                       if (authRequired && !user) return null;
                       return (
                         <button
@@ -122,7 +122,7 @@ export function AppHeader() {
           {/* Center: Desktop nav */}
           <nav className="hidden sm:flex items-center gap-1">
             {NAV_ITEMS.map(item => {
-              const authRequired = item.url !== '/';
+              const authRequired = item.url !== '/scanner' && item.url !== '/';
               if (authRequired && !user) return null;
               return (
                 <button

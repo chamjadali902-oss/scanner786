@@ -23,6 +23,16 @@ export interface Analysis {
   keyLevels: { support: number; resistance: number };
   reasons: string[];
   warning: string | null;
+  // Enhanced fields
+  trapWarning: string | null;
+  targetAchievable: boolean;
+  targetAnalysis: string;
+  priceRange: {
+    shortTerm: { min: number; max: number; timeframe: string };
+    longTerm: { min: number; max: number; timeframe: string };
+  };
+  timeframeSummary: { tf: string; signal: string; strength: string }[];
+  conflictingSignals: string[];
 }
 
 export const DECISION_COLOR: Record<string, string> = {
