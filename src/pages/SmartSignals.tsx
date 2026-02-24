@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fetchTicker24h, getTopCoins, fetchKlines } from '@/lib/binance';
 import { calculateRSI, calculateMACD, calculateEMA, calculateBollingerBands, calculateStochastic, calculateADX, calculateATR } from '@/lib/indicators';
 import { detectDoji, detectHammer, detectShootingStar, detectBullishEngulfing, detectBearishEngulfing, detectMorningStar, detectEveningStar, detectMarubozu, detectBullishHarami, detectBearishHarami, detectInvertedHammer, detectThreeWhiteSoldiers, detectThreeBlackCrows, detectInsideBar } from '@/lib/patterns';
-import { detectBullishBOS, detectBearishBOS, detectBullishChoCH, detectBearishChoCH, detectBullishOrderBlock, detectBearishOrderBlock, detectBullishFVG, detectBearishFVG, detectLiquiditySweepHigh, detectLiquiditySweepLow, detectEqualHighs, detectEqualLows, detectPremiumZone, detectDiscountZone } from '@/lib/smc';
+import { detectBullishBOS, detectBearishBOS, detectBullishChoCH, detectBearishChoCH, detectBullishOrderBlock, detectBearishOrderBlock, detectBullishFVG, detectBearishFVG, detectLiquiditySweepHigh, detectLiquiditySweepLow, detectEqualHighs, detectEqualLows, detectPremiumZone, detectDiscountZone, detectUptrend, detectDowntrend } from '@/lib/smc';
 import { Timeframe, ScanPool, TIMEFRAME_OPTIONS } from '@/types/scanner';
 import { useFavorites } from '@/hooks/useFavorites';
 import { TradingViewModal } from '@/components/scanner/TradingViewModal';
@@ -146,6 +146,8 @@ export default function SmartSignals() {
           if (detectEqualLows(candles)) smcSignals.push('Equal Lows');
           if (detectPremiumZone(candles)) smcSignals.push('Premium Zone');
           if (detectDiscountZone(candles)) smcSignals.push('Discount Zone');
+          if (detectUptrend(candles)) smcSignals.push('Uptrend (HH/HL)');
+          if (detectDowntrend(candles)) smcSignals.push('Downtrend (LH/LL)');
 
           const lastCandle = candles[last];
           coinsData.push({

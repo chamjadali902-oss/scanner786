@@ -336,7 +336,6 @@ export function detectVolumeSpike(candles: Candle[], multiplier: number = 2): bo
   const previousCandles = candles.slice(-lookback - 1, -1);
   const currentCandle = candles[candles.length - 1];
   
-  // Need volume data
   if (!currentCandle.volume || currentCandle.volume === 0) return false;
   
   const volumes = previousCandles.map(c => c.volume || 0).filter(v => v > 0);
@@ -344,6 +343,41 @@ export function detectVolumeSpike(candles: Candle[], multiplier: number = 2): bo
   
   const avgVolume = volumes.reduce((sum, v) => sum + v, 0) / volumes.length;
   
-  // Current volume is X times (default 2x) higher than average
   return currentCandle.volume >= avgVolume * multiplier;
+}
+
+// Uptrend - Valid Higher Highs and Higher Lows
+export function detectUptrend(candles: Candle[]): boolean {
+  if (candles.length < 15) return false;
+  
+  const swingPoints = findSwingPoints(candles, 3);
+  const swingHighs = swingPoints.filter(p => p.type === 'high').slice(-3);
+  const swingLows = swingPoints.filter(p => p.type === 'low').slice(-3);
+  
+  if (swingHighs.length < 2 || swingLows.length < 2) return false;
+  
+  // Check Higher Highs
+  const hh = swingHighs[swingHighs.length - 1].price > swingHighs[swingHighs.length - 2].price;
+  // Check Higher Lows
+  const hl = swingLows[swingLows.length - 1].price > swingLows[swingLows.length - 2].price;
+  
+  return hh && hl;
+}
+
+// Downtrend - Valid Lower Highs and Lower Lows
+export function detectDowntrend(candles: Candle[]): boolean {
+  if (candles.length < 15) return false;
+  
+  const swingPoints = findSwingPoints(candles, 3);
+  const swingHighs = swingPoints.filter(p => p.type === 'high').slice(-3);
+  const swingLows = swingPoints.filter(p => p.type === 'low').slice(-3);
+  
+  if (swingHighs.length < 2 || swingLows.length < 2) return false;
+  
+  // Check Lower Highs
+  const lh = swingHighs[swingHighs.length - 1].price < swingHighs[swingHighs.length - 2].price;
+  // Check Lower Lows
+  const ll = swingLows[swingLows.length - 1].price < swingLows[swingLows.length - 2].price;
+  
+  return lh && ll;
 }

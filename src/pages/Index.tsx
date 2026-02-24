@@ -37,7 +37,7 @@ const Index = () => {
   const { user } = useAuth();
   const { status, results, error, progress, waitTime, scan, clearResults, isScanning } = useScanner();
   const { strategies, loading: strategiesLoading, saveStrategy, updateStrategy, deleteStrategy } = useStrategies(user?.id);
-  const { favorites, loading: favoritesLoading, addFavorite, removeFavorite, isFavorite, getFavoriteSymbols } = useFavorites(user?.id);
+  const { favorites, loading: favoritesLoading, addFavorite, addAllFavorites, removeFavorite, removeAllFavorites, isFavorite, getFavoriteSymbols } = useFavorites(user?.id);
   const { publishStrategy } = useCommunityStrategies(user?.id);
 
   useEffect(() => {
@@ -113,7 +113,14 @@ const Index = () => {
 
           {user && showFavorites && (
             <div className="p-3 rounded-xl border border-border bg-card card-glow">
-              <h3 className="text-xs font-semibold mb-3 flex items-center gap-2"><Star className="w-4 h-4 text-primary" />My Favorites ({favorites.length})</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold flex items-center gap-2"><Star className="w-4 h-4 text-primary" />My Favorites ({favorites.length})</h3>
+                {favorites.length > 0 && (
+                  <Button onClick={removeAllFavorites} variant="ghost" size="sm" className="h-6 text-[10px] text-destructive hover:text-destructive">
+                    Remove All
+                  </Button>
+                )}
+              </div>
               <FavoritesList favorites={favorites} loading={favoritesLoading} onRemove={removeFavorite} />
             </div>
           )}
@@ -129,7 +136,19 @@ const Index = () => {
               <h2 className="text-sm sm:text-base font-bold">Scan Results</h2>
               {mtfEnabled && <span className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-mono">MTF</span>}
             </div>
-            {results.length > 0 && <span className="text-xs text-muted-foreground font-mono">{results.length} match{results.length !== 1 ? 'es' : ''}</span>}
+            <div className="flex items-center gap-2">
+              {results.length > 0 && user && (
+                <Button
+                  onClick={() => addAllFavorites(results.map(r => r.symbol))}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[10px] gap-1"
+                >
+                  <Star className="w-3 h-3" /> Favorite All
+                </Button>
+              )}
+              {results.length > 0 && <span className="text-xs text-muted-foreground font-mono">{results.length} match{results.length !== 1 ? 'es' : ''}</span>}
+            </div>
           </div>
 
           {results.length === 0 && status === 'idle' && (
