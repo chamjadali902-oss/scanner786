@@ -51,6 +51,42 @@ export function useFavorites(userId?: string) {
     fetchFavorites();
   }, [userId, fetchFavorites]);
 
+  const addAllFavorites = useCallback(async (symbols: string[]) => {
+    if (!userId || symbols.length === 0) return;
+    const existingSymbols = favorites.map(f => f.symbol);
+    const newSymbols = symbols.filter(s => !existingSymbols.includes(s));
+    if (newSymbols.length === 0) {
+      toast.info('All coins are already in favorites');
+      return;
+    }
+    const rows = newSymbols.map(symbol => ({ user_id: userId, symbol }));
+    const { error } = await supabase
+      .from('favorite_coins')
+      .insert(rows);
+
+    if (error) {
+      toast.error('Failed to add favorites');
+      return;
+    }
+    toast.success(`${newSymbols.length} coins added to favorites`);
+    fetchFavorites();
+  }, [userId, favorites, fetchFavorites]);
+
+  const removeAllFavorites = useCallback(async () => {
+    if (!userId || favorites.length === 0) return;
+    const { error } = await supabase
+      .from('favorite_coins')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) {
+      toast.error('Failed to remove all favorites');
+      return;
+    }
+    toast.success(`All favorites removed`);
+    setFavorites([]);
+  }, [userId, favorites]);
+
   const removeFavorite = useCallback(async (symbol: string) => {
     if (!userId) return;
     const { error } = await supabase
@@ -75,5 +111,5 @@ export function useFavorites(userId?: string) {
     return favorites.map(f => f.symbol);
   }, [favorites]);
 
-  return { favorites, loading, addFavorite, removeFavorite, isFavorite, getFavoriteSymbols, fetchFavorites };
+  return { favorites, loading, addFavorite, addAllFavorites, removeFavorite, removeAllFavorites, isFavorite, getFavoriteSymbols, fetchFavorites };
 }

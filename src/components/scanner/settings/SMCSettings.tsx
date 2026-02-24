@@ -45,6 +45,10 @@ export function SMCSettings({ feature }: SMCSettingsProps) {
         return 'Failed Order Block that was broken through - now acts as the opposite type of S/R.';
       case 'volume_spike':
         return 'Volume Spike detects when current candle volume is 2x or more than the 20-period average - often confirms breakouts, reversals, or smart money activity.';
+      case 'uptrend':
+        return 'Uptrend is confirmed when price makes valid Higher Highs (HH) and Higher Lows (HL) based on swing points. This is the foundation of bullish market structure.';
+      case 'downtrend':
+        return 'Downtrend is confirmed when price makes valid Lower Highs (LH) and Lower Lows (LL) based on swing points. This is the foundation of bearish market structure.';
       default:
         return feature.description;
     }

@@ -168,6 +168,8 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'discount_zone', name: 'Discount Zone', category: 'smc', description: 'Price < 0.5 Fib of range', defaultMode: 'value', settingsType: 'smc' },
   { id: 'breaker_block', name: 'Breaker Block', category: 'smc', description: 'Failed Order Block', defaultMode: 'value', settingsType: 'smc' },
   { id: 'volume_spike', name: 'Volume Spike', category: 'smc', description: 'Abnormally high volume (2x+ average)', defaultMode: 'value', settingsType: 'smc' },
+  { id: 'uptrend', name: 'Uptrend (HH/HL)', category: 'smc', description: 'Valid Higher Highs & Higher Lows', defaultMode: 'value', settingsType: 'smc' },
+  { id: 'downtrend', name: 'Downtrend (LH/LL)', category: 'smc', description: 'Valid Lower Highs & Lower Lows', defaultMode: 'value', settingsType: 'smc' },
 ];
 
 export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
