@@ -3,9 +3,11 @@ import { AlertTriangle, Shield, Target, TrendingUp, TrendingDown, Minus, Crossha
 import { cn } from '@/lib/utils';
 import type { Analysis } from './types';
 import { DECISION_COLOR, URGENCY_COLOR } from './types';
+import { AnalysisChat } from '@/components/AnalysisChat';
 
 interface Props {
   analysis: Analysis;
+  symbol?: string;
 }
 
 const SIGNAL_ICON: Record<string, React.ReactNode> = {
@@ -14,7 +16,20 @@ const SIGNAL_ICON: Record<string, React.ReactNode> = {
   NEUTRAL: <Minus className="w-2.5 h-2.5 text-muted-foreground" />,
 };
 
-export function AnalysisResult({ analysis }: Props) {
+export function AnalysisResult({ analysis, symbol }: Props) {
+  const contextSummary = `Symbol: ${symbol || 'Unknown'}
+Decision: ${analysis.decision}, Confidence: ${analysis.confidence}%, Bias: ${analysis.currentBias}
+Risk: ${analysis.riskLevel}, Urgency: ${analysis.urgency}
+Short Term: ${analysis.shortTermOutlook}
+Long Term: ${analysis.longTermOutlook}
+Recommendation: ${analysis.recommendation}
+${analysis.trapWarning ? `Trap Warning: ${analysis.trapWarning}` : ''}
+${analysis.targetAnalysis ? `Target: ${analysis.targetAchievable ? 'Achievable' : 'Unlikely'} - ${analysis.targetAnalysis}` : ''}
+${analysis.priceRange ? `Short Term Range: $${analysis.priceRange.shortTerm?.min} - $${analysis.priceRange.shortTerm?.max}, Long Term Range: $${analysis.priceRange.longTerm?.min} - $${analysis.priceRange.longTerm?.max}` : ''}
+Key Levels: Support $${analysis.keyLevels?.support}, Resistance $${analysis.keyLevels?.resistance}
+${analysis.conflictingSignals?.length ? `Conflicts: ${analysis.conflictingSignals.join('; ')}` : ''}
+Reasons: ${analysis.reasons?.join('; ')}`;
+
   return (
     <div className="space-y-2">
       {/* Decision Banner */}
@@ -171,6 +186,9 @@ export function AnalysisResult({ analysis }: Props) {
           </p>
         ))}
       </div>
+
+      {/* Follow-up Chat */}
+      <AnalysisChat contextSummary={contextSummary} className="mt-2" />
     </div>
   );
 }

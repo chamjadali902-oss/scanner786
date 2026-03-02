@@ -17,6 +17,7 @@ import { detectBullishBOS, detectBearishBOS, detectBullishChoCH, detectBearishCh
 import { Timeframe, ScanPool, TIMEFRAME_OPTIONS } from '@/types/scanner';
 import { useFavorites } from '@/hooks/useFavorites';
 import { TradingViewModal } from '@/components/scanner/TradingViewModal';
+import { AnalysisChat } from '@/components/AnalysisChat';
 
 interface SmartSignal {
   symbol: string;
@@ -376,10 +377,17 @@ export default function SmartSignals() {
                 )}
 
                 {/* View Chart */}
-                <Button variant="outline" size="sm" className="w-full gap-2 text-xs h-7"
-                  onClick={() => setChartSymbol(sig.symbol)}>
-                  <BarChart2 className="w-3.5 h-3.5" /> View Chart
-                </Button>
+                <div className="flex gap-1.5">
+                  <Button variant="outline" size="sm" className="flex-1 gap-2 text-xs h-7"
+                    onClick={() => setChartSymbol(sig.symbol)}>
+                    <BarChart2 className="w-3.5 h-3.5" /> View Chart
+                  </Button>
+                </div>
+
+                {/* Follow-up Chat */}
+                <AnalysisChat
+                  contextSummary={`Symbol: ${sig.symbol}, Type: ${sig.tradeType}, Direction: ${sig.direction}, Confidence: ${sig.confidence}%, Entry: $${sig.entry}, SL: $${sig.stopLoss}, TP: ${sig.takeProfit?.map(t => '$' + t).join(', ')}, R:R: ${sig.riskReward}, Setup: ${sig.setup}, Reasons: ${sig.reasons?.join('; ')}, Warnings: ${sig.warnings?.join('; ')}`}
+                />
               </Card>
             );
           })}
