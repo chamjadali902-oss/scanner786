@@ -80,7 +80,7 @@ export function LiveTradeAnalysis({ trade, currentPrice }: Props) {
           )}
 
           {!loading && tfData.length > 0 && <TimeframeGrid data={tfData} />}
-          {!loading && analysis && <AnalysisResult analysis={analysis} />}
+          {!loading && analysis && <AnalysisResult analysis={analysis} symbol={trade.symbol} />}
         </div>
       )}
     </div>
