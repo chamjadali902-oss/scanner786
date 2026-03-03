@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callAIWithFallback } from "../_shared/ai-fallback.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,15 +9,10 @@ const corsHeaders = {
 
 async function getSystemPrompt(key: string, fallback: string): Promise<string> {
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data } = await supabase.from('ai_prompts').select('system_prompt').eq('key', key).single();
     return data?.system_prompt || fallback;
-  } catch {
-    return fallback;
-  }
+  } catch { return fallback; }
 }
 
 const FALLBACK_PROMPT = `You are a professional trading coach reviewing a trader's performance journal. Provide honest, actionable feedback.
@@ -27,49 +23,20 @@ Response format:
 {
   "overallGrade": "A" | "B" | "C" | "D" | "F",
   "overallScore": 1-100,
-  "strengths": ["string", "string"],
-  "weaknesses": ["string", "string"],
-  "emotionalPatterns": "string (psychological observations)",
-  "riskManagement": {
-    "score": 1-100,
-    "feedback": "string",
-    "suggestions": ["string"]
-  },
-  "tradeReviews": [
-    {
-      "symbol": "string",
-      "grade": "A" | "B" | "C" | "D" | "F",
-      "whatWentRight": "string",
-      "whatWentWrong": "string",
-      "lesson": "string"
-    }
-  ],
-  "improvementPlan": [
-    {
-      "priority": "HIGH" | "MEDIUM" | "LOW",
-      "area": "string",
-      "action": "string",
-      "timeframe": "string"
-    }
-  ],
-  "summary": "string (encouraging but honest overall summary)"
-}
-
-Analyze:
-- Win rate patterns
-- Position sizing consistency
-- Risk/reward adherence
-- Emotional trading signs (revenge trades, FOMO entries)
-- Best/worst performing setups
-- Time-of-day patterns`;
+  "strengths": ["string"],
+  "weaknesses": ["string"],
+  "emotionalPatterns": "string",
+  "riskManagement": { "score": 1-100, "feedback": "string", "suggestions": ["string"] },
+  "tradeReviews": [{ "symbol": "string", "grade": "string", "whatWentRight": "string", "whatWentWrong": "string", "lesson": "string" }],
+  "improvementPlan": [{ "priority": "HIGH" | "MEDIUM" | "LOW", "area": "string", "action": "string", "timeframe": "string" }],
+  "summary": "string"
+}`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const { trades, stats } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = await getSystemPrompt('journal_ai', FALLBACK_PROMPT);
 
@@ -81,27 +48,12 @@ serve(async (req) => {
 
     const userPrompt = `Review this trader's journal:\n\n${statsStr}\n\nRecent Trades:\n${tradesData}\n\nProvide a thorough coaching review.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const response = await callAIWithFallback({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
     });
-
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error("AI gateway error");
-    }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
