@@ -7,3 +7,4 @@ export { OscillatorSettings } from './OscillatorSettings';
 export { PriceCrossSettings } from './PriceCrossSettings';
 export { PatternSettings } from './PatternSettings';
 export { SMCSettings } from './SMCSettings';
+export { SupertrendSettings } from './SupertrendSettings';

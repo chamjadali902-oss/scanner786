@@ -453,6 +453,34 @@ function evaluateCondition(
       return { matched: false, reason: '' };
     }
 
+    case 'supertrend': {
+      const stValue = values.supertrend;
+      const stDir = values.supertrend_direction as number;
+      const stPrevDir = values.supertrend_prev_direction as number;
+      if (typeof stValue !== 'number' || isNaN(stValue)) return { matched: false, reason: '' };
+
+      if (condition.crossType === 'crossover') {
+        // Flip from bearish to bullish
+        if (stDir === 1 && stPrevDir === -1) {
+          return { matched: true, reason: `Supertrend flipped Bullish (${stValue.toFixed(2)})` };
+        }
+      } else if (condition.crossType === 'crossunder') {
+        // Flip from bullish to bearish
+        if (stDir === -1 && stPrevDir === 1) {
+          return { matched: true, reason: `Supertrend flipped Bearish (${stValue.toFixed(2)})` };
+        }
+      } else if (condition.pricePosition === 'above') {
+        if (stDir === 1) {
+          return { matched: true, reason: `Price above Supertrend (${stValue.toFixed(2)})` };
+        }
+      } else if (condition.pricePosition === 'below') {
+        if (stDir === -1) {
+          return { matched: true, reason: `Price below Supertrend (${stValue.toFixed(2)})` };
+        }
+      }
+      return { matched: false, reason: '' };
+    }
+
     default:
       // Fallback for unknown types
       const value = values[condition.feature];
