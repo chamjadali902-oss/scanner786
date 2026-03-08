@@ -549,5 +549,9 @@ export function determineBullishness(values: IndicatorValues): boolean {
   if (values.bos_bullish || values.choch_bullish || values.bullish_ob) bullishScore++;
   if (values.bos_bearish || values.choch_bearish || values.bearish_ob) bearishScore++;
   
+  // Supertrend
+  if (values.supertrend_direction === 1) bullishScore++;
+  if (values.supertrend_direction === -1) bearishScore++;
+  
   return bullishScore >= bearishScore;
 }
