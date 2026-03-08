@@ -86,6 +86,10 @@ export interface ScanCondition {
   bbPeriod?: number;
   bbStdDev?: number;
   
+  // Supertrend settings
+  supertrendPeriod?: number;
+  supertrendMultiplier?: number;
+  
   // Price position relative to indicator
   pricePosition?: PricePosition;
 }
@@ -113,7 +117,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend';
 }
 
 // All available features
@@ -133,6 +137,7 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'williams_r', name: 'Williams %R', category: 'indicator', description: 'Williams Percent Range', defaultMode: 'range', valueRange: { min: -100, max: 0 }, settingsType: 'oscillator' },
   { id: 'roc', name: 'ROC', category: 'indicator', description: 'Rate of Change', defaultMode: 'comparison', settingsType: 'oscillator' },
   { id: 'psar', name: 'Parabolic SAR', category: 'indicator', description: 'Parabolic Stop and Reverse', defaultMode: 'cross', settingsType: 'price-cross' },
+  { id: 'supertrend', name: 'Supertrend', category: 'indicator', description: 'ATR-based trend indicator (Period 10, Multiplier 3)', defaultMode: 'cross', settingsType: 'supertrend' },
 
   // Category B: Price Action Patterns
   { id: 'doji', name: 'Doji', category: 'pattern', description: 'Indecision candle', defaultMode: 'value', settingsType: 'pattern' },
