@@ -98,6 +98,16 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   const psar = indicators.calculateParabolicSAR(candles);
   values.psar = psar[lastIndex];
 
+  // Supertrend
+  const stPeriod = condition?.supertrendPeriod ?? 10;
+  const stMultiplier = condition?.supertrendMultiplier ?? 3;
+  const supertrend = indicators.calculateSupertrend(candles, stPeriod, stMultiplier);
+  values.supertrend = supertrend.value[lastIndex];
+  values.supertrend_direction = supertrend.direction[lastIndex];
+  values.supertrend_prev_direction = lastIndex > 0 ? supertrend.direction[lastIndex - 1] : 0;
+  values.supertrend_array = supertrend.value;
+  values.supertrend_direction_array = supertrend.direction;
+
   // Current price
   values.price = candles[lastIndex].close;
   values.prev_price = lastIndex > 0 ? candles[lastIndex - 1].close : candles[lastIndex].close;
@@ -109,6 +119,7 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.price_vs_bb_lower = candles[lastIndex].close > bb.lower[lastIndex] ? 'above' : 'below';
   values.price_vs_vwap = candles[lastIndex].close > vwap[lastIndex] ? 'above' : 'below';
   values.price_vs_psar = candles[lastIndex].close > psar[lastIndex] ? 'above' : 'below';
+  values.price_vs_supertrend = supertrend.direction[lastIndex] === 1 ? 'above' : 'below';
 
   // Cross detection (compare current vs previous)
   if (lastIndex > 0) {
