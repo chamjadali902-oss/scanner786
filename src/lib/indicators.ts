@@ -640,3 +640,89 @@ export function calculateParabolicSAR(candles: Candle[], step = 0.02, maxStep = 
   
   return result;
 }
+
+// =====================================================
+// SUPERTREND
+// Based on ATR with multiplier - matches TradingView exactly
+// Default: period=10, multiplier=3
+// Returns: { value: number[], direction: number[] }
+// direction: 1 = bullish (price above), -1 = bearish (price below)
+// =====================================================
+export function calculateSupertrend(candles: Candle[], period = 10, multiplier = 3): {
+  value: number[];
+  direction: number[];
+} {
+  const len = candles.length;
+  const value: number[] = new Array(len).fill(NaN);
+  const direction: number[] = new Array(len).fill(0);
+
+  if (len < period + 1) {
+    return { value, direction };
+  }
+
+  // Calculate ATR using Wilder's smoothing
+  const tr: number[] = [candles[0].high - candles[0].low];
+  for (let i = 1; i < len; i++) {
+    tr.push(Math.max(
+      candles[i].high - candles[i].low,
+      Math.abs(candles[i].high - candles[i - 1].close),
+      Math.abs(candles[i].low - candles[i - 1].close)
+    ));
+  }
+  const atr = wilderSmooth(tr, period);
+
+  // Calculate basic upper and lower bands
+  const upperBand: number[] = new Array(len).fill(NaN);
+  const lowerBand: number[] = new Array(len).fill(NaN);
+  const finalUpperBand: number[] = new Array(len).fill(NaN);
+  const finalLowerBand: number[] = new Array(len).fill(NaN);
+
+  for (let i = 0; i < len; i++) {
+    if (isNaN(atr[i])) continue;
+    const hl2 = (candles[i].high + candles[i].low) / 2;
+    upperBand[i] = hl2 + multiplier * atr[i];
+    lowerBand[i] = hl2 - multiplier * atr[i];
+  }
+
+  // Initialize first valid index
+  const firstValid = period - 1;
+  finalUpperBand[firstValid] = upperBand[firstValid];
+  finalLowerBand[firstValid] = lowerBand[firstValid];
+  // Initial direction based on close vs bands
+  direction[firstValid] = candles[firstValid].close > upperBand[firstValid] ? 1 : -1;
+  value[firstValid] = direction[firstValid] === 1 ? finalLowerBand[firstValid] : finalUpperBand[firstValid];
+
+  for (let i = firstValid + 1; i < len; i++) {
+    if (isNaN(upperBand[i])) continue;
+
+    // Final Lower Band: if current lowerBand > previous finalLowerBand OR previous close < previous finalLowerBand
+    // then use current lowerBand, else use previous finalLowerBand
+    if (lowerBand[i] > finalLowerBand[i - 1] || candles[i - 1].close < finalLowerBand[i - 1]) {
+      finalLowerBand[i] = lowerBand[i];
+    } else {
+      finalLowerBand[i] = finalLowerBand[i - 1];
+    }
+
+    // Final Upper Band: if current upperBand < previous finalUpperBand OR previous close > previous finalUpperBand
+    // then use current upperBand, else use previous finalUpperBand
+    if (upperBand[i] < finalUpperBand[i - 1] || candles[i - 1].close > finalUpperBand[i - 1]) {
+      finalUpperBand[i] = upperBand[i];
+    } else {
+      finalUpperBand[i] = finalUpperBand[i - 1];
+    }
+
+    // Direction logic (matches TradingView pine script)
+    if (direction[i - 1] === -1 && candles[i].close > finalUpperBand[i - 1]) {
+      direction[i] = 1; // Flip to bullish
+    } else if (direction[i - 1] === 1 && candles[i].close < finalLowerBand[i - 1]) {
+      direction[i] = -1; // Flip to bearish
+    } else {
+      direction[i] = direction[i - 1]; // Continue same direction
+    }
+
+    // Supertrend value
+    value[i] = direction[i] === 1 ? finalLowerBand[i] : finalUpperBand[i];
+  }
+
+  return { value, direction };
+}

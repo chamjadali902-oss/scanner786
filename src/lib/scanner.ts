@@ -98,6 +98,16 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   const psar = indicators.calculateParabolicSAR(candles);
   values.psar = psar[lastIndex];
 
+  // Supertrend
+  const stPeriod = condition?.supertrendPeriod ?? 10;
+  const stMultiplier = condition?.supertrendMultiplier ?? 3;
+  const supertrend = indicators.calculateSupertrend(candles, stPeriod, stMultiplier);
+  values.supertrend = supertrend.value[lastIndex];
+  values.supertrend_direction = supertrend.direction[lastIndex];
+  values.supertrend_prev_direction = lastIndex > 0 ? supertrend.direction[lastIndex - 1] : 0;
+  values.supertrend_array = supertrend.value;
+  values.supertrend_direction_array = supertrend.direction;
+
   // Current price
   values.price = candles[lastIndex].close;
   values.prev_price = lastIndex > 0 ? candles[lastIndex - 1].close : candles[lastIndex].close;
@@ -109,6 +119,7 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.price_vs_bb_lower = candles[lastIndex].close > bb.lower[lastIndex] ? 'above' : 'below';
   values.price_vs_vwap = candles[lastIndex].close > vwap[lastIndex] ? 'above' : 'below';
   values.price_vs_psar = candles[lastIndex].close > psar[lastIndex] ? 'above' : 'below';
+  values.price_vs_supertrend = supertrend.direction[lastIndex] === 1 ? 'above' : 'below';
 
   // Cross detection (compare current vs previous)
   if (lastIndex > 0) {
@@ -442,6 +453,34 @@ function evaluateCondition(
       return { matched: false, reason: '' };
     }
 
+    case 'supertrend': {
+      const stValue = values.supertrend;
+      const stDir = values.supertrend_direction as number;
+      const stPrevDir = values.supertrend_prev_direction as number;
+      if (typeof stValue !== 'number' || isNaN(stValue)) return { matched: false, reason: '' };
+
+      if (condition.crossType === 'crossover') {
+        // Flip from bearish to bullish
+        if (stDir === 1 && stPrevDir === -1) {
+          return { matched: true, reason: `Supertrend flipped Bullish (${stValue.toFixed(2)})` };
+        }
+      } else if (condition.crossType === 'crossunder') {
+        // Flip from bullish to bearish
+        if (stDir === -1 && stPrevDir === 1) {
+          return { matched: true, reason: `Supertrend flipped Bearish (${stValue.toFixed(2)})` };
+        }
+      } else if (condition.pricePosition === 'above') {
+        if (stDir === 1) {
+          return { matched: true, reason: `Price above Supertrend (${stValue.toFixed(2)})` };
+        }
+      } else if (condition.pricePosition === 'below') {
+        if (stDir === -1) {
+          return { matched: true, reason: `Price below Supertrend (${stValue.toFixed(2)})` };
+        }
+      }
+      return { matched: false, reason: '' };
+    }
+
     default:
       // Fallback for unknown types
       const value = values[condition.feature];
@@ -509,6 +548,10 @@ export function determineBullishness(values: IndicatorValues): boolean {
   // SMC
   if (values.bos_bullish || values.choch_bullish || values.bullish_ob) bullishScore++;
   if (values.bos_bearish || values.choch_bearish || values.bearish_ob) bearishScore++;
+  
+  // Supertrend
+  if (values.supertrend_direction === 1) bullishScore++;
+  if (values.supertrend_direction === -1) bearishScore++;
   
   return bullishScore >= bearishScore;
 }

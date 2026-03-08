@@ -19,6 +19,7 @@ import {
   PriceCrossSettings,
   PatternSettings,
   SMCSettings,
+  SupertrendSettings,
 } from './settings';
 
 interface LogicBuilderProps {
@@ -101,6 +102,14 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         pricePosition: 'above',
         crossType: 'crossover',
       };
+    case 'supertrend':
+      return {
+        ...defaults,
+        mode: 'cross',
+        supertrendPeriod: 10,
+        supertrendMultiplier: 3,
+        pricePosition: 'above',
+      };
     default:
       return {
         ...defaults,
@@ -139,6 +148,8 @@ function FeatureSettings({
       return <PatternSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     case 'smc':
       return <SMCSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
+    case 'supertrend':
+      return <SupertrendSettings condition={condition} onUpdate={onUpdate} />;
     default:
       return null;
   }
