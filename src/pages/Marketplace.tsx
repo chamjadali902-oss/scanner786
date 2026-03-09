@@ -26,7 +26,7 @@ export default function Marketplace() {
   const handleCopy = (strategy: CommunityStrategy) => {
     copyStrategy(strategy.id);
     const params = new URLSearchParams({ pool: strategy.scan_pool, timeframe: strategy.timeframe, conditions: JSON.stringify(strategy.conditions) });
-    navigate(`/?${params.toString()}`);
+    navigate(`/scanner?${params.toString()}`);
   };
 
   const getConditionNames = (conditions: ScanCondition[]) =>
