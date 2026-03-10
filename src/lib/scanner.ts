@@ -11,8 +11,9 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   const values: IndicatorValues = {};
   const lastIndex = candles.length - 1;
   
-  // Technical Indicators
-  const rsi = indicators.calculateRSI(candles);
+  // Technical Indicators - use custom RSI period if set
+  const rsiPeriod = condition?.rsiPeriod ?? 14;
+  const rsi = indicators.calculateRSI(candles, rsiPeriod);
   values.rsi = rsi[lastIndex];
   values.rsi_array = rsi;
   
