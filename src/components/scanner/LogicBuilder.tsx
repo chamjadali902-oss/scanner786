@@ -160,6 +160,8 @@ function FeatureSettings({
       return <SMCSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     case 'supertrend':
       return <SupertrendSettings condition={condition} onUpdate={onUpdate} />;
+    case 'psar':
+      return <PSARSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     default:
       return null;
   }
