@@ -103,6 +103,15 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         pricePosition: 'above',
         crossType: 'crossover',
       };
+    case 'psar':
+      return {
+        ...defaults,
+        mode: 'cross',
+        psarStep: 0.02,
+        psarMaxStep: 0.2,
+        pricePosition: 'above',
+        crossType: 'crossover',
+      };
     case 'supertrend':
       return {
         ...defaults,
