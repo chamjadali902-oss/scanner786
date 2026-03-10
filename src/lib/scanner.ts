@@ -55,7 +55,11 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.sma_20_array = sma20;
   values.sma_50_array = sma50;
   
-  const macd = indicators.calculateMACD(candles);
+  // MACD with custom params
+  const macdFast = condition?.macdFast ?? 12;
+  const macdSlow = condition?.macdSlow ?? 26;
+  const macdSignalPeriod = condition?.macdSignal ?? 9;
+  const macd = indicators.calculateMACD(candles, macdFast, macdSlow, macdSignalPeriod);
   values.macd_line = macd.macdLine[lastIndex];
   values.macd_signal = macd.signalLine[lastIndex];
   values.macd_histogram = macd.histogram[lastIndex];
@@ -63,40 +67,62 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.macd_signal_array = macd.signalLine;
   values.macd_histogram_array = macd.histogram;
   
-  const bb = indicators.calculateBollingerBands(candles);
+  // Bollinger Bands with custom params
+  const bbPeriod = condition?.bbPeriod ?? 20;
+  const bbStdDev = condition?.bbStdDev ?? 2;
+  const bb = indicators.calculateBollingerBands(candles, bbPeriod, bbStdDev);
   values.bb_upper = bb.upper[lastIndex];
   values.bb_lower = bb.lower[lastIndex];
   values.bb_basis = bb.middle[lastIndex];
   values.bb_bandwidth = bb.bandwidth[lastIndex];
   
-  const stoch = indicators.calculateStochastic(candles);
+  // Stochastic with custom params
+  const stochKPeriod = condition?.stochKPeriod ?? 14;
+  const stochDPeriod = condition?.stochDPeriod ?? 3;
+  const stochSmooth = condition?.stochSmooth ?? 3;
+  const stoch = indicators.calculateStochastic(candles, stochKPeriod, stochDPeriod, stochSmooth);
   values.stoch_k = stoch.k[lastIndex];
   values.stoch_d = stoch.d[lastIndex];
   values.stoch_k_array = stoch.k;
   values.stoch_d_array = stoch.d;
   
-  const adx = indicators.calculateADX(candles);
+  // ADX with custom period
+  const adxPeriod = condition?.adxPeriod ?? 14;
+  const adx = indicators.calculateADX(candles, adxPeriod);
   values.adx = adx[lastIndex];
   
-  const cci = indicators.calculateCCI(candles);
+  // CCI with custom period
+  const cciPeriod = condition?.cciPeriod ?? 20;
+  const cci = indicators.calculateCCI(candles, cciPeriod);
   values.cci = cci[lastIndex];
 
-  const atr = indicators.calculateATR(candles);
+  // ATR with custom period
+  const atrPeriod = condition?.atrPeriod ?? 14;
+  const atr = indicators.calculateATR(candles, atrPeriod);
   values.atr = atr[lastIndex];
 
   const vwap = indicators.calculateVWAP(candles);
   values.vwap = vwap[lastIndex];
 
-  const mfi = indicators.calculateMFI(candles);
+  // MFI with custom period
+  const mfiPeriod = condition?.mfiPeriod ?? 14;
+  const mfi = indicators.calculateMFI(candles, mfiPeriod);
   values.mfi = mfi[lastIndex];
 
-  const williamsR = indicators.calculateWilliamsR(candles);
+  // Williams %R with custom period
+  const williamsRPeriod = condition?.williamsRPeriod ?? 14;
+  const williamsR = indicators.calculateWilliamsR(candles, williamsRPeriod);
   values.williams_r = williamsR[lastIndex];
 
-  const roc = indicators.calculateROC(candles);
+  // ROC with custom period
+  const rocPeriod = condition?.rocPeriod ?? 12;
+  const roc = indicators.calculateROC(candles, rocPeriod);
   values.roc = roc[lastIndex];
 
-  const psar = indicators.calculateParabolicSAR(candles);
+  // Parabolic SAR with custom params
+  const psarStep = condition?.psarStep ?? 0.02;
+  const psarMaxStep = condition?.psarMaxStep ?? 0.2;
+  const psar = indicators.calculateParabolicSAR(candles, psarStep, psarMaxStep);
   values.psar = psar[lastIndex];
 
   // Supertrend

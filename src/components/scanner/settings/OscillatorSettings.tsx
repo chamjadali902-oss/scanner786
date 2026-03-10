@@ -17,14 +17,78 @@ interface OscillatorSettingsProps {
   disabled?: boolean;
 }
 
+// Map feature id to its specific period field in ScanCondition
+function getPeriodField(featureId: string): keyof ScanCondition {
+  switch (featureId) {
+    case 'adx': return 'adxPeriod';
+    case 'cci': return 'cciPeriod';
+    case 'atr': return 'atrPeriod';
+    case 'mfi': return 'mfiPeriod';
+    case 'williams_r': return 'williamsRPeriod';
+    case 'roc': return 'rocPeriod';
+    default: return 'period';
+  }
+}
+
+function getPeriodValue(condition: ScanCondition, featureId: string, defaultPeriod: number): number {
+  switch (featureId) {
+    case 'adx': return condition.adxPeriod ?? defaultPeriod;
+    case 'cci': return condition.cciPeriod ?? defaultPeriod;
+    case 'atr': return condition.atrPeriod ?? defaultPeriod;
+    case 'mfi': return condition.mfiPeriod ?? defaultPeriod;
+    case 'williams_r': return condition.williamsRPeriod ?? defaultPeriod;
+    case 'roc': return condition.rocPeriod ?? defaultPeriod;
+    default: return condition.period ?? defaultPeriod;
+  }
+}
+
 export function OscillatorSettings({ condition, feature, onUpdate, disabled }: OscillatorSettingsProps) {
   const hasRange = feature.valueRange !== undefined;
   const min = feature.valueRange?.min ?? -200;
   const max = feature.valueRange?.max ?? 200;
+  const periodField = getPeriodField(feature.id);
+  const periodValue = getPeriodValue(condition, feature.id, feature.defaultPeriod ?? 14);
+
+  const handlePeriodChange = (val: number) => {
+    onUpdate({ [periodField]: val } as Partial<ScanCondition>);
+  };
 
   return (
     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/50">
       <div className="text-sm font-medium text-primary">{feature.name} Settings</div>
+
+      {/* Period Setting */}
+      {feature.hasPeriod && (
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Period (Length)</Label>
+          <div className="flex items-center gap-3">
+            <Slider
+              value={[periodValue]}
+              onValueChange={([v]) => handlePeriodChange(v)}
+              min={feature.minPeriod ?? 1}
+              max={feature.maxPeriod ?? 100}
+              step={1}
+              disabled={disabled}
+              className="flex-1"
+            />
+            <Input
+              type="number"
+              value={periodValue}
+              onChange={(e) => {
+                const v = Math.max(feature.minPeriod ?? 1, Math.min(feature.maxPeriod ?? 500, Number(e.target.value)));
+                handlePeriodChange(v);
+              }}
+              min={feature.minPeriod ?? 1}
+              max={feature.maxPeriod ?? 500}
+              className="h-8 text-xs font-mono w-20"
+              disabled={disabled}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            TradingView default: {feature.defaultPeriod ?? 14}. Lower = more sensitive, Higher = smoother
+          </p>
+        </div>
+      )}
 
       {/* Mode Selection */}
       <div className="space-y-3">
@@ -122,22 +186,6 @@ export function OscillatorSettings({ condition, feature, onUpdate, disabled }: O
           <p className="text-[10px] text-muted-foreground">
             Signal when {feature.name} is {condition.operator || '>'} {condition.compareValue ?? 0}
           </p>
-        </div>
-      )}
-
-      {/* Period (if applicable) */}
-      {feature.hasPeriod && (
-        <div className="space-y-3 pt-2 border-t border-border/50">
-          <Label className="text-xs text-muted-foreground">Period</Label>
-          <Input
-            type="number"
-            value={condition.period ?? feature.defaultPeriod ?? 14}
-            onChange={(e) => onUpdate({ period: Number(e.target.value) })}
-            min={feature.minPeriod ?? 1}
-            max={feature.maxPeriod ?? 500}
-            className="h-8 text-xs font-mono w-24"
-            disabled={disabled}
-          />
         </div>
       )}
     </div>

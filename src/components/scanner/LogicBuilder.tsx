@@ -20,6 +20,7 @@ import {
   PatternSettings,
   SMCSettings,
   SupertrendSettings,
+  PSARSettings,
 } from './settings';
 
 interface LogicBuilderProps {
@@ -102,6 +103,15 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         pricePosition: 'above',
         crossType: 'crossover',
       };
+    case 'psar':
+      return {
+        ...defaults,
+        mode: 'cross',
+        psarStep: 0.02,
+        psarMaxStep: 0.2,
+        pricePosition: 'above',
+        crossType: 'crossover',
+      };
     case 'supertrend':
       return {
         ...defaults,
@@ -150,6 +160,8 @@ function FeatureSettings({
       return <SMCSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     case 'supertrend':
       return <SupertrendSettings condition={condition} onUpdate={onUpdate} />;
+    case 'psar':
+      return <PSARSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     default:
       return null;
   }

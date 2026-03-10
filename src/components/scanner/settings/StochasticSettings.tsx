@@ -1,6 +1,5 @@
 import { ScanCondition } from '@/types/scanner';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -20,13 +19,62 @@ interface StochasticSettingsProps {
 export function StochasticSettings({ condition, onUpdate, disabled }: StochasticSettingsProps) {
   const overbought = condition.stochOverbought ?? 80;
   const oversold = condition.stochOversold ?? 20;
+  const kPeriod = condition.stochKPeriod ?? 14;
+  const dPeriod = condition.stochDPeriod ?? 3;
+  const smooth = condition.stochSmooth ?? 3;
 
   return (
     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/50">
       <div className="text-sm font-medium text-primary">Stochastic Settings</div>
 
-      {/* Overbought/Oversold Levels */}
+      {/* Period Parameters */}
       <div className="space-y-3">
+        <Label className="text-xs text-muted-foreground">Parameters</Label>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-[10px] text-muted-foreground">%K Period</Label>
+            <Input
+              type="number"
+              value={kPeriod}
+              onChange={(e) => onUpdate({ stochKPeriod: Math.max(1, Number(e.target.value)) })}
+              min={1}
+              max={100}
+              className="h-8 text-xs font-mono"
+              disabled={disabled}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[10px] text-muted-foreground">%D Period</Label>
+            <Input
+              type="number"
+              value={dPeriod}
+              onChange={(e) => onUpdate({ stochDPeriod: Math.max(1, Number(e.target.value)) })}
+              min={1}
+              max={100}
+              className="h-8 text-xs font-mono"
+              disabled={disabled}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[10px] text-muted-foreground">Smoothing</Label>
+            <Input
+              type="number"
+              value={smooth}
+              onChange={(e) => onUpdate({ stochSmooth: Math.max(1, Number(e.target.value)) })}
+              min={1}
+              max={100}
+              className="h-8 text-xs font-mono"
+              disabled={disabled}
+            />
+          </div>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          TradingView defaults: %K=14, %D=3, Smoothing=3
+        </p>
+      </div>
+
+      {/* Overbought/Oversold Levels */}
+      <div className="space-y-3 pt-2 border-t border-border/50">
         <Label className="text-xs text-muted-foreground">Overbought / Oversold Levels</Label>
         
         <div className="space-y-4">

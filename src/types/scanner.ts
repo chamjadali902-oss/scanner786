@@ -75,6 +75,9 @@ export interface ScanCondition {
   emaCrossoverSlow?: number;
   
   // Stochastic settings
+  stochKPeriod?: number;
+  stochDPeriod?: number;
+  stochSmooth?: number;
   stochOverbought?: number;
   stochOversold?: number;
   
@@ -90,6 +93,28 @@ export interface ScanCondition {
   // Supertrend settings
   supertrendPeriod?: number;
   supertrendMultiplier?: number;
+  
+  // ADX settings
+  adxPeriod?: number;
+  
+  // CCI settings
+  cciPeriod?: number;
+  
+  // ATR settings
+  atrPeriod?: number;
+  
+  // MFI settings
+  mfiPeriod?: number;
+  
+  // Williams %R settings
+  williamsRPeriod?: number;
+  
+  // ROC settings
+  rocPeriod?: number;
+  
+  // Parabolic SAR settings
+  psarStep?: number;
+  psarMaxStep?: number;
   
   // Price position relative to indicator
   pricePosition?: PricePosition;
@@ -118,7 +143,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar';
 }
 
 // All available features
@@ -130,14 +155,14 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'macd_line', name: 'MACD', category: 'indicator', description: 'Moving Average Convergence Divergence', defaultMode: 'comparison', settingsType: 'macd' },
   { id: 'bb_upper', name: 'Bollinger Bands', category: 'indicator', description: 'Bollinger Bands', defaultMode: 'cross', settingsType: 'bollinger' },
   { id: 'stoch_k', name: 'Stochastic', category: 'indicator', description: 'Stochastic Oscillator', defaultMode: 'range', valueRange: { min: 0, max: 100 }, settingsType: 'stochastic' },
-  { id: 'adx', name: 'ADX', category: 'indicator', description: 'Average Directional Index', defaultMode: 'range', valueRange: { min: 0, max: 100 }, settingsType: 'oscillator' },
-  { id: 'cci', name: 'CCI', category: 'indicator', description: 'Commodity Channel Index', defaultMode: 'range', settingsType: 'oscillator' },
-  { id: 'atr', name: 'ATR', category: 'indicator', description: 'Average True Range', defaultMode: 'comparison', settingsType: 'oscillator' },
+  { id: 'adx', name: 'ADX', category: 'indicator', description: 'Average Directional Index', defaultMode: 'range', valueRange: { min: 0, max: 100 }, hasPeriod: true, defaultPeriod: 14, minPeriod: 2, maxPeriod: 100, settingsType: 'oscillator' },
+  { id: 'cci', name: 'CCI', category: 'indicator', description: 'Commodity Channel Index', defaultMode: 'range', hasPeriod: true, defaultPeriod: 20, minPeriod: 2, maxPeriod: 200, settingsType: 'oscillator' },
+  { id: 'atr', name: 'ATR', category: 'indicator', description: 'Average True Range', defaultMode: 'comparison', hasPeriod: true, defaultPeriod: 14, minPeriod: 1, maxPeriod: 100, settingsType: 'oscillator' },
   { id: 'vwap', name: 'VWAP', category: 'indicator', description: 'Volume Weighted Average Price', defaultMode: 'cross', settingsType: 'price-cross' },
-  { id: 'mfi', name: 'MFI', category: 'indicator', description: 'Money Flow Index', defaultMode: 'range', valueRange: { min: 0, max: 100 }, settingsType: 'oscillator' },
-  { id: 'williams_r', name: 'Williams %R', category: 'indicator', description: 'Williams Percent Range', defaultMode: 'range', valueRange: { min: -100, max: 0 }, settingsType: 'oscillator' },
-  { id: 'roc', name: 'ROC', category: 'indicator', description: 'Rate of Change', defaultMode: 'comparison', settingsType: 'oscillator' },
-  { id: 'psar', name: 'Parabolic SAR', category: 'indicator', description: 'Parabolic Stop and Reverse', defaultMode: 'cross', settingsType: 'price-cross' },
+  { id: 'mfi', name: 'MFI', category: 'indicator', description: 'Money Flow Index', defaultMode: 'range', valueRange: { min: 0, max: 100 }, hasPeriod: true, defaultPeriod: 14, minPeriod: 2, maxPeriod: 100, settingsType: 'oscillator' },
+  { id: 'williams_r', name: 'Williams %R', category: 'indicator', description: 'Williams Percent Range', defaultMode: 'range', valueRange: { min: -100, max: 0 }, hasPeriod: true, defaultPeriod: 14, minPeriod: 2, maxPeriod: 100, settingsType: 'oscillator' },
+  { id: 'roc', name: 'ROC', category: 'indicator', description: 'Rate of Change', defaultMode: 'comparison', hasPeriod: true, defaultPeriod: 12, minPeriod: 1, maxPeriod: 200, settingsType: 'oscillator' },
+  { id: 'psar', name: 'Parabolic SAR', category: 'indicator', description: 'Parabolic Stop and Reverse', defaultMode: 'cross', settingsType: 'psar' },
   { id: 'supertrend', name: 'Supertrend', category: 'indicator', description: 'ATR-based trend indicator (Period 10, Multiplier 3)', defaultMode: 'cross', settingsType: 'supertrend' },
 
   // Category B: Price Action Patterns
