@@ -75,6 +75,9 @@ export interface ScanCondition {
   emaCrossoverSlow?: number;
   
   // Stochastic settings
+  stochKPeriod?: number;
+  stochDPeriod?: number;
+  stochSmooth?: number;
   stochOverbought?: number;
   stochOversold?: number;
   
@@ -90,6 +93,28 @@ export interface ScanCondition {
   // Supertrend settings
   supertrendPeriod?: number;
   supertrendMultiplier?: number;
+  
+  // ADX settings
+  adxPeriod?: number;
+  
+  // CCI settings
+  cciPeriod?: number;
+  
+  // ATR settings
+  atrPeriod?: number;
+  
+  // MFI settings
+  mfiPeriod?: number;
+  
+  // Williams %R settings
+  williamsRPeriod?: number;
+  
+  // ROC settings
+  rocPeriod?: number;
+  
+  // Parabolic SAR settings
+  psarStep?: number;
+  psarMaxStep?: number;
   
   // Price position relative to indicator
   pricePosition?: PricePosition;
