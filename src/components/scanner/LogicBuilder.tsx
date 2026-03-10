@@ -20,6 +20,7 @@ import {
   PatternSettings,
   SMCSettings,
   SupertrendSettings,
+  PSARSettings,
 } from './settings';
 
 interface LogicBuilderProps {
