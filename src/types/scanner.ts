@@ -64,6 +64,7 @@ export interface ScanCondition {
   period?: number;
   
   // RSI-specific settings
+  rsiPeriod?: number;
   rsiRegularDivergence?: boolean;
   rsiHiddenDivergence?: boolean;
   

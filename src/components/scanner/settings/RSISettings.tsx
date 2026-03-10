@@ -14,6 +14,37 @@ export function RSISettings({ condition, onUpdate, disabled }: RSISettingsProps)
   return (
     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/50">
       <div className="text-sm font-medium text-primary">RSI Settings</div>
+
+      {/* Period Setting */}
+      <div className="space-y-2">
+        <Label className="text-xs text-muted-foreground">Period (Length)</Label>
+        <div className="flex items-center gap-3">
+          <Slider
+            value={[condition.rsiPeriod ?? 14]}
+            onValueChange={([val]) => onUpdate({ rsiPeriod: val })}
+            min={2}
+            max={100}
+            step={1}
+            disabled={disabled}
+            className="flex-1"
+          />
+          <Input
+            type="number"
+            value={condition.rsiPeriod ?? 14}
+            onChange={(e) => {
+              const v = Math.max(2, Math.min(100, Number(e.target.value)));
+              onUpdate({ rsiPeriod: v });
+            }}
+            min={2}
+            max={100}
+            className="h-8 text-xs font-mono w-20"
+            disabled={disabled}
+          />
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          TradingView default: 14. Lower = more sensitive, Higher = smoother
+        </p>
+      </div>
       
       {/* Range Selection */}
       <div className="space-y-3">
