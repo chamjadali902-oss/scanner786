@@ -8,3 +8,4 @@ export { PriceCrossSettings } from './PriceCrossSettings';
 export { PatternSettings } from './PatternSettings';
 export { SMCSettings } from './SMCSettings';
 export { SupertrendSettings } from './SupertrendSettings';
+export { PSARSettings } from './PSARSettings';
