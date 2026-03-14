@@ -149,6 +149,17 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.fib_level_0786 = fib.levels['0.786'];
   values.fib_level_1 = fib.levels['1'];
 
+  // Smart-Bullish
+  const sbLookback = condition?.smartBullishLookback ?? 30;
+  const smartBullish = indicators.calculateSmartBullish(candles, sbLookback);
+  values.smart_bullish = smartBullish.score;
+  values.smart_bullish_seller_exhaustion = smartBullish.sellerExhaustion;
+  values.smart_bullish_buyer_absorption = smartBullish.buyerAbsorption;
+  values.smart_bullish_momentum_shift = smartBullish.momentumShift;
+  values.smart_bullish_volume_confirm = smartBullish.volumeConfirm;
+  values.smart_bullish_price_recovery = smartBullish.priceRecovery;
+  values.smart_bullish_signal = smartBullish.signal;
+
   // Current price
   values.price = candles[lastIndex].close;
   values.prev_price = lastIndex > 0 ? candles[lastIndex - 1].close : candles[lastIndex].close;
@@ -556,6 +567,28 @@ function evaluateCondition(
         matched: true,
         reason: `Price near Fib ${levelPercent}% (${levelValue.toFixed(2)}) [${fibTrend}trend, dist: ${distance.toFixed(2)}%]`,
       };
+    }
+
+    case 'smart-bullish': {
+      const score = values.smart_bullish;
+      if (typeof score !== 'number' || isNaN(score)) return { matched: false, reason: '' };
+
+      const threshold = condition.smartBullishThreshold ?? 60;
+      const signal = values.smart_bullish_signal as string;
+      const sellerExh = values.smart_bullish_seller_exhaustion as number;
+      const buyerAbs = values.smart_bullish_buyer_absorption as number;
+      const momShift = values.smart_bullish_momentum_shift as number;
+      const volConf = values.smart_bullish_volume_confirm as number;
+      const priceRec = values.smart_bullish_price_recovery as number;
+
+      if (score >= threshold) {
+        const signalLabel = signal === 'strong_buy' ? '🟢 STRONG BUY' : signal === 'buy' ? '🟡 BUY' : '⚪ NEUTRAL';
+        return {
+          matched: true,
+          reason: `Smart-Bullish ${signalLabel} (Score: ${score}/100) | Seller Exhaustion: ${sellerExh}% | Buyer Absorption: ${buyerAbs}% | Momentum: ${momShift}% | Volume: ${volConf}% | Recovery: ${priceRec}%`,
+        };
+      }
+      return { matched: false, reason: '' };
     }
 
     default:

@@ -22,6 +22,7 @@ import {
   SupertrendSettings,
   PSARSettings,
   FibonacciSettings,
+  SmartBullishSettings,
 } from './settings';
 
 interface LogicBuilderProps {
@@ -130,6 +131,13 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         fibProximityPercent: 1,
         pricePosition: 'above',
       };
+    case 'smart-bullish':
+      return {
+        ...defaults,
+        mode: 'range',
+        smartBullishLookback: 30,
+        smartBullishThreshold: 60,
+      };
     default:
       return {
         ...defaults,
@@ -174,6 +182,8 @@ function FeatureSettings({
       return <PSARSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     case 'fibonacci':
       return <FibonacciSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
+    case 'smart-bullish':
+      return <SmartBullishSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     default:
       return null;
   }

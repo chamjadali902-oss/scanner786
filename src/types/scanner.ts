@@ -121,6 +121,10 @@ export interface ScanCondition {
   fibLevel?: string; // '0' | '0.236' | '0.382' | '0.5' | '0.618' | '0.786' | '1'
   fibProximityPercent?: number; // How close price needs to be to level (%)
   
+  // Smart-Bullish settings
+  smartBullishLookback?: number; // Number of candles to analyze (default 30)
+  smartBullishThreshold?: number; // Minimum score to trigger (default 60)
+  
   // Price position relative to indicator
   pricePosition?: PricePosition;
 }
@@ -148,7 +152,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish';
 }
 
 // All available features
@@ -170,6 +174,7 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'psar', name: 'Parabolic SAR', category: 'indicator', description: 'Parabolic Stop and Reverse', defaultMode: 'cross', settingsType: 'psar' },
   { id: 'supertrend', name: 'Supertrend', category: 'indicator', description: 'ATR-based trend indicator (Period 10, Multiplier 3)', defaultMode: 'cross', settingsType: 'supertrend' },
   { id: 'fibonacci', name: 'Fibonacci Retracement', category: 'indicator', description: 'Auto Fib levels from swing high/low', defaultMode: 'value', settingsType: 'fibonacci' },
+  { id: 'smart_bullish', name: 'Smart-Bullish', category: 'indicator', description: 'Deep candle analysis: detects seller weakness & early buyer control before big moves', defaultMode: 'range', valueRange: { min: 0, max: 100 }, settingsType: 'smart-bullish' },
 
   // Category B: Price Action Patterns
   { id: 'doji', name: 'Doji', category: 'pattern', description: 'Indecision candle', defaultMode: 'value', settingsType: 'pattern' },
