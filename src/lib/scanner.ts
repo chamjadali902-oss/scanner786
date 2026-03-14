@@ -135,6 +135,20 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.supertrend_array = supertrend.value;
   values.supertrend_direction_array = supertrend.direction;
 
+  // Fibonacci Retracement
+  const fibLookback = condition?.fibLookback ?? 50;
+  const fib = indicators.calculateFibonacciRetracement(candles, fibLookback);
+  values.fib_swing_high = fib.swingHigh;
+  values.fib_swing_low = fib.swingLow;
+  values.fib_trend = fib.trend;
+  values.fib_level_0 = fib.levels['0'];
+  values.fib_level_0236 = fib.levels['0.236'];
+  values.fib_level_0382 = fib.levels['0.382'];
+  values.fib_level_05 = fib.levels['0.5'];
+  values.fib_level_0618 = fib.levels['0.618'];
+  values.fib_level_0786 = fib.levels['0.786'];
+  values.fib_level_1 = fib.levels['1'];
+
   // Current price
   values.price = candles[lastIndex].close;
   values.prev_price = lastIndex > 0 ? candles[lastIndex - 1].close : candles[lastIndex].close;

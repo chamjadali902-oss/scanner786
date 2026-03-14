@@ -172,6 +172,8 @@ function FeatureSettings({
       return <SupertrendSettings condition={condition} onUpdate={onUpdate} />;
     case 'psar':
       return <PSARSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
+    case 'fibonacci':
+      return <FibonacciSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     default:
       return null;
   }
