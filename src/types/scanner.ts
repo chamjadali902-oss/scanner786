@@ -116,6 +116,11 @@ export interface ScanCondition {
   psarStep?: number;
   psarMaxStep?: number;
   
+  // Fibonacci settings
+  fibLookback?: number;
+  fibLevel?: string; // '0' | '0.236' | '0.382' | '0.5' | '0.618' | '0.786' | '1'
+  fibProximityPercent?: number; // How close price needs to be to level (%)
+  
   // Price position relative to indicator
   pricePosition?: PricePosition;
 }
