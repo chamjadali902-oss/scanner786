@@ -149,6 +149,17 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.fib_level_0786 = fib.levels['0.786'];
   values.fib_level_1 = fib.levels['1'];
 
+  // Smart-Bullish
+  const sbLookback = condition?.smartBullishLookback ?? 30;
+  const smartBullish = indicators.calculateSmartBullish(candles, sbLookback);
+  values.smart_bullish = smartBullish.score;
+  values.smart_bullish_seller_exhaustion = smartBullish.sellerExhaustion;
+  values.smart_bullish_buyer_absorption = smartBullish.buyerAbsorption;
+  values.smart_bullish_momentum_shift = smartBullish.momentumShift;
+  values.smart_bullish_volume_confirm = smartBullish.volumeConfirm;
+  values.smart_bullish_price_recovery = smartBullish.priceRecovery;
+  values.smart_bullish_signal = smartBullish.signal;
+
   // Current price
   values.price = candles[lastIndex].close;
   values.prev_price = lastIndex > 0 ? candles[lastIndex - 1].close : candles[lastIndex].close;
