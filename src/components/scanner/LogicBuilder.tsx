@@ -21,6 +21,7 @@ import {
   SMCSettings,
   SupertrendSettings,
   PSARSettings,
+  FibonacciSettings,
 } from './settings';
 
 interface LogicBuilderProps {
