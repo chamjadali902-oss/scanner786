@@ -121,6 +121,10 @@ export interface ScanCondition {
   fibLevel?: string; // '0' | '0.236' | '0.382' | '0.5' | '0.618' | '0.786' | '1'
   fibProximityPercent?: number; // How close price needs to be to level (%)
   
+  // Smart-Bullish settings
+  smartBullishLookback?: number; // Number of candles to analyze (default 30)
+  smartBullishThreshold?: number; // Minimum score to trigger (default 60)
+  
   // Price position relative to indicator
   pricePosition?: PricePosition;
 }
