@@ -174,6 +174,7 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'psar', name: 'Parabolic SAR', category: 'indicator', description: 'Parabolic Stop and Reverse', defaultMode: 'cross', settingsType: 'psar' },
   { id: 'supertrend', name: 'Supertrend', category: 'indicator', description: 'ATR-based trend indicator (Period 10, Multiplier 3)', defaultMode: 'cross', settingsType: 'supertrend' },
   { id: 'fibonacci', name: 'Fibonacci Retracement', category: 'indicator', description: 'Auto Fib levels from swing high/low', defaultMode: 'value', settingsType: 'fibonacci' },
+  { id: 'smart_bullish', name: 'Smart-Bullish', category: 'indicator', description: 'Deep candle analysis: detects seller weakness & early buyer control before big moves', defaultMode: 'range', valueRange: { min: 0, max: 100 }, settingsType: 'smart-bullish' },
 
   // Category B: Price Action Patterns
   { id: 'doji', name: 'Doji', category: 'pattern', description: 'Indecision candle', defaultMode: 'value', settingsType: 'pattern' },
