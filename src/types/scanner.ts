@@ -152,7 +152,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish';
 }
 
 // All available features
