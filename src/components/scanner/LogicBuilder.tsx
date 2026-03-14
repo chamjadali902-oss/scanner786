@@ -22,6 +22,7 @@ import {
   SupertrendSettings,
   PSARSettings,
   FibonacciSettings,
+  SmartBullishSettings,
 } from './settings';
 
 interface LogicBuilderProps {
