@@ -131,6 +131,13 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         fibProximityPercent: 1,
         pricePosition: 'above',
       };
+    case 'smart-bullish':
+      return {
+        ...defaults,
+        mode: 'range',
+        smartBullishLookback: 30,
+        smartBullishThreshold: 60,
+      };
     default:
       return {
         ...defaults,
