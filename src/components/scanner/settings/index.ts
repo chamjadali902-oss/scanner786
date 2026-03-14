@@ -10,3 +10,4 @@ export { SMCSettings } from './SMCSettings';
 export { SupertrendSettings } from './SupertrendSettings';
 export { PSARSettings } from './PSARSettings';
 export { FibonacciSettings } from './FibonacciSettings';
+export { SmartBullishSettings } from './SmartBullishSettings';

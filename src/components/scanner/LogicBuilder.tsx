@@ -182,6 +182,8 @@ function FeatureSettings({
       return <PSARSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     case 'fibonacci':
       return <FibonacciSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
+    case 'smart-bullish':
+      return <SmartBullishSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     default:
       return null;
   }
