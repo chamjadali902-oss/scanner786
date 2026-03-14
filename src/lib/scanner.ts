@@ -569,6 +569,28 @@ function evaluateCondition(
       };
     }
 
+    case 'smart-bullish': {
+      const score = values.smart_bullish;
+      if (typeof score !== 'number' || isNaN(score)) return { matched: false, reason: '' };
+
+      const threshold = condition.smartBullishThreshold ?? 60;
+      const signal = values.smart_bullish_signal as string;
+      const sellerExh = values.smart_bullish_seller_exhaustion as number;
+      const buyerAbs = values.smart_bullish_buyer_absorption as number;
+      const momShift = values.smart_bullish_momentum_shift as number;
+      const volConf = values.smart_bullish_volume_confirm as number;
+      const priceRec = values.smart_bullish_price_recovery as number;
+
+      if (score >= threshold) {
+        const signalLabel = signal === 'strong_buy' ? '🟢 STRONG BUY' : signal === 'buy' ? '🟡 BUY' : '⚪ NEUTRAL';
+        return {
+          matched: true,
+          reason: `Smart-Bullish ${signalLabel} (Score: ${score}/100) | Seller Exhaustion: ${sellerExh}% | Buyer Absorption: ${buyerAbs}% | Momentum: ${momShift}% | Volume: ${volConf}% | Recovery: ${priceRec}%`,
+        };
+      }
+      return { matched: false, reason: '' };
+    }
+
     default:
       // Fallback for unknown types
       const value = values[condition.feature];
