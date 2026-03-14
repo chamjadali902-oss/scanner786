@@ -121,6 +121,15 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         supertrendMultiplier: 3,
         pricePosition: 'above',
       };
+    case 'fibonacci':
+      return {
+        ...defaults,
+        mode: 'value',
+        fibLookback: 50,
+        fibLevel: '0.618',
+        fibProximityPercent: 1,
+        pricePosition: 'above',
+      };
     default:
       return {
         ...defaults,
