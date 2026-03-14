@@ -116,6 +116,11 @@ export interface ScanCondition {
   psarStep?: number;
   psarMaxStep?: number;
   
+  // Fibonacci settings
+  fibLookback?: number;
+  fibLevel?: string; // '0' | '0.236' | '0.382' | '0.5' | '0.618' | '0.786' | '1'
+  fibProximityPercent?: number; // How close price needs to be to level (%)
+  
   // Price position relative to indicator
   pricePosition?: PricePosition;
 }
@@ -143,7 +148,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci';
 }
 
 // All available features
@@ -164,6 +169,7 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'roc', name: 'ROC', category: 'indicator', description: 'Rate of Change', defaultMode: 'comparison', hasPeriod: true, defaultPeriod: 12, minPeriod: 1, maxPeriod: 200, settingsType: 'oscillator' },
   { id: 'psar', name: 'Parabolic SAR', category: 'indicator', description: 'Parabolic Stop and Reverse', defaultMode: 'cross', settingsType: 'psar' },
   { id: 'supertrend', name: 'Supertrend', category: 'indicator', description: 'ATR-based trend indicator (Period 10, Multiplier 3)', defaultMode: 'cross', settingsType: 'supertrend' },
+  { id: 'fibonacci', name: 'Fibonacci Retracement', category: 'indicator', description: 'Auto Fib levels from swing high/low', defaultMode: 'value', settingsType: 'fibonacci' },
 
   // Category B: Price Action Patterns
   { id: 'doji', name: 'Doji', category: 'pattern', description: 'Indecision candle', defaultMode: 'value', settingsType: 'pattern' },

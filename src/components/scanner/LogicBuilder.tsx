@@ -21,6 +21,7 @@ import {
   SMCSettings,
   SupertrendSettings,
   PSARSettings,
+  FibonacciSettings,
 } from './settings';
 
 interface LogicBuilderProps {
@@ -120,6 +121,15 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         supertrendMultiplier: 3,
         pricePosition: 'above',
       };
+    case 'fibonacci':
+      return {
+        ...defaults,
+        mode: 'value',
+        fibLookback: 50,
+        fibLevel: '0.618',
+        fibProximityPercent: 1,
+        pricePosition: 'above',
+      };
     default:
       return {
         ...defaults,
@@ -162,6 +172,8 @@ function FeatureSettings({
       return <SupertrendSettings condition={condition} onUpdate={onUpdate} />;
     case 'psar':
       return <PSARSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
+    case 'fibonacci':
+      return <FibonacciSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     default:
       return null;
   }

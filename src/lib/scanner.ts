@@ -135,6 +135,20 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.supertrend_array = supertrend.value;
   values.supertrend_direction_array = supertrend.direction;
 
+  // Fibonacci Retracement
+  const fibLookback = condition?.fibLookback ?? 50;
+  const fib = indicators.calculateFibonacciRetracement(candles, fibLookback);
+  values.fib_swing_high = fib.swingHigh;
+  values.fib_swing_low = fib.swingLow;
+  values.fib_trend = fib.trend;
+  values.fib_level_0 = fib.levels['0'];
+  values.fib_level_0236 = fib.levels['0.236'];
+  values.fib_level_0382 = fib.levels['0.382'];
+  values.fib_level_05 = fib.levels['0.5'];
+  values.fib_level_0618 = fib.levels['0.618'];
+  values.fib_level_0786 = fib.levels['0.786'];
+  values.fib_level_1 = fib.levels['1'];
+
   // Current price
   values.price = candles[lastIndex].close;
   values.prev_price = lastIndex > 0 ? candles[lastIndex - 1].close : candles[lastIndex].close;
@@ -506,6 +520,42 @@ function evaluateCondition(
         }
       }
       return { matched: false, reason: '' };
+    }
+
+    case 'fibonacci': {
+      const price = values.price as number;
+      const fibLevel = condition.fibLevel ?? '0.618';
+      const proximity = condition.fibProximityPercent ?? 1;
+      const fibTrend = values.fib_trend as string;
+
+      // Map level string to stored value key
+      const levelKeyMap: Record<string, string> = {
+        '0': 'fib_level_0',
+        '0.236': 'fib_level_0236',
+        '0.382': 'fib_level_0382',
+        '0.5': 'fib_level_05',
+        '0.618': 'fib_level_0618',
+        '0.786': 'fib_level_0786',
+        '1': 'fib_level_1',
+      };
+
+      const levelValue = values[levelKeyMap[fibLevel] ?? 'fib_level_0618'] as number;
+      if (typeof levelValue !== 'number' || isNaN(levelValue)) return { matched: false, reason: '' };
+
+      const distance = Math.abs(price - levelValue) / price * 100;
+      const isNear = distance <= proximity;
+
+      if (!isNear) return { matched: false, reason: '' };
+
+      // Check price position filter
+      if (condition.pricePosition === 'above' && price < levelValue) return { matched: false, reason: '' };
+      if (condition.pricePosition === 'below' && price > levelValue) return { matched: false, reason: '' };
+
+      const levelPercent = (parseFloat(fibLevel) * 100).toFixed(1);
+      return {
+        matched: true,
+        reason: `Price near Fib ${levelPercent}% (${levelValue.toFixed(2)}) [${fibTrend}trend, dist: ${distance.toFixed(2)}%]`,
+      };
     }
 
     default:

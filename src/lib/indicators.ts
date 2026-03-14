@@ -726,3 +726,64 @@ export function calculateSupertrend(candles: Candle[], period = 10, multiplier =
 
   return { value, direction };
 }
+
+// =====================================================
+// FIBONACCI RETRACEMENT
+// Auto-detects swing high/low, calculates Fib levels
+// Matches TradingView's Auto Fib Retracement logic
+// =====================================================
+export function calculateFibonacciRetracement(candles: Candle[], lookbackPeriod = 50): {
+  swingHigh: number;
+  swingLow: number;
+  levels: Record<string, number>;
+  trend: 'up' | 'down';
+} {
+  if (candles.length < lookbackPeriod) {
+    const price = candles[candles.length - 1]?.close ?? 0;
+    return {
+      swingHigh: price,
+      swingLow: price,
+      levels: { '0': price, '0.236': price, '0.382': price, '0.5': price, '0.618': price, '0.786': price, '1': price },
+      trend: 'up',
+    };
+  }
+
+  const recentCandles = candles.slice(-lookbackPeriod);
+
+  // Find swing high and swing low
+  let swingHigh = -Infinity;
+  let swingLow = Infinity;
+  let swingHighIndex = 0;
+  let swingLowIndex = 0;
+
+  for (let i = 0; i < recentCandles.length; i++) {
+    if (recentCandles[i].high > swingHigh) {
+      swingHigh = recentCandles[i].high;
+      swingHighIndex = i;
+    }
+    if (recentCandles[i].low < swingLow) {
+      swingLow = recentCandles[i].low;
+      swingLowIndex = i;
+    }
+  }
+
+  const range = swingHigh - swingLow;
+  // Determine trend: if swing low came before swing high = uptrend, else downtrend
+  const trend: 'up' | 'down' = swingLowIndex < swingHighIndex ? 'up' : 'down';
+
+  // Standard Fibonacci levels
+  const fibRatios = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+  const levels: Record<string, number> = {};
+
+  for (const ratio of fibRatios) {
+    if (trend === 'up') {
+      // In uptrend: retracement from high going down
+      levels[ratio.toString()] = swingHigh - range * ratio;
+    } else {
+      // In downtrend: retracement from low going up
+      levels[ratio.toString()] = swingLow + range * ratio;
+    }
+  }
+
+  return { swingHigh, swingLow, levels, trend };
+}
