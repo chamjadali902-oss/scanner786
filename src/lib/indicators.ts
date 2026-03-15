@@ -789,174 +789,222 @@ export function calculateFibonacciRetracement(candles: Candle[], lookbackPeriod 
 }
 
 // =====================================================
-// SMART-BULLISH INDICATOR
-// Deep candle-by-candle analysis to detect seller
-// exhaustion and early buyer control before big moves
-// Score: 0-100 (higher = stronger bullish signal)
+// SMART-BULLISH INDICATOR v2
+// Deep candle analysis + Price Targets + Entry/TP/SL
+// Combines ATR, Swing Points, Volume Profile
 // =====================================================
 export interface SmartBullishResult {
-  score: number;            // 0-100 overall score
-  sellerExhaustion: number; // 0-100 how much sellers are weakening
-  buyerAbsorption: number;  // 0-100 lower wick buying pressure trend
-  momentumShift: number;    // 0-100 bullish momentum taking over
-  volumeConfirm: number;    // 0-100 volume supporting buyers
-  priceRecovery: number;    // 0-100 closes trending higher in range
+  score: number;
+  sellerExhaustion: number;
+  buyerAbsorption: number;
+  momentumShift: number;
+  volumeConfirm: number;
+  priceRecovery: number;
   signal: 'strong_buy' | 'buy' | 'neutral' | 'weak';
+  currentPrice: number;
+  entryPrice: number;
+  stopLoss: number;
+  takeProfit1: number;
+  takeProfit2: number;
+  takeProfit3: number;
+  riskRewardRatio: number;
+  expectedMovePercent: number;
+  maxDownsidePercent: number;
+  supportZone: { low: number; high: number };
+  resistanceZone: { low: number; high: number };
+  nearestSupport: number;
+  nearestResistance: number;
+  strongSupport: number;
+  strongResistance: number;
+  swingLow: number;
+  swingHigh: number;
+  atrValue: number;
 }
 
 export function calculateSmartBullish(candles: Candle[], lookback: number = 30): SmartBullishResult {
+  const price = candles[candles.length - 1].close;
   const defaultResult: SmartBullishResult = {
     score: 0, sellerExhaustion: 0, buyerAbsorption: 0,
     momentumShift: 0, volumeConfirm: 0, priceRecovery: 0, signal: 'weak',
+    currentPrice: price, entryPrice: price, stopLoss: price * 0.97,
+    takeProfit1: price * 1.02, takeProfit2: price * 1.04, takeProfit3: price * 1.06,
+    riskRewardRatio: 1, expectedMovePercent: 2, maxDownsidePercent: 3,
+    supportZone: { low: price * 0.97, high: price * 0.98 },
+    resistanceZone: { low: price * 1.02, high: price * 1.03 },
+    nearestSupport: price * 0.98, nearestResistance: price * 1.02,
+    strongSupport: price * 0.95, strongResistance: price * 1.05,
+    swingLow: price * 0.95, swingHigh: price * 1.05, atrValue: 0,
   };
 
   if (candles.length < lookback + 5) return defaultResult;
 
   const recent = candles.slice(-lookback);
+  const allAnalysis = candles.slice(-Math.min(candles.length, lookback * 3));
   const halfLen = Math.floor(lookback / 2);
-  const olderHalf = recent.slice(0, halfLen);
-  const newerHalf = recent.slice(halfLen);
 
-  // Per-candle metrics
-  const candleMetrics = recent.map(c => {
-    const range = c.high - c.low;
-    if (range === 0) return { buyerPower: 0.5, sellerPower: 0.5, bodyRatio: 0, lowerWick: 0, upperWick: 0, isBullish: true, volume: c.volume };
+  // ========== ATR ==========
+  const trValues: number[] = [];
+  for (let i = 1; i < allAnalysis.length; i++) {
+    trValues.push(Math.max(
+      allAnalysis[i].high - allAnalysis[i].low,
+      Math.abs(allAnalysis[i].high - allAnalysis[i - 1].close),
+      Math.abs(allAnalysis[i].low - allAnalysis[i - 1].close)
+    ));
+  }
+  let atrValue = 0;
+  if (trValues.length >= 14) {
+    let atrSum = 0;
+    for (let i = 0; i < 14; i++) atrSum += trValues[trValues.length - 14 + i];
+    atrValue = atrSum / 14;
+  }
 
-    const buyerPower = (c.close - c.low) / range;   // How much buyers captured
-    const sellerPower = (c.high - c.close) / range;  // How much sellers pushed
-    const body = Math.abs(c.close - c.open);
-    const bodyRatio = body / range;                   // Decisiveness
-    const lowerWick = (Math.min(c.open, c.close) - c.low) / range;  // Buying absorption
-    const upperWick = (c.high - Math.max(c.open, c.close)) / range; // Selling rejection
-    const isBullish = c.close >= c.open;
+  // ========== SWING POINTS ==========
+  const swingHighs: number[] = [];
+  const swingLows: number[] = [];
+  const ps = 3;
+  for (let i = ps; i < allAnalysis.length - ps; i++) {
+    let isSH = true, isSL = true;
+    for (let j = 1; j <= ps; j++) {
+      if (allAnalysis[i].high <= allAnalysis[i - j].high || allAnalysis[i].high <= allAnalysis[i + j].high) isSH = false;
+      if (allAnalysis[i].low >= allAnalysis[i - j].low || allAnalysis[i].low >= allAnalysis[i + j].low) isSL = false;
+    }
+    if (isSH) swingHighs.push(allAnalysis[i].high);
+    if (isSL) swingLows.push(allAnalysis[i].low);
+  }
+  const sortedHighs = [...swingHighs].sort((a, b) => a - b);
+  const sortedLows = [...swingLows].sort((a, b) => a - b);
+  const swingHigh = sortedHighs.length > 0 ? sortedHighs[sortedHighs.length - 1] : allAnalysis.reduce((m, c) => Math.max(m, c.high), 0);
+  const swingLow = sortedLows.length > 0 ? sortedLows[0] : allAnalysis.reduce((m, c) => Math.min(m, c.low), Infinity);
 
-    return { buyerPower, sellerPower, bodyRatio, lowerWick, upperWick, isBullish, volume: c.volume };
+  // ========== VOLUME PROFILE ==========
+  const pRange = swingHigh - swingLow;
+  const bins = 20;
+  const binSz = pRange > 0 ? pRange / bins : price * 0.01;
+  const volProfile: { price: number; volume: number }[] = [];
+  for (let i = 0; i < bins; i++) {
+    const bL = swingLow + i * binSz;
+    const bH = bL + binSz;
+    let vol = 0;
+    for (const c of allAnalysis) {
+      const tp = (c.high + c.low + c.close) / 3;
+      if (tp >= bL && tp < bH) vol += c.volume;
+    }
+    volProfile.push({ price: (bL + bH) / 2, volume: vol });
+  }
+  const sortByVol = [...volProfile].sort((a, b) => b.volume - a.volume);
+  const hvnAbove = sortByVol.filter(v => v.price > price).slice(0, 3);
+  const hvnBelow = sortByVol.filter(v => v.price < price).slice(0, 3);
+
+  // ========== SUPPORT & RESISTANCE ==========
+  const supBelow = sortedLows.filter(l => l < price).sort((a, b) => b - a);
+  const resAbove = sortedHighs.filter(h => h > price).sort((a, b) => a - b);
+  const nearSup = supBelow.length > 0 ? supBelow[0] : price - atrValue * 1.5;
+  const nearRes = resAbove.length > 0 ? resAbove[0] : price + atrValue * 1.5;
+  const strongSup = hvnBelow.length > 0 ? hvnBelow[0].price : nearSup - atrValue;
+  const strongRes = hvnAbove.length > 0 ? hvnAbove[0].price : nearRes + atrValue;
+  const zw = atrValue * 0.3;
+
+  // ========== CANDLE ANALYSIS ==========
+  const cm = recent.map(c => {
+    const r = c.high - c.low;
+    if (r === 0) return { bp: 0.5, sp: 0.5, br: 0, lw: 0, uw: 0, bull: true, vol: c.volume };
+    return {
+      bp: (c.close - c.low) / r, sp: (c.high - c.close) / r,
+      br: Math.abs(c.close - c.open) / r,
+      lw: (Math.min(c.open, c.close) - c.low) / r,
+      uw: (c.high - Math.max(c.open, c.close)) / r,
+      bull: c.close >= c.open, vol: c.volume,
+    };
   });
+  const om = cm.slice(0, halfLen);
+  const nm = cm.slice(halfLen);
 
-  const olderMetrics = candleMetrics.slice(0, halfLen);
-  const newerMetrics = candleMetrics.slice(halfLen);
+  // 1. Seller Exhaustion (25%)
+  const oBB = om.filter(m => !m.bull).map(m => m.br);
+  const nBB = nm.filter(m => !m.bull).map(m => m.br);
+  const aOBB = oBB.length > 0 ? oBB.reduce((a, b) => a + b, 0) / oBB.length : 0;
+  const aNBB = nBB.length > 0 ? nBB.reduce((a, b) => a + b, 0) / nBB.length : 0;
+  const oBC = om.filter(m => !m.bull).length;
+  const nBC = nm.filter(m => !m.bull).length;
+  let se = 50;
+  if (aOBB > 0) se += ((aOBB - aNBB) / aOBB) * 50;
+  if (oBC > 0) se += ((oBC - nBC) / oBC) * 30;
+  se = Math.max(0, Math.min(100, se));
 
-  // 1. SELLER EXHAUSTION (0-100)
-  // Compare average bearish candle body size: older vs newer
-  const olderBearishBodies = olderMetrics.filter(m => !m.isBullish).map(m => m.bodyRatio);
-  const newerBearishBodies = newerMetrics.filter(m => !m.isBullish).map(m => m.bodyRatio);
-  const avgOlderBearBody = olderBearishBodies.length > 0 ? olderBearishBodies.reduce((a, b) => a + b, 0) / olderBearishBodies.length : 0;
-  const avgNewerBearBody = newerBearishBodies.length > 0 ? newerBearishBodies.reduce((a, b) => a + b, 0) / newerBearishBodies.length : 0;
-  
-  // Also check: fewer bearish candles in newer half
-  const olderBearCount = olderMetrics.filter(m => !m.isBullish).length;
-  const newerBearCount = newerMetrics.filter(m => !m.isBullish).length;
-  
-  let sellerExhaustion = 50;
-  if (avgOlderBearBody > 0) {
-    const bodyDecline = ((avgOlderBearBody - avgNewerBearBody) / avgOlderBearBody) * 50;
-    sellerExhaustion += bodyDecline;
-  }
-  if (olderBearCount > 0) {
-    const countDecline = ((olderBearCount - newerBearCount) / olderBearCount) * 30;
-    sellerExhaustion += countDecline;
-  }
-  sellerExhaustion = Math.max(0, Math.min(100, sellerExhaustion));
+  // 2. Buyer Absorption (20%)
+  const oLW = om.map(m => m.lw).reduce((a, b) => a + b, 0) / om.length;
+  const nLW = nm.map(m => m.lw).reduce((a, b) => a + b, 0) / nm.length;
+  const oUW = om.map(m => m.uw).reduce((a, b) => a + b, 0) / om.length;
+  const nUW = nm.map(m => m.uw).reduce((a, b) => a + b, 0) / nm.length;
+  let ba = 50;
+  if (nLW > oLW) ba += Math.min(30, ((nLW - oLW) / Math.max(oLW, 0.01)) * 40);
+  if (nUW < oUW) ba += Math.min(20, ((oUW - nUW) / Math.max(oUW, 0.01)) * 25);
+  ba = Math.max(0, Math.min(100, ba));
 
-  // 2. BUYER ABSORPTION (0-100)
-  // Increasing lower wicks = buyers absorbing sell pressure
-  const olderLowerWicks = olderMetrics.map(m => m.lowerWick);
-  const newerLowerWicks = newerMetrics.map(m => m.lowerWick);
-  const avgOlderLW = olderLowerWicks.reduce((a, b) => a + b, 0) / olderLowerWicks.length;
-  const avgNewerLW = newerLowerWicks.reduce((a, b) => a + b, 0) / newerLowerWicks.length;
-  
-  // Also: decreasing upper wicks in newer = less selling pressure from above
-  const avgOlderUW = olderMetrics.map(m => m.upperWick).reduce((a, b) => a + b, 0) / olderMetrics.length;
-  const avgNewerUW = newerMetrics.map(m => m.upperWick).reduce((a, b) => a + b, 0) / newerMetrics.length;
-  
-  let buyerAbsorption = 50;
-  if (avgNewerLW > avgOlderLW) buyerAbsorption += Math.min(30, ((avgNewerLW - avgOlderLW) / Math.max(avgOlderLW, 0.01)) * 40);
-  if (avgNewerUW < avgOlderUW) buyerAbsorption += Math.min(20, ((avgOlderUW - avgNewerUW) / Math.max(avgOlderUW, 0.01)) * 25);
-  buyerAbsorption = Math.max(0, Math.min(100, buyerAbsorption));
+  // 3. Momentum Shift (25%)
+  const bps = cm.map(m => m.bp);
+  const nn = bps.length;
+  let sx = 0, sy = 0, sxy = 0, sx2 = 0;
+  for (let i = 0; i < nn; i++) { sx += i; sy += bps[i]; sxy += i * bps[i]; sx2 += i * i; }
+  const sl = (nn * sxy - sx * sy) / (nn * sx2 - sx * sx);
+  const l5b = cm.slice(-5).filter(m => m.bull).length;
+  const f5b = cm.slice(0, 5).filter(m => m.bull).length;
+  let ms = 50 + sl * 500 + (l5b - f5b) * 5;
+  ms = Math.max(0, Math.min(100, ms));
 
-  // 3. MOMENTUM SHIFT (0-100)
-  // Buyer power trend across recent candles (linear regression slope)
-  const buyerPowers = candleMetrics.map(m => m.buyerPower);
-  const n = buyerPowers.length;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for (let i = 0; i < n; i++) {
-    sumX += i; sumY += buyerPowers[i]; sumXY += i * buyerPowers[i]; sumX2 += i * i;
-  }
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  
-  // Also: ratio of bullish candles in last 5 vs first 5 candles
-  const last5 = candleMetrics.slice(-5);
-  const first5 = candleMetrics.slice(0, 5);
-  const last5Bullish = last5.filter(m => m.isBullish).length;
-  const first5Bullish = first5.filter(m => m.isBullish).length;
-  
-  let momentumShift = 50 + slope * 500; // Scale slope
-  momentumShift += (last5Bullish - first5Bullish) * 5;
-  momentumShift = Math.max(0, Math.min(100, momentumShift));
+  // 4. Volume Confirmation (15%)
+  const nbv = nm.filter(m => m.bull).map(m => m.vol);
+  const nsv = nm.filter(m => !m.bull).map(m => m.vol);
+  const abv = nbv.length > 0 ? nbv.reduce((a, b) => a + b, 0) / nbv.length : 0;
+  const asv = nsv.length > 0 ? nsv.reduce((a, b) => a + b, 0) / nsv.length : 0;
+  const oav = om.map(m => m.vol).reduce((a, b) => a + b, 0) / om.length;
+  const nav = nm.map(m => m.vol).reduce((a, b) => a + b, 0) / nm.length;
+  let vc = 50;
+  if (asv > 0) vc += Math.min(30, (abv / asv - 1) * 25);
+  if (oav > 0 && nav > oav) vc += Math.min(20, ((nav - oav) / oav) * 15);
+  vc = Math.max(0, Math.min(100, vc));
 
-  // 4. VOLUME CONFIRMATION (0-100)
-  // Higher volume on bullish candles vs bearish in newer half
-  const newerBullishVol = newerMetrics.filter(m => m.isBullish).map(m => m.volume);
-  const newerBearishVol = newerMetrics.filter(m => !m.isBullish).map(m => m.volume);
-  const avgBullVol = newerBullishVol.length > 0 ? newerBullishVol.reduce((a, b) => a + b, 0) / newerBullishVol.length : 0;
-  const avgBearVol = newerBearishVol.length > 0 ? newerBearishVol.reduce((a, b) => a + b, 0) / newerBearishVol.length : 0;
-  
-  // Also: overall volume increasing in newer half
-  const olderAvgVol = olderMetrics.map(m => m.volume).reduce((a, b) => a + b, 0) / olderMetrics.length;
-  const newerAvgVol = newerMetrics.map(m => m.volume).reduce((a, b) => a + b, 0) / newerMetrics.length;
-  
-  let volumeConfirm = 50;
-  if (avgBearVol > 0) {
-    const volRatio = avgBullVol / avgBearVol;
-    volumeConfirm += Math.min(30, (volRatio - 1) * 25);
-  }
-  if (olderAvgVol > 0 && newerAvgVol > olderAvgVol) {
-    volumeConfirm += Math.min(20, ((newerAvgVol - olderAvgVol) / olderAvgVol) * 15);
-  }
-  volumeConfirm = Math.max(0, Math.min(100, volumeConfirm));
+  // 5. Price Recovery (15%)
+  const cp = recent.map(c => { const r = c.high - c.low; return r > 0 ? (c.close - c.low) / r : 0.5; });
+  const ocp = cp.slice(0, halfLen).reduce((a, b) => a + b, 0) / halfLen;
+  const ncp = cp.slice(halfLen).reduce((a, b) => a + b, 0) / nm.length;
+  const rLows = recent.slice(-10).map(c => c.low);
+  let hlc = 0;
+  for (let i = 1; i < rLows.length; i++) { if (rLows[i] >= rLows[i - 1]) hlc++; }
+  let pr = 50 + (ncp - ocp) * 60 + (hlc / (rLows.length - 1) - 0.5) * 30;
+  pr = Math.max(0, Math.min(100, pr));
 
-  // 5. PRICE RECOVERY (0-100)
-  // Closes trending upward: compare avg close position in range (older vs newer)
-  const closePositions = recent.map(c => {
-    const range = c.high - c.low;
-    return range > 0 ? (c.close - c.low) / range : 0.5;
-  });
-  const olderClosePos = closePositions.slice(0, halfLen).reduce((a, b) => a + b, 0) / halfLen;
-  const newerClosePos = closePositions.slice(halfLen).reduce((a, b) => a + b, 0) / newerMetrics.length;
-  
-  // Also: are recent lows getting higher? (higher lows pattern)
-  const recentLows = recent.slice(-10).map(c => c.low);
-  let higherLowCount = 0;
-  for (let i = 1; i < recentLows.length; i++) {
-    if (recentLows[i] >= recentLows[i - 1]) higherLowCount++;
-  }
-  
-  let priceRecovery = 50;
-  priceRecovery += (newerClosePos - olderClosePos) * 60;
-  priceRecovery += (higherLowCount / (recentLows.length - 1) - 0.5) * 30;
-  priceRecovery = Math.max(0, Math.min(100, priceRecovery));
-
-  // FINAL COMPOSITE SCORE (weighted)
-  const score = Math.round(
-    sellerExhaustion * 0.25 +
-    buyerAbsorption * 0.20 +
-    momentumShift * 0.25 +
-    volumeConfirm * 0.15 +
-    priceRecovery * 0.15
-  );
-
+  // SCORE
+  const score = Math.round(se * 0.25 + ba * 0.20 + ms * 0.25 + vc * 0.15 + pr * 0.15);
   let signal: SmartBullishResult['signal'] = 'weak';
   if (score >= 75) signal = 'strong_buy';
   else if (score >= 60) signal = 'buy';
   else if (score >= 45) signal = 'neutral';
 
+  // ========== PRICE TARGETS ==========
+  const entryPrice = price;
+  const stopLoss = Math.max(nearSup - atrValue * 0.3, price - atrValue * 1.5);
+  const tp1 = Math.min(nearRes, price + atrValue * 1.5);
+  const tp2r = resAbove.length > 1 ? resAbove[1] : nearRes + atrValue;
+  const tp2 = Math.min(Math.max(tp2r, price + atrValue * 2.5), strongRes > price ? strongRes : price + atrValue * 2.5);
+  const tp3 = Math.min(swingHigh, price + atrValue * 4);
+  const risk = Math.abs(price - stopLoss);
+  const reward = Math.abs(tp1 - price);
+  const rrr = risk > 0 ? Math.round((reward / risk) * 100) / 100 : 0;
+  const emp = price > 0 ? Math.round(((tp2 - price) / price) * 10000) / 100 : 0;
+  const mdp = price > 0 ? Math.round(((price - stopLoss) / price) * 10000) / 100 : 0;
+
   return {
     score: Math.max(0, Math.min(100, score)),
-    sellerExhaustion: Math.round(sellerExhaustion),
-    buyerAbsorption: Math.round(buyerAbsorption),
-    momentumShift: Math.round(momentumShift),
-    volumeConfirm: Math.round(volumeConfirm),
-    priceRecovery: Math.round(priceRecovery),
-    signal,
+    sellerExhaustion: Math.round(se), buyerAbsorption: Math.round(ba),
+    momentumShift: Math.round(ms), volumeConfirm: Math.round(vc), priceRecovery: Math.round(pr),
+    signal, currentPrice: price, entryPrice, stopLoss,
+    takeProfit1: tp1, takeProfit2: tp2, takeProfit3: tp3,
+    riskRewardRatio: rrr, expectedMovePercent: emp, maxDownsidePercent: mdp,
+    supportZone: { low: nearSup - zw, high: nearSup + zw },
+    resistanceZone: { low: nearRes - zw, high: nearRes + zw },
+    nearestSupport: nearSup, nearestResistance: nearRes,
+    strongSupport: strongSup, strongResistance: strongRes,
+    swingLow, swingHigh, atrValue,
   };
 }
