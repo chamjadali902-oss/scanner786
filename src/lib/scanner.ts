@@ -159,6 +159,25 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.smart_bullish_volume_confirm = smartBullish.volumeConfirm;
   values.smart_bullish_price_recovery = smartBullish.priceRecovery;
   values.smart_bullish_signal = smartBullish.signal;
+  values.smart_bullish_entry = smartBullish.entryPrice;
+  values.smart_bullish_sl = smartBullish.stopLoss;
+  values.smart_bullish_tp1 = smartBullish.takeProfit1;
+  values.smart_bullish_tp2 = smartBullish.takeProfit2;
+  values.smart_bullish_tp3 = smartBullish.takeProfit3;
+  values.smart_bullish_rr = smartBullish.riskRewardRatio;
+  values.smart_bullish_expected_move = smartBullish.expectedMovePercent;
+  values.smart_bullish_max_downside = smartBullish.maxDownsidePercent;
+  values.smart_bullish_support = smartBullish.nearestSupport;
+  values.smart_bullish_resistance = smartBullish.nearestResistance;
+  values.smart_bullish_strong_support = smartBullish.strongSupport;
+  values.smart_bullish_strong_resistance = smartBullish.strongResistance;
+  values.smart_bullish_support_zone_low = smartBullish.supportZone.low;
+  values.smart_bullish_support_zone_high = smartBullish.supportZone.high;
+  values.smart_bullish_resistance_zone_low = smartBullish.resistanceZone.low;
+  values.smart_bullish_resistance_zone_high = smartBullish.resistanceZone.high;
+  values.smart_bullish_swing_low = smartBullish.swingLow;
+  values.smart_bullish_swing_high = smartBullish.swingHigh;
+  values.smart_bullish_atr = smartBullish.atrValue;
 
   // Current price
   values.price = candles[lastIndex].close;
