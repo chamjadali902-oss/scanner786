@@ -594,17 +594,23 @@ function evaluateCondition(
 
       const threshold = condition.smartBullishThreshold ?? 60;
       const signal = values.smart_bullish_signal as string;
-      const sellerExh = values.smart_bullish_seller_exhaustion as number;
-      const buyerAbs = values.smart_bullish_buyer_absorption as number;
-      const momShift = values.smart_bullish_momentum_shift as number;
-      const volConf = values.smart_bullish_volume_confirm as number;
-      const priceRec = values.smart_bullish_price_recovery as number;
+      const entry = values.smart_bullish_entry as number;
+      const sl = values.smart_bullish_sl as number;
+      const tp1 = values.smart_bullish_tp1 as number;
+      const tp2 = values.smart_bullish_tp2 as number;
+      const tp3 = values.smart_bullish_tp3 as number;
+      const rr = values.smart_bullish_rr as number;
+      const expMove = values.smart_bullish_expected_move as number;
+      const maxDown = values.smart_bullish_max_downside as number;
+      const support = values.smart_bullish_support as number;
+      const resistance = values.smart_bullish_resistance as number;
 
       if (score >= threshold) {
         const signalLabel = signal === 'strong_buy' ? '🟢 STRONG BUY' : signal === 'buy' ? '🟡 BUY' : '⚪ NEUTRAL';
+        const fmt = (v: number) => v >= 1 ? v.toFixed(2) : v.toFixed(6);
         return {
           matched: true,
-          reason: `Smart-Bullish ${signalLabel} (Score: ${score}/100) | Seller Exhaustion: ${sellerExh}% | Buyer Absorption: ${buyerAbs}% | Momentum: ${momShift}% | Volume: ${volConf}% | Recovery: ${priceRec}%`,
+          reason: `Smart-Bullish ${signalLabel} (${score}/100) | Entry: ${fmt(entry)} | SL: ${fmt(sl)} (-${maxDown}%) | TP1: ${fmt(tp1)} | TP2: ${fmt(tp2)} (+${expMove}%) | TP3: ${fmt(tp3)} | R:R ${rr} | Support: ${fmt(support)} | Resistance: ${fmt(resistance)}`,
         };
       }
       return { matched: false, reason: '' };
