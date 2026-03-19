@@ -12,6 +12,7 @@ import Backtest from "./pages/Backtest";
 import Marketplace from "./pages/Marketplace";
 import SmartSignals from "./pages/SmartSignals";
 import TradeJournal from "./pages/TradeJournal";
+import AutoTrader from "./pages/AutoTrader";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Disclaimer from "./pages/Disclaimer";
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/signals" element={<SmartSignals />} />
           <Route path="/journal" element={<TradeJournal />} />
+          <Route path="/auto-trader" element={<AutoTrader />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
