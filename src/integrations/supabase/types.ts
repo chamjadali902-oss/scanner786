@@ -44,6 +44,69 @@ export type Database = {
         }
         Relationships: []
       }
+      analysis_signals: {
+        Row: {
+          confidence: number
+          created_at: string
+          entry_price: number | null
+          id: string
+          indicator_data: Json
+          is_notified: boolean
+          is_read: boolean
+          reasons: Json
+          risk_reward: number | null
+          signal_type: string
+          stop_loss: number | null
+          symbol: string
+          take_profit_1: number | null
+          take_profit_2: number | null
+          take_profit_3: number | null
+          timeframe: string
+          trend: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          entry_price?: number | null
+          id?: string
+          indicator_data?: Json
+          is_notified?: boolean
+          is_read?: boolean
+          reasons?: Json
+          risk_reward?: number | null
+          signal_type: string
+          stop_loss?: number | null
+          symbol: string
+          take_profit_1?: number | null
+          take_profit_2?: number | null
+          take_profit_3?: number | null
+          timeframe: string
+          trend: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          entry_price?: number | null
+          id?: string
+          indicator_data?: Json
+          is_notified?: boolean
+          is_read?: boolean
+          reasons?: Json
+          risk_reward?: number | null
+          signal_type?: string
+          stop_loss?: number | null
+          symbol?: string
+          take_profit_1?: number | null
+          take_profit_2?: number | null
+          take_profit_3?: number | null
+          timeframe?: string
+          trend?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -161,6 +224,33 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth_key: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth_key: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth_key?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -309,6 +399,27 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      watchlist_coins: {
+        Row: {
+          added_at: string
+          id: string
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          symbol?: string
           user_id?: string
         }
         Relationships: []
