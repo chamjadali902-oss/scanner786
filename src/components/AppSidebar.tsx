@@ -1,4 +1,4 @@
-import { LineChart, Brain, BarChart3, Beaker, Globe, LogIn, LogOut, User, Activity, Zap, Menu, Sparkles, BookOpen } from 'lucide-react';
+import { LineChart, Brain, BarChart3, Beaker, Globe, LogIn, LogOut, User, Activity, Zap, Menu, Sparkles, BookOpen, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
