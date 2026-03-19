@@ -10,6 +10,7 @@ import { AlertsPanel } from './scanner/AlertsPanel';
 const NAV_ITEMS = [
   { title: 'Scanner', url: '/scanner', icon: LineChart },
   { title: 'Smart Signals', url: '/signals', icon: Sparkles },
+  { title: 'Auto Trader', url: '/auto-trader', icon: Target },
   { title: 'AI Chat', url: '/chat', icon: Brain },
   { title: 'Journal', url: '/journal', icon: BookOpen },
   { title: 'Dashboard', url: '/dashboard', icon: BarChart3 },
