@@ -12,6 +12,7 @@ import Backtest from "./pages/Backtest";
 import Marketplace from "./pages/Marketplace";
 import SmartSignals from "./pages/SmartSignals";
 import TradeJournal from "./pages/TradeJournal";
+import AutoTrader from "./pages/AutoTrader";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Disclaimer from "./pages/Disclaimer";
