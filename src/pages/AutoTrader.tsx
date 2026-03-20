@@ -51,7 +51,7 @@ export default function AutoTrader() {
   const [expandedSignal, setExpandedSignal] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
+    if (!user) { navigate("/auth?redirectTo=/auto-trader"); return; }
     loadWatchlist();
     loadSignals();
     checkPushStatus();
