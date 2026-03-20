@@ -44,7 +44,7 @@ const Auth = () => {
         }
       }
       toast({ title: isLogin ? 'Welcome back!' : 'Account created!' });
-      navigate('/');
+      navigate(redirectTo);
       setLoading(false);
     }
   };
