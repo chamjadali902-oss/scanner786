@@ -84,6 +84,9 @@ export default function SmartSignals() {
         }
         const tickers = await fetchTicker24h();
         topCoins = tickers.filter((t: any) => favSymbols.includes(t.symbol));
+      } else if (pool === 'all') {
+        const tickers = await fetchTicker24h();
+        topCoins = tickers.filter((t: any) => t.symbol.endsWith('USDT'));
       } else {
         const tickers = await fetchTicker24h();
         topCoins = getTopCoins(tickers, pool, 100);
@@ -209,6 +212,7 @@ export default function SmartSignals() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">🌐 All Coins</SelectItem>
                 <SelectItem value="volume">Top 100 Volume</SelectItem>
                 <SelectItem value="gainers">Top 100 Gainers</SelectItem>
                 <SelectItem value="losers">Top 100 Losers</SelectItem>
