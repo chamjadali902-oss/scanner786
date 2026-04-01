@@ -225,6 +225,7 @@ export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
 ];
 
 export const SCAN_POOL_OPTIONS: { value: ScanPool; label: string; description: string }[] = [
+  { value: 'all', label: 'All Coins', description: 'Scan all Binance USDT pairs' },
   { value: 'losers', label: 'Top 100 Losers', description: 'Biggest 24h price drops' },
   { value: 'gainers', label: 'Top 100 Gainers', description: 'Biggest 24h price gains' },
   { value: 'volume', label: 'Top 100 Volume', description: 'Highest 24h trading volume' },
