@@ -108,14 +108,6 @@ export default function AutoTrader() {
     if (!error && data) setWatchlist(data);
   };
 
-  const loadSignals = async () => {
-    const { data, error } = await supabase
-      .from("analysis_signals")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100);
-    if (!error && data) setSignals(data as Signal[]);
-  };
 
   const addCoin = async () => {
     if (!newSymbol.trim()) return;
