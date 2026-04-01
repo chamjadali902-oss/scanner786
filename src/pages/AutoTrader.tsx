@@ -319,7 +319,7 @@ export default function AutoTrader() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="max-h-[600px]">
+              <ScrollArea className="h-[600px]">
                 <div className="space-y-2">
                   {signals.map(signal => (
                     <div
