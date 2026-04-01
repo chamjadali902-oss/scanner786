@@ -79,7 +79,7 @@ export default function AutoTrader() {
       return;
     }
     loadWatchlist();
-    loadSignals();
+    refreshSignals();
     checkPushStatus();
 
     // Subscribe to realtime signals
