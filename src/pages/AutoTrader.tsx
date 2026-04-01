@@ -49,14 +49,26 @@ export default function AutoTrader() {
   const [loading, setLoading] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
 
-  // Auto-prune signals older than 5 minutes
+  // Auto-refresh signals every 10 seconds, remove older than 5 minutes
   const MAX_SIGNAL_AGE = 5 * 60 * 1000;
+  const refreshSignals = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("analysis_signals")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (!error && data) {
+      setSignals((data as Signal[]).filter(s => Date.now() - new Date(s.created_at).getTime() < MAX_SIGNAL_AGE));
+    }
+  }, [user]);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSignals(prev => prev.filter(s => Date.now() - new Date(s.created_at).getTime() < MAX_SIGNAL_AGE));
-    }, 30000);
+    if (!user) return;
+    const interval = setInterval(refreshSignals, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user, refreshSignals]);
   const [expandedSignal, setExpandedSignal] = useState<string | null>(null);
 
   useEffect(() => {
