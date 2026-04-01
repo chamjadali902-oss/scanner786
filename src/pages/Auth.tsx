@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,18 @@ const Auth = () => {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = new URLSearchParams(location.search).get('redirectTo') || '/';
+  const redirectQuery = new URLSearchParams(location.search).get('redirectTo');
+  const redirectState = (location.state as { redirectTo?: string } | null)?.redirectTo;
+  const redirectTo = redirectQuery || redirectState || window.sessionStorage.getItem('postLoginRedirect') || '/';
   const { toast } = useToast();
+
+  useEffect(() => {
+    const pendingRedirect = redirectQuery || redirectState;
+
+    if (pendingRedirect) {
+      window.sessionStorage.setItem('postLoginRedirect', pendingRedirect);
+    }
+  }, [redirectQuery, redirectState]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,14 +47,17 @@ const Auth = () => {
       if (currentUser) {
         const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: currentUser.id, _role: 'admin' });
         if (isAdmin) {
+          window.sessionStorage.removeItem('postLoginRedirect');
           toast({ title: 'Welcome Admin!' });
-          navigate('/admin');
+          navigate('/admin', { replace: true });
           setLoading(false);
           return;
         }
       }
+      const finalRedirect = window.sessionStorage.getItem('postLoginRedirect') || redirectTo;
+      window.sessionStorage.removeItem('postLoginRedirect');
       toast({ title: isLogin ? 'Welcome back!' : 'Account created!' });
-      navigate(redirectTo);
+      navigate(finalRedirect, { replace: true });
       setLoading(false);
     }
   };
