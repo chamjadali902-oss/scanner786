@@ -84,6 +84,9 @@ export default function SmartSignals() {
         }
         const tickers = await fetchTicker24h();
         topCoins = tickers.filter((t: any) => favSymbols.includes(t.symbol));
+      } else if (pool === 'all') {
+        const tickers = await fetchTicker24h();
+        topCoins = tickers.filter((t: any) => t.symbol.endsWith('USDT'));
       } else {
         const tickers = await fetchTicker24h();
         topCoins = getTopCoins(tickers, pool, 100);
