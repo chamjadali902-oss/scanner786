@@ -212,6 +212,7 @@ export default function SmartSignals() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">🌐 All Coins</SelectItem>
                 <SelectItem value="volume">Top 100 Volume</SelectItem>
                 <SelectItem value="gainers">Top 100 Gainers</SelectItem>
                 <SelectItem value="losers">Top 100 Losers</SelectItem>
