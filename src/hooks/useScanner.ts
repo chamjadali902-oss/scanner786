@@ -91,6 +91,10 @@ export function useScanner(options: UseScannerOptions = {}) {
           return;
         }
         symbols = favoriteSymbols;
+      } else if (pool === 'all') {
+        const tickers = await fetchTicker24h();
+        topCoins = tickers;
+        symbols = tickers.map(t => t.symbol);
       } else {
         const tickers = await fetchTicker24h();
         topCoins = getTopCoins(tickers, pool, 100);
