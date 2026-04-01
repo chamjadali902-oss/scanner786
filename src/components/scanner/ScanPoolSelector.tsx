@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { ScanPool, SCAN_POOL_OPTIONS } from '@/types/scanner';
-import { TrendingDown, TrendingUp, BarChart3, Star } from 'lucide-react';
+import { TrendingDown, TrendingUp, BarChart3, Star, Globe } from 'lucide-react';
 
 interface ScanPoolSelectorProps {
   value: ScanPool;
@@ -10,6 +10,7 @@ interface ScanPoolSelectorProps {
 }
 
 const icons: Record<ScanPool, typeof TrendingDown> = {
+  all: Globe,
   losers: TrendingDown,
   gainers: TrendingUp,
   volume: BarChart3,
