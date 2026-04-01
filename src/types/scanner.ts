@@ -1,6 +1,6 @@
 // Core types for the Crypto Scanner
 
-export type ScanPool = 'losers' | 'gainers' | 'volume' | 'favorites';
+export type ScanPool = 'losers' | 'gainers' | 'volume' | 'favorites' | 'all';
 
 export type Timeframe = '1m' | '3m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
