@@ -80,7 +80,7 @@ export default function AutoTrader() {
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
         const newSignal = payload.new as Signal;
-        setSignals(prev => [newSignal, ...prev]);
+        setSignals(prev => [newSignal, ...prev].filter(s => Date.now() - new Date(s.created_at).getTime() < MAX_SIGNAL_AGE));
         toast.success(`🎯 New ${newSignal.signal_type.toUpperCase()} signal: ${newSignal.symbol} (${newSignal.timeframe})`);
       })
       .subscribe();
