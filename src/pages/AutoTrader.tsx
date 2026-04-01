@@ -41,7 +41,7 @@ interface Signal {
 }
 
 export default function AutoTrader() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [watchlist, setWatchlist] = useState<WatchlistCoin[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -51,7 +51,12 @@ export default function AutoTrader() {
   const [expandedSignal, setExpandedSignal] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) { navigate("/auth?redirectTo=/auto-trader"); return; }
+    if (authLoading) return;
+    if (!user) {
+      window.sessionStorage.setItem("postLoginRedirect", "/auto-trader");
+      navigate("/auth?redirectTo=/auto-trader", { replace: true, state: { redirectTo: "/auto-trader" } });
+      return;
+    }
     loadWatchlist();
     loadSignals();
     checkPushStatus();
@@ -72,7 +77,7 @@ export default function AutoTrader() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [user, authLoading, navigate]);
 
   const loadWatchlist = async () => {
     const { data, error } = await supabase
@@ -181,7 +186,7 @@ export default function AutoTrader() {
 
   const unreadCount = signals.filter(s => !s.is_read).length;
 
-  if (!user) return null;
+  if (authLoading || !user) return null;
 
   return (
     <div className="min-h-screen bg-background">
