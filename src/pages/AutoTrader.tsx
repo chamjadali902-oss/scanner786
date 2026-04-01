@@ -48,6 +48,15 @@ export default function AutoTrader() {
   const [newSymbol, setNewSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
+
+  // Auto-prune signals older than 5 minutes
+  const MAX_SIGNAL_AGE = 5 * 60 * 1000;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSignals(prev => prev.filter(s => Date.now() - new Date(s.created_at).getTime() < MAX_SIGNAL_AGE));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
   const [expandedSignal, setExpandedSignal] = useState<string | null>(null);
 
   useEffect(() => {
@@ -71,7 +80,7 @@ export default function AutoTrader() {
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
         const newSignal = payload.new as Signal;
-        setSignals(prev => [newSignal, ...prev]);
+        setSignals(prev => [newSignal, ...prev].filter(s => Date.now() - new Date(s.created_at).getTime() < MAX_SIGNAL_AGE));
         toast.success(`🎯 New ${newSignal.signal_type.toUpperCase()} signal: ${newSignal.symbol} (${newSignal.timeframe})`);
       })
       .subscribe();
@@ -310,7 +319,7 @@ export default function AutoTrader() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="max-h-[600px]">
+              <ScrollArea className="h-[600px]">
                 <div className="space-y-2">
                   {signals.map(signal => (
                     <div
