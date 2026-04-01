@@ -48,6 +48,15 @@ export default function AutoTrader() {
   const [newSymbol, setNewSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
+
+  // Auto-prune signals older than 5 minutes
+  const MAX_SIGNAL_AGE = 5 * 60 * 1000;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSignals(prev => prev.filter(s => Date.now() - new Date(s.created_at).getTime() < MAX_SIGNAL_AGE));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
   const [expandedSignal, setExpandedSignal] = useState<string | null>(null);
 
   useEffect(() => {
