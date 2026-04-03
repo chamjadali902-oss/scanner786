@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { ScanPool, Timeframe, ScanCondition, ScanResult, TickerData } from '@/types/scanner';
-import { fetchTicker24h, getTopCoins, batchFetchKlines, isRateLimited, getRateLimitWaitTime } from '@/lib/binance';
+import { fetchTicker24h, getTopCoins, batchFetchKlines, isRateLimited, getRateLimitWaitTime, fetchAlphaCoins } from '@/lib/binance';
 import { calculateAllIndicators, evaluateConditions, determineBullishness } from '@/lib/scanner';
 import { addAlert } from '@/lib/alerts';
 
