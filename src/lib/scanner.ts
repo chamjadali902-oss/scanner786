@@ -298,6 +298,7 @@ function evaluateCondition(
   switch (feature.settingsType) {
     case 'rsi': {
       const rsiValue = values.rsi;
+      const rsiArray = values.rsi_array as number[];
       if (typeof rsiValue !== 'number' || isNaN(rsiValue)) return { matched: false, reason: '' };
 
       // Range check
@@ -305,10 +306,27 @@ function evaluateCondition(
       const maxVal = condition.maxValue ?? 100;
       const inRange = rsiValue >= minVal && rsiValue <= maxVal;
 
-      if (inRange) {
-        return { matched: true, reason: `RSI = ${rsiValue.toFixed(2)} (Range: ${minVal}-${maxVal})` };
+      if (!inRange) return { matched: false, reason: '' };
+
+      // Cross direction check
+      const crossDir = condition.rsiCrossDirection ?? 'any';
+      if (crossDir !== 'any' && Array.isArray(rsiArray) && rsiArray.length >= 2) {
+        const prevRsi = rsiArray[rsiArray.length - 2];
+        if (typeof prevRsi === 'number' && !isNaN(prevRsi)) {
+          if (crossDir === 'from_below') {
+            // Previous RSI was below min (entered range from bottom)
+            const wasBelow = prevRsi < minVal;
+            if (!wasBelow) return { matched: false, reason: '' };
+          } else if (crossDir === 'from_above') {
+            // Previous RSI was above max (entered range from top)
+            const wasAbove = prevRsi > maxVal;
+            if (!wasAbove) return { matched: false, reason: '' };
+          }
+        }
       }
-      return { matched: false, reason: '' };
+
+      const dirLabel = crossDir === 'from_below' ? ' ↑ from below' : crossDir === 'from_above' ? ' ↓ from above' : '';
+      return { matched: true, reason: `RSI = ${rsiValue.toFixed(2)} (Range: ${minVal}-${maxVal}${dirLabel})` };
     }
 
     case 'ema': {
