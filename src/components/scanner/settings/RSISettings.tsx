@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface RSISettingsProps {
   condition: ScanCondition;
@@ -92,6 +93,32 @@ export function RSISettings({ condition, onUpdate, disabled }: RSISettingsProps)
         </div>
         <p className="text-[10px] text-muted-foreground">
           Signal when RSI is between {condition.minValue ?? 0} and {condition.maxValue ?? 100}
+        </p>
+      </div>
+
+      {/* Cross Direction */}
+      <div className="space-y-2 pt-2 border-t border-border/50">
+        <Label className="text-xs text-muted-foreground">Cross Direction (Range Entry)</Label>
+        <Select
+          value={condition.rsiCrossDirection ?? 'any'}
+          onValueChange={(val) => onUpdate({ rsiCrossDirection: val as 'any' | 'from_below' | 'from_above' })}
+          disabled={disabled}
+        >
+          <SelectTrigger className="h-9 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Any Direction (already in range)</SelectItem>
+            <SelectItem value="from_below">↑ Crossed from Below (entered range from bottom)</SelectItem>
+            <SelectItem value="from_above">↓ Crossed from Above (entered range from top)</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground">
+          {condition.rsiCrossDirection === 'from_below'
+            ? `RSI ne neeche se cross karke ${condition.minValue ?? 0}-${condition.maxValue ?? 100} range mein enter kiya`
+            : condition.rsiCrossDirection === 'from_above'
+            ? `RSI ne upar se cross karke ${condition.minValue ?? 0}-${condition.maxValue ?? 100} range mein enter kiya`
+            : 'RSI jo bhi range mein ho wo match karega, chahe kisi bhi direction se aaya ho'}
         </p>
       </div>
 
