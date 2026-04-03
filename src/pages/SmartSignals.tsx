@@ -10,7 +10,7 @@ import { Brain, Loader2, TrendingUp, TrendingDown, Zap, Target, Shield, AlertTri
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { fetchTicker24h, getTopCoins, fetchKlines } from '@/lib/binance';
+import { fetchTicker24h, getTopCoins, fetchKlines, fetchAlphaCoins } from '@/lib/binance';
 import { calculateRSI, calculateMACD, calculateEMA, calculateBollingerBands, calculateStochastic, calculateADX, calculateATR } from '@/lib/indicators';
 import { detectDoji, detectHammer, detectShootingStar, detectBullishEngulfing, detectBearishEngulfing, detectMorningStar, detectEveningStar, detectMarubozu, detectBullishHarami, detectBearishHarami, detectInvertedHammer, detectThreeWhiteSoldiers, detectThreeBlackCrows, detectInsideBar } from '@/lib/patterns';
 import { detectBullishBOS, detectBearishBOS, detectBullishChoCH, detectBearishChoCH, detectBullishOrderBlock, detectBearishOrderBlock, detectBullishFVG, detectBearishFVG, detectLiquiditySweepHigh, detectLiquiditySweepLow, detectEqualHighs, detectEqualLows, detectPremiumZone, detectDiscountZone, detectUptrend, detectDowntrend } from '@/lib/smc';
@@ -84,6 +84,17 @@ export default function SmartSignals() {
         }
         const tickers = await fetchTicker24h();
         topCoins = tickers.filter((t: any) => favSymbols.includes(t.symbol));
+      } else if (pool === 'alpha') {
+        const alphaCoins = await fetchAlphaCoins();
+        // Convert alpha coins to ticker-like format for analysis
+        topCoins = alphaCoins.map(c => ({
+          symbol: c.symbol + 'USDT',
+          priceChangePercent: c.percentChange24h,
+          quoteVolume: c.volume24h,
+          lastPrice: c.price,
+          _isAlpha: true,
+          _chainName: c.chainName,
+        }));
       } else if (pool === 'all') {
         const tickers = await fetchTicker24h();
         topCoins = tickers.filter((t: any) => t.symbol.endsWith('USDT'));
@@ -213,6 +224,7 @@ export default function SmartSignals() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">🌐 All Coins</SelectItem>
+                <SelectItem value="alpha">🔷 Alpha Coins</SelectItem>
                 <SelectItem value="volume">Top 100 Volume</SelectItem>
                 <SelectItem value="gainers">Top 100 Gainers</SelectItem>
                 <SelectItem value="losers">Top 100 Losers</SelectItem>

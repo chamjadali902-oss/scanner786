@@ -245,3 +245,60 @@ export function isRateLimited(): boolean {
 export function getRateLimitWaitTime(): number {
   return Math.max(0, rateLimitState.retryAfter - Date.now());
 }
+
+// Binance Alpha coins API
+export interface AlphaCoin {
+  symbol: string;
+  name: string;
+  price: string;
+  percentChange24h: string;
+  volume24h: string;
+  marketCap: string;
+  chainName: string;
+  iconUrl: string;
+  alphaId: string;
+  holders: string;
+  liquidity: string;
+}
+
+let alphaCoinsCache: AlphaCoin[] | null = null;
+let alphaCacheTime = 0;
+const ALPHA_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+export async function fetchAlphaCoins(): Promise<AlphaCoin[]> {
+  if (alphaCoinsCache && Date.now() - alphaCacheTime < ALPHA_CACHE_DURATION) {
+    return alphaCoinsCache;
+  }
+
+  const response = await fetch(
+    'https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list',
+    { headers: { 'Accept': 'application/json' } }
+  );
+
+  if (!response.ok) throw new Error('Failed to fetch Alpha coins');
+
+  const json = await response.json();
+  const data = json.data || json;
+
+  if (!Array.isArray(data)) throw new Error('Invalid Alpha API response');
+
+  const coins: AlphaCoin[] = data
+    .filter((t: any) => !t.offline)
+    .map((t: any) => ({
+      symbol: t.symbol,
+      name: t.name,
+      price: t.price || '0',
+      percentChange24h: t.percentChange24h || '0',
+      volume24h: t.volume24h || '0',
+      marketCap: t.marketCap || '0',
+      chainName: t.chainName || '',
+      iconUrl: t.iconUrl || '',
+      alphaId: t.alphaId || '',
+      holders: String(t.holders || 0),
+      liquidity: t.liquidity || '0',
+    }));
+
+  alphaCoinsCache = coins;
+  alphaCacheTime = Date.now();
+  return coins;
+}
