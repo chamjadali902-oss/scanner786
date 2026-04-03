@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const ADX_CROSS_FEATURES = ['adx'];
+
 interface OscillatorSettingsProps {
   condition: ScanCondition;
   feature: FeatureDefinition;
