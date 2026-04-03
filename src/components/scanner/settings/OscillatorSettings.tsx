@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const ADX_CROSS_FEATURES = ['adx'];
+
 interface OscillatorSettingsProps {
   condition: ScanCondition;
   feature: FeatureDefinition;
@@ -150,6 +152,34 @@ export function OscillatorSettings({ condition, feature, onUpdate, disabled }: O
           <p className="text-[10px] text-muted-foreground">
             Signal when {feature.name} is between {condition.minValue ?? min} and {condition.maxValue ?? max}
           </p>
+
+          {/* Cross Direction for ADX */}
+          {ADX_CROSS_FEATURES.includes(feature.id) && (
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <Label className="text-xs text-muted-foreground">Cross Direction (Range Entry)</Label>
+              <Select
+                value={condition.adxCrossDirection ?? 'any'}
+                onValueChange={(val) => onUpdate({ adxCrossDirection: val as 'any' | 'from_below' | 'from_above' })}
+                disabled={disabled}
+              >
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any Direction (already in range)</SelectItem>
+                  <SelectItem value="from_below">↑ Crossed from Below (entered range from bottom)</SelectItem>
+                  <SelectItem value="from_above">↓ Crossed from Above (entered range from top)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                {condition.adxCrossDirection === 'from_below'
+                  ? `ADX neeche se cross karke ${condition.minValue ?? min}-${condition.maxValue ?? max} range mein enter hua`
+                  : condition.adxCrossDirection === 'from_above'
+                  ? `ADX upar se cross karke ${condition.minValue ?? min}-${condition.maxValue ?? max} range mein enter hua`
+                  : 'ADX jo bhi range mein ho wo match karega'}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

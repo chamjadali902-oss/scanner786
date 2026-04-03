@@ -90,6 +90,7 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   const adxPeriod = condition?.adxPeriod ?? 14;
   const adx = indicators.calculateADX(candles, adxPeriod);
   values.adx = adx[lastIndex];
+  values.adx_array = adx;
   
   // CCI with custom period
   const cciPeriod = condition?.cciPeriod ?? 20;
@@ -485,9 +486,28 @@ function evaluateCondition(
       if (condition.mode === 'range') {
         const minVal = condition.minValue ?? 0;
         const maxVal = condition.maxValue ?? 100;
-        if (value >= minVal && value <= maxVal) {
-          return { matched: true, reason: `${feature.name} = ${value.toFixed(2)} (Range: ${minVal}-${maxVal})` };
+        const inRange = value >= minVal && value <= maxVal;
+        if (!inRange) return { matched: false, reason: '' };
+
+        // ADX cross direction check
+        if (condition.feature === 'adx' && condition.adxCrossDirection && condition.adxCrossDirection !== 'any') {
+          const adxArr = values.adx_array as number[] | undefined;
+          if (adxArr && adxArr.length >= 2) {
+            const prevIdx = adxArr.length - 2;
+            const prevVal = adxArr[prevIdx];
+            if (!isNaN(prevVal)) {
+              const wasBelow = prevVal < minVal;
+              const wasAbove = prevVal > maxVal;
+              if (condition.adxCrossDirection === 'from_below' && !wasBelow) return { matched: false, reason: '' };
+              if (condition.adxCrossDirection === 'from_above' && !wasAbove) return { matched: false, reason: '' };
+            }
+          }
         }
+
+        const dirLabel = condition.feature === 'adx' && condition.adxCrossDirection && condition.adxCrossDirection !== 'any'
+          ? ` [${condition.adxCrossDirection === 'from_below' ? '↑ from below' : '↓ from above'}]`
+          : '';
+        return { matched: true, reason: `${feature.name} = ${value.toFixed(2)} (Range: ${minVal}-${maxVal})${dirLabel}` };
       } else if (condition.mode === 'comparison') {
         let matched = false;
         switch (condition.operator) {

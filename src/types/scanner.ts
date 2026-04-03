@@ -97,6 +97,7 @@ export interface ScanCondition {
   
   // ADX settings
   adxPeriod?: number;
+  adxCrossDirection?: 'any' | 'from_below' | 'from_above';
   
   // CCI settings
   cciPeriod?: number;
