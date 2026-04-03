@@ -10,7 +10,7 @@ import { Brain, Loader2, TrendingUp, TrendingDown, Zap, Target, Shield, AlertTri
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { fetchTicker24h, getTopCoins, fetchKlines } from '@/lib/binance';
+import { fetchTicker24h, getTopCoins, fetchKlines, fetchAlphaCoins } from '@/lib/binance';
 import { calculateRSI, calculateMACD, calculateEMA, calculateBollingerBands, calculateStochastic, calculateADX, calculateATR } from '@/lib/indicators';
 import { detectDoji, detectHammer, detectShootingStar, detectBullishEngulfing, detectBearishEngulfing, detectMorningStar, detectEveningStar, detectMarubozu, detectBullishHarami, detectBearishHarami, detectInvertedHammer, detectThreeWhiteSoldiers, detectThreeBlackCrows, detectInsideBar } from '@/lib/patterns';
 import { detectBullishBOS, detectBearishBOS, detectBullishChoCH, detectBearishChoCH, detectBullishOrderBlock, detectBearishOrderBlock, detectBullishFVG, detectBearishFVG, detectLiquiditySweepHigh, detectLiquiditySweepLow, detectEqualHighs, detectEqualLows, detectPremiumZone, detectDiscountZone, detectUptrend, detectDowntrend } from '@/lib/smc';
