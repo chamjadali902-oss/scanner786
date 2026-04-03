@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { ScanPool, Timeframe, ScanCondition, ScanResult, TickerData } from '@/types/scanner';
-import { fetchTicker24h, getTopCoins, batchFetchKlines, isRateLimited, getRateLimitWaitTime, fetchAlphaCoins } from '@/lib/binance';
+import { fetchTicker24h, getTopCoins, batchFetchKlines, isRateLimited, getRateLimitWaitTime } from '@/lib/binance';
 import { calculateAllIndicators, evaluateConditions, determineBullishness } from '@/lib/scanner';
 import { addAlert } from '@/lib/alerts';
 
@@ -82,35 +82,6 @@ export function useScanner(options: UseScannerOptions = {}) {
     setState({ status: 'scanning', results: [], error: null, progress: { current: 0, total: 100 }, waitTime: 0 });
 
     try {
-      // Handle Alpha coins separately - they don't have Binance spot klines
-      if (pool === 'alpha') {
-        setState(prev => ({ ...prev, progress: { current: 50, total: 100 } }));
-        const alphaCoins = await fetchAlphaCoins();
-        const results: ScanResult[] = alphaCoins.map(coin => ({
-          symbol: coin.symbol,
-          price: parseFloat(coin.price),
-          priceChange24h: parseFloat(coin.percentChange24h),
-          volume24h: parseFloat(coin.volume24h),
-          matchReasons: [
-            `🔷 Alpha Token (${coin.chainName})`,
-            `💰 MCap: $${Number(parseFloat(coin.marketCap)).toLocaleString()}`,
-            `👥 Holders: ${coin.holders}`,
-            `💧 Liquidity: $${Number(parseFloat(coin.liquidity)).toLocaleString()}`,
-          ],
-          indicatorValues: { rsi: 0, macd: 0, adx: 0, stoch_k: 0, bb_bandwidth: 0, mfi: 0 },
-          timestamp: Date.now(),
-          isBullish: parseFloat(coin.percentChange24h) > 0,
-        }));
-        results.sort((a, b) => Math.abs(b.priceChange24h) - Math.abs(a.priceChange24h));
-        if (results.length > 0) {
-          addAlert('scan_match', `🔷 ${results.length} Alpha Coins Found!`,
-            results.slice(0, 3).map(r => `${r.symbol} (${r.priceChange24h >= 0 ? '+' : ''}${r.priceChange24h.toFixed(1)}%)`).join(', '),
-            results[0].symbol);
-        }
-        setState({ status: 'idle', results, error: null, progress: null, waitTime: 0 });
-        return;
-      }
-
       let symbols: string[];
       let topCoins: TickerData[] = [];
 

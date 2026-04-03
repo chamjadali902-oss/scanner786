@@ -1,6 +1,6 @@
 // Core types for the Crypto Scanner
 
-export type ScanPool = 'losers' | 'gainers' | 'volume' | 'favorites' | 'all' | 'alpha';
+export type ScanPool = 'losers' | 'gainers' | 'volume' | 'favorites' | 'all';
 
 export type Timeframe = '1m' | '3m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
@@ -226,7 +226,6 @@ export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
 
 export const SCAN_POOL_OPTIONS: { value: ScanPool; label: string; description: string }[] = [
   { value: 'all', label: 'All Coins', description: 'Scan all Binance USDT pairs' },
-  { value: 'alpha', label: 'Alpha Coins', description: 'Binance Alpha early-stage tokens' },
   { value: 'losers', label: 'Top 100 Losers', description: 'Biggest 24h price drops' },
   { value: 'gainers', label: 'Top 100 Gainers', description: 'Biggest 24h price gains' },
   { value: 'volume', label: 'Top 100 Volume', description: 'Highest 24h trading volume' },
