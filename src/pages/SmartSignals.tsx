@@ -84,6 +84,17 @@ export default function SmartSignals() {
         }
         const tickers = await fetchTicker24h();
         topCoins = tickers.filter((t: any) => favSymbols.includes(t.symbol));
+      } else if (pool === 'alpha') {
+        const alphaCoins = await fetchAlphaCoins();
+        // Convert alpha coins to ticker-like format for analysis
+        topCoins = alphaCoins.map(c => ({
+          symbol: c.symbol + 'USDT',
+          priceChangePercent: c.percentChange24h,
+          quoteVolume: c.volume24h,
+          lastPrice: c.price,
+          _isAlpha: true,
+          _chainName: c.chainName,
+        }));
       } else if (pool === 'all') {
         const tickers = await fetchTicker24h();
         topCoins = tickers.filter((t: any) => t.symbol.endsWith('USDT'));
