@@ -67,6 +67,7 @@ export interface ScanCondition {
   rsiPeriod?: number;
   rsiRegularDivergence?: boolean;
   rsiHiddenDivergence?: boolean;
+  rsiCrossDirection?: 'any' | 'from_below' | 'from_above';
   
   // EMA-specific settings
   emaConfigs?: EMAConfig[];
