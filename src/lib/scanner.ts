@@ -90,6 +90,7 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   const adxPeriod = condition?.adxPeriod ?? 14;
   const adx = indicators.calculateADX(candles, adxPeriod);
   values.adx = adx[lastIndex];
+  values.adx_array = adx;
   
   // CCI with custom period
   const cciPeriod = condition?.cciPeriod ?? 20;
