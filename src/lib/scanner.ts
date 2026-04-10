@@ -345,7 +345,33 @@ function evaluateCondition(
             continue;
           }
 
-          if (config.pricePosition === 'above') {
+          // Cross direction check
+          if (config.crossEnabled && config.crossDirection && config.crossDirection !== 'any') {
+            const emaArray = values[`ema_${config.period}_array`] as number[];
+            if (Array.isArray(emaArray) && lastIndex > 0) {
+              const prevEma = emaArray[lastIndex - 1];
+              const prevPrice = candles[lastIndex - 1].close;
+              
+              if (config.crossDirection === 'cross_above') {
+                // Price crossed EMA from below to above
+                if (!(prevPrice <= prevEma && price > emaValue)) {
+                  allMatched = false;
+                  continue;
+                }
+                reasons.push(`Price crossed above EMA${config.period} (${emaValue.toFixed(2)})`);
+              } else if (config.crossDirection === 'cross_below') {
+                // Price crossed EMA from above to below
+                if (!(prevPrice >= prevEma && price < emaValue)) {
+                  allMatched = false;
+                  continue;
+                }
+                reasons.push(`Price crossed below EMA${config.period} (${emaValue.toFixed(2)})`);
+              }
+            } else {
+              allMatched = false;
+              continue;
+            }
+          } else if (config.pricePosition === 'above') {
             if (price > emaValue) {
               reasons.push(`Price > EMA${config.period} (${emaValue.toFixed(2)})`);
             } else {
@@ -358,7 +384,6 @@ function evaluateCondition(
               allMatched = false;
             }
           } else {
-            // No position requirement, just show the value
             reasons.push(`EMA${config.period} = ${emaValue.toFixed(2)}`);
           }
         }
