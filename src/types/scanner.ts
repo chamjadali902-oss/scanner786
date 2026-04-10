@@ -39,6 +39,8 @@ export interface EMAConfig {
   period: number;
   enabled: boolean;
   pricePosition?: PricePosition; // Price above or below this EMA
+  crossDirection?: 'any' | 'cross_above' | 'cross_below'; // Price crossed EMA from below/above
+  crossEnabled?: boolean; // Toggle cross direction check
 }
 
 // Extended ScanCondition with feature-specific settings

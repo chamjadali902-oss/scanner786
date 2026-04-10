@@ -118,7 +118,7 @@ export function EMASettings({ condition, onUpdate, disabled, indicatorName = 'EM
                     onValueChange={(v) => updateEMA(config.id, { 
                       pricePosition: v === 'none' ? undefined : v as PricePosition 
                     })}
-                    disabled={disabled || !config.enabled}
+                    disabled={disabled || !config.enabled || config.crossEnabled}
                   >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Any" />
@@ -130,6 +130,44 @@ export function EMASettings({ condition, onUpdate, disabled, indicatorName = 'EM
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Cross Direction */}
+              <div className="space-y-2 pt-2 border-t border-border/30">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-medium">Price Cross Detection</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Detect price crossing {indicatorName}{config.period}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={config.crossEnabled ?? false}
+                    onCheckedChange={(checked) => updateEMA(config.id, { 
+                      crossEnabled: checked,
+                      crossDirection: checked ? 'cross_above' : undefined
+                    })}
+                    disabled={disabled || !config.enabled}
+                  />
+                </div>
+                {config.crossEnabled && (
+                  <Select
+                    value={config.crossDirection || 'cross_above'}
+                    onValueChange={(v) => updateEMA(config.id, { 
+                      crossDirection: v as 'any' | 'cross_above' | 'cross_below'
+                    })}
+                    disabled={disabled || !config.enabled}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cross_above">↑ Price Crossed Above {indicatorName} (Bullish)</SelectItem>
+                      <SelectItem value="cross_below">↓ Price Crossed Below {indicatorName} (Bearish)</SelectItem>
+                      <SelectItem value="any">Any Cross Direction</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           ))
