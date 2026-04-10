@@ -366,6 +366,14 @@ function evaluateCondition(
                   continue;
                 }
                 reasons.push(`Price crossed below EMA${config.period} (${emaValue.toFixed(2)})`);
+              } else if (config.crossDirection === 'any') {
+                const crossedAbove = prevPrice <= prevEma && price > emaValue;
+                const crossedBelow = prevPrice >= prevEma && price < emaValue;
+                if (!crossedAbove && !crossedBelow) {
+                  allMatched = false;
+                  continue;
+                }
+                reasons.push(`Price crossed ${crossedAbove ? 'above' : 'below'} EMA${config.period} (${emaValue.toFixed(2)})`);
               }
             } else {
               allMatched = false;
