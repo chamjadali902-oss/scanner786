@@ -346,7 +346,7 @@ function evaluateCondition(
           }
 
           // Cross direction check
-          if (config.crossEnabled && config.crossDirection && config.crossDirection !== 'any') {
+          if (config.crossEnabled && config.crossDirection) {
             const emaArray = values[`ema_${config.period}_array`] as number[];
             if (Array.isArray(emaArray) && lastIndex > 0) {
               const prevEma = emaArray[lastIndex - 1];
