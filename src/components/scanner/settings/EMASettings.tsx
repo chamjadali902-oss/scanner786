@@ -151,22 +151,43 @@ export function EMASettings({ condition, onUpdate, disabled, indicatorName = 'EM
                   />
                 </div>
                 {config.crossEnabled && (
-                  <Select
-                    value={config.crossDirection || 'cross_above'}
-                    onValueChange={(v) => updateEMA(config.id, { 
-                      crossDirection: v as 'any' | 'cross_above' | 'cross_below'
-                    })}
-                    disabled={disabled || !config.enabled}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cross_above">↑ Price Crossed Above {indicatorName} (Bullish)</SelectItem>
-                      <SelectItem value="cross_below">↓ Price Crossed Below {indicatorName} (Bearish)</SelectItem>
-                      <SelectItem value="any">Any Cross Direction</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Select
+                      value={config.crossDirection || 'cross_above'}
+                      onValueChange={(v) => updateEMA(config.id, { 
+                        crossDirection: v as 'any' | 'cross_above' | 'cross_below'
+                      })}
+                      disabled={disabled || !config.enabled}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cross_above">↑ Price Crossed Above {indicatorName} (Bullish)</SelectItem>
+                        <SelectItem value="cross_below">↓ Price Crossed Below {indicatorName} (Bearish)</SelectItem>
+                        <SelectItem value="any">Any Cross Direction</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Confirm Candles (closed after cross)</Label>
+                      <Input
+                        type="number"
+                        value={config.crossConfirmCandles ?? 0}
+                        onChange={(e) => updateEMA(config.id, { crossConfirmCandles: Number(e.target.value) })}
+                        min={0}
+                        max={20}
+                        className="h-8 text-xs font-mono"
+                        disabled={disabled || !config.enabled}
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        {(config.crossConfirmCandles ?? 0) === 0 
+                          ? 'No confirmation — detect cross on current candle'
+                          : `${config.crossConfirmCandles} candle${(config.crossConfirmCandles ?? 0) > 1 ? 's' : ''} must close ${config.crossDirection === 'cross_below' ? 'below' : 'above'} ${indicatorName} after cross`
+                        }
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

@@ -348,32 +348,53 @@ function evaluateCondition(
           // Cross direction check
           if (config.crossEnabled && config.crossDirection) {
             const emaArray = values[`ema_${config.period}_array`] as number[];
-            if (Array.isArray(emaArray) && lastIndex > 0) {
-              const prevEma = emaArray[lastIndex - 1];
-              const prevPrice = candles[lastIndex - 1].close;
+            const confirmCandles = config.crossConfirmCandles ?? 0;
+            
+            if (Array.isArray(emaArray) && lastIndex > confirmCandles) {
+              // Find the cross point: look back confirmCandles + 1 candles
+              const crossIdx = lastIndex - confirmCandles;
+              const prevEma = emaArray[crossIdx - 1];
+              const prevPrice = candles[crossIdx - 1].close;
+              const crossEma = emaArray[crossIdx];
+              const crossPrice = candles[crossIdx].close;
               
-              if (config.crossDirection === 'cross_above') {
-                // Price crossed EMA from below to above
-                if (!(prevPrice <= prevEma && price > emaValue)) {
+              let crossDetected = false;
+              let crossDirection = '';
+              
+              if (config.crossDirection === 'cross_above' || config.crossDirection === 'any') {
+                if (prevPrice <= prevEma && crossPrice > crossEma) {
+                  crossDetected = true;
+                  crossDirection = 'above';
+                }
+              }
+              if (!crossDetected && (config.crossDirection === 'cross_below' || config.crossDirection === 'any')) {
+                if (prevPrice >= prevEma && crossPrice < crossEma) {
+                  crossDetected = true;
+                  crossDirection = 'below';
+                }
+              }
+              
+              if (!crossDetected) {
+                allMatched = false;
+                continue;
+              }
+              
+              // Verify confirmation candles all closed on the correct side
+              if (confirmCandles > 0) {
+                let confirmed = true;
+                for (let i = crossIdx + 1; i <= lastIndex; i++) {
+                  const cClose = candles[i].close;
+                  const cEma = emaArray[i];
+                  if (crossDirection === 'above' && cClose <= cEma) { confirmed = false; break; }
+                  if (crossDirection === 'below' && cClose >= cEma) { confirmed = false; break; }
+                }
+                if (!confirmed) {
                   allMatched = false;
                   continue;
                 }
-                reasons.push(`Price crossed above EMA${config.period} (${emaValue.toFixed(2)})`);
-              } else if (config.crossDirection === 'cross_below') {
-                // Price crossed EMA from above to below
-                if (!(prevPrice >= prevEma && price < emaValue)) {
-                  allMatched = false;
-                  continue;
-                }
-                reasons.push(`Price crossed below EMA${config.period} (${emaValue.toFixed(2)})`);
-              } else if (config.crossDirection === 'any') {
-                const crossedAbove = prevPrice <= prevEma && price > emaValue;
-                const crossedBelow = prevPrice >= prevEma && price < emaValue;
-                if (!crossedAbove && !crossedBelow) {
-                  allMatched = false;
-                  continue;
-                }
-                reasons.push(`Price crossed ${crossedAbove ? 'above' : 'below'} EMA${config.period} (${emaValue.toFixed(2)})`);
+                reasons.push(`Price crossed ${crossDirection} EMA${config.period} + ${confirmCandles} candle${confirmCandles > 1 ? 's' : ''} confirmed`);
+              } else {
+                reasons.push(`Price crossed ${crossDirection} EMA${config.period} (${(emaValue as number).toFixed(2)})`);
               }
             } else {
               allMatched = false;

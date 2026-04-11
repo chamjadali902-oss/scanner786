@@ -41,6 +41,7 @@ export interface EMAConfig {
   pricePosition?: PricePosition; // Price above or below this EMA
   crossDirection?: 'any' | 'cross_above' | 'cross_below'; // Price crossed EMA from below/above
   crossEnabled?: boolean; // Toggle cross direction check
+  crossConfirmCandles?: number; // Number of candles that must close above/below EMA after cross
 }
 
 // Extended ScanCondition with feature-specific settings
