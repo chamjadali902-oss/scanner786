@@ -683,10 +683,13 @@ function evaluateCondition(
     }
 
     case 'smart-bullish': {
-      const score = values.smart_bullish;
-      if (typeof score !== 'number' || isNaN(score)) return { matched: false, reason: '' };
+      const patternFound = values.smart_bullish_pattern_found;
+      if (!patternFound) return { matched: false, reason: '' };
 
+      const score = values.smart_bullish as number;
       const threshold = condition.smartBullishThreshold ?? 60;
+      if (score < threshold) return { matched: false, reason: '' };
+
       const signal = values.smart_bullish_signal as string;
       const entry = values.smart_bullish_entry as number;
       const sl = values.smart_bullish_sl as number;
@@ -699,15 +702,12 @@ function evaluateCondition(
       const support = values.smart_bullish_support as number;
       const resistance = values.smart_bullish_resistance as number;
 
-      if (score >= threshold) {
-        const signalLabel = signal === 'strong_buy' ? '🟢 STRONG BUY' : signal === 'buy' ? '🟡 BUY' : '⚪ NEUTRAL';
-        const fmt = (v: number) => v >= 1 ? v.toFixed(2) : v.toFixed(6);
-        return {
-          matched: true,
-          reason: `Smart-Bullish ${signalLabel} (${score}/100) | Entry: ${fmt(entry)} | SL: ${fmt(sl)} (-${maxDown}%) | TP1: ${fmt(tp1)} | TP2: ${fmt(tp2)} (+${expMove}%) | TP3: ${fmt(tp3)} | R:R ${rr} | Support: ${fmt(support)} | Resistance: ${fmt(resistance)}`,
-        };
-      }
-      return { matched: false, reason: '' };
+      const signalLabel = signal === 'strong_buy' ? '🟢 STRONG BUY' : signal === 'buy' ? '🟡 BUY' : '⚪ NEUTRAL';
+      const fmt = (v: number) => v >= 1 ? v.toFixed(2) : v.toFixed(6);
+      return {
+        matched: true,
+        reason: `🔻 3-Candle Bottom ${signalLabel} (${score}/100) | Entry: ${fmt(entry)} | SL: ${fmt(sl)} (-${maxDown}%) | TP1: ${fmt(tp1)} | TP2: ${fmt(tp2)} (+${expMove}%) | TP3: ${fmt(tp3)} | R:R ${rr} | S: ${fmt(support)} | R: ${fmt(resistance)}`,
+      };
     }
 
     default:
