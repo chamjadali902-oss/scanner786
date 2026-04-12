@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { 
-  TrendingUp, Target, Shield, Crosshair, ArrowDown, ArrowUp, Layers,
+  Target, Shield, Crosshair, ArrowDown, ArrowUp, Layers,
   CandlestickChart
 } from 'lucide-react';
 
