@@ -58,14 +58,14 @@ export function SmartBullishSettings({ condition, onUpdate, disabled }: SmartBul
           <Slider
             value={[lookback]}
             onValueChange={([v]) => onUpdate({ smartBullishLookback: v })}
-            min={10} max={100} step={5}
+            min={3} max={100} step={1}
             disabled={disabled}
             className="flex-1"
           />
           <Input
             type="number" value={lookback}
-            onChange={(e) => onUpdate({ smartBullishLookback: Math.max(10, Math.min(200, Number(e.target.value))) })}
-            min={10} max={200}
+            onChange={(e) => onUpdate({ smartBullishLookback: Math.max(3, Math.min(200, Number(e.target.value))) })}
+            min={3} max={200}
             className="h-8 text-xs font-mono w-20"
             disabled={disabled}
           />
