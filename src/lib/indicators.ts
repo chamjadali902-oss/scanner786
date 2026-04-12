@@ -789,17 +789,13 @@ export function calculateFibonacciRetracement(candles: Candle[], lookbackPeriod 
 }
 
 // =====================================================
-// SMART-BULLISH INDICATOR v2
-// Deep candle analysis + Price Targets + Entry/TP/SL
-// Combines ATR, Swing Points, Volume Profile
+// SMART-BULLISH INDICATOR v3
+// 3-Candle Bottom Pattern Detection + Price Targets
+// Pattern: Red candle → liquidity grab below → retest & hold
 // =====================================================
 export interface SmartBullishResult {
   score: number;
-  sellerExhaustion: number;
-  buyerAbsorption: number;
-  momentumShift: number;
-  volumeConfirm: number;
-  priceRecovery: number;
+  patternFound: boolean;
   signal: 'strong_buy' | 'buy' | 'neutral' | 'weak';
   currentPrice: number;
   entryPrice: number;
@@ -819,13 +815,19 @@ export interface SmartBullishResult {
   swingLow: number;
   swingHigh: number;
   atrValue: number;
+  // Pattern candle details
+  candle1Low: number;
+  candle1Close: number;
+  candle2Low: number;
+  candle2Close: number;
+  candle3Low: number;
+  candle3Close: number;
 }
 
 export function calculateSmartBullish(candles: Candle[], lookback: number = 30): SmartBullishResult {
   const price = candles[candles.length - 1].close;
   const defaultResult: SmartBullishResult = {
-    score: 0, sellerExhaustion: 0, buyerAbsorption: 0,
-    momentumShift: 0, volumeConfirm: 0, priceRecovery: 0, signal: 'weak',
+    score: 0, patternFound: false, signal: 'weak',
     currentPrice: price, entryPrice: price, stopLoss: price * 0.97,
     takeProfit1: price * 1.02, takeProfit2: price * 1.04, takeProfit3: price * 1.06,
     riskRewardRatio: 1, expectedMovePercent: 2, maxDownsidePercent: 3,
@@ -834,13 +836,13 @@ export function calculateSmartBullish(candles: Candle[], lookback: number = 30):
     nearestSupport: price * 0.98, nearestResistance: price * 1.02,
     strongSupport: price * 0.95, strongResistance: price * 1.05,
     swingLow: price * 0.95, swingHigh: price * 1.05, atrValue: 0,
+    candle1Low: 0, candle1Close: 0, candle2Low: 0, candle2Close: 0,
+    candle3Low: 0, candle3Close: 0,
   };
 
   if (candles.length < lookback + 5) return defaultResult;
 
-  const recent = candles.slice(-lookback);
   const allAnalysis = candles.slice(-Math.min(candles.length, lookback * 3));
-  const halfLen = Math.floor(lookback / 2);
 
   // ========== ATR ==========
   const trValues: number[] = [];
@@ -904,82 +906,67 @@ export function calculateSmartBullish(candles: Candle[], lookback: number = 30):
   const strongRes = hvnAbove.length > 0 ? hvnAbove[0].price : nearRes + atrValue;
   const zw = atrValue * 0.3;
 
-  // ========== CANDLE ANALYSIS ==========
-  const cm = recent.map(c => {
-    const r = c.high - c.low;
-    if (r === 0) return { bp: 0.5, sp: 0.5, br: 0, lw: 0, uw: 0, bull: true, vol: c.volume };
-    return {
-      bp: (c.close - c.low) / r, sp: (c.high - c.close) / r,
-      br: Math.abs(c.close - c.open) / r,
-      lw: (Math.min(c.open, c.close) - c.low) / r,
-      uw: (c.high - Math.max(c.open, c.close)) / r,
-      bull: c.close >= c.open, vol: c.volume,
-    };
-  });
-  const om = cm.slice(0, halfLen);
-  const nm = cm.slice(halfLen);
+  // ========== 3-CANDLE BOTTOM PATTERN ==========
+  // Scan recent candles for the pattern (search last N groups of 3)
+  const tolerance = atrValue * 0.15; // tolerance for "equal low"
+  let patternFound = false;
+  let bestScore = 0;
+  let bestC1 = candles[candles.length - 3];
+  let bestC2 = candles[candles.length - 2];
+  let bestC3 = candles[candles.length - 1];
 
-  // 1. Seller Exhaustion (25%)
-  const oBB = om.filter(m => !m.bull).map(m => m.br);
-  const nBB = nm.filter(m => !m.bull).map(m => m.br);
-  const aOBB = oBB.length > 0 ? oBB.reduce((a, b) => a + b, 0) / oBB.length : 0;
-  const aNBB = nBB.length > 0 ? nBB.reduce((a, b) => a + b, 0) / nBB.length : 0;
-  const oBC = om.filter(m => !m.bull).length;
-  const nBC = nm.filter(m => !m.bull).length;
-  let se = 50;
-  if (aOBB > 0) se += ((aOBB - aNBB) / aOBB) * 50;
-  if (oBC > 0) se += ((oBC - nBC) / oBC) * 30;
-  se = Math.max(0, Math.min(100, se));
+  const searchWindow = Math.min(lookback, candles.length - 3);
+  for (let offset = 0; offset < searchWindow; offset++) {
+    const idx = candles.length - 3 - offset;
+    if (idx < 0) break;
 
-  // 2. Buyer Absorption (20%)
-  const oLW = om.map(m => m.lw).reduce((a, b) => a + b, 0) / om.length;
-  const nLW = nm.map(m => m.lw).reduce((a, b) => a + b, 0) / nm.length;
-  const oUW = om.map(m => m.uw).reduce((a, b) => a + b, 0) / om.length;
-  const nUW = nm.map(m => m.uw).reduce((a, b) => a + b, 0) / nm.length;
-  let ba = 50;
-  if (nLW > oLW) ba += Math.min(30, ((nLW - oLW) / Math.max(oLW, 0.01)) * 40);
-  if (nUW < oUW) ba += Math.min(20, ((oUW - nUW) / Math.max(oUW, 0.01)) * 25);
-  ba = Math.max(0, Math.min(100, ba));
+    const c1 = candles[idx];
+    const c2 = candles[idx + 1];
+    const c3 = candles[idx + 2];
 
-  // 3. Momentum Shift (25%)
-  const bps = cm.map(m => m.bp);
-  const nn = bps.length;
-  let sx = 0, sy = 0, sxy = 0, sx2 = 0;
-  for (let i = 0; i < nn; i++) { sx += i; sy += bps[i]; sxy += i * bps[i]; sx2 += i * i; }
-  const sl = (nn * sxy - sx * sy) / (nn * sx2 - sx * sx);
-  const l5b = cm.slice(-5).filter(m => m.bull).length;
-  const f5b = cm.slice(0, 5).filter(m => m.bull).length;
-  let ms = 50 + sl * 500 + (l5b - f5b) * 5;
-  ms = Math.max(0, Math.min(100, ms));
+    // Rule 1: C1 must be bearish (red candle)
+    if (c1.close >= c1.open) continue;
 
-  // 4. Volume Confirmation (15%)
-  const nbv = nm.filter(m => m.bull).map(m => m.vol);
-  const nsv = nm.filter(m => !m.bull).map(m => m.vol);
-  const abv = nbv.length > 0 ? nbv.reduce((a, b) => a + b, 0) / nbv.length : 0;
-  const asv = nsv.length > 0 ? nsv.reduce((a, b) => a + b, 0) / nsv.length : 0;
-  const oav = om.map(m => m.vol).reduce((a, b) => a + b, 0) / om.length;
-  const nav = nm.map(m => m.vol).reduce((a, b) => a + b, 0) / nm.length;
-  let vc = 50;
-  if (asv > 0) vc += Math.min(30, (abv / asv - 1) * 25);
-  if (oav > 0 && nav > oav) vc += Math.min(20, ((nav - oav) / oav) * 15);
-  vc = Math.max(0, Math.min(100, vc));
+    // Rule 2: C2 breaks below C1's low AND closes above C1's close
+    if (c2.low >= c1.low) continue;
+    if (c2.close <= c1.close) continue;
 
-  // 5. Price Recovery (15%)
-  const cp = recent.map(c => { const r = c.high - c.low; return r > 0 ? (c.close - c.low) / r : 0.5; });
-  const ocp = cp.slice(0, halfLen).reduce((a, b) => a + b, 0) / halfLen;
-  const ncp = cp.slice(halfLen).reduce((a, b) => a + b, 0) / nm.length;
-  const rLows = recent.slice(-10).map(c => c.low);
-  let hlc = 0;
-  for (let i = 1; i < rLows.length; i++) { if (rLows[i] >= rLows[i - 1]) hlc++; }
-  let pr = 50 + (ncp - ocp) * 60 + (hlc / (rLows.length - 1) - 0.5) * 30;
-  pr = Math.max(0, Math.min(100, pr));
+    // Rule 3: C3's low is near C1's low (equal or close) AND closes bullish (above open)
+    const lowDiff = Math.abs(c3.low - c1.low);
+    if (lowDiff > tolerance) continue;
+    if (c3.close <= c3.open) continue;
 
-  // SCORE
-  const score = Math.round(se * 0.25 + ba * 0.20 + ms * 0.25 + vc * 0.15 + pr * 0.15);
+    // Pattern found! Calculate quality score
+    patternFound = true;
+    let pScore = 70; // base score for pattern match
+
+    // Bonus: C2 wick below C1 low shows liquidity grab
+    const c2WickBelow = c1.low - c2.low;
+    if (c2WickBelow > 0) pScore += Math.min(10, (c2WickBelow / atrValue) * 20);
+
+    // Bonus: C3 closes higher than C2 close
+    if (c3.close > c2.close) pScore += 5;
+
+    // Bonus: Volume increasing on C2/C3
+    if (c2.volume > c1.volume) pScore += 5;
+    if (c3.volume > c1.volume) pScore += 5;
+
+    // Bonus: More recent pattern = better
+    pScore += Math.max(0, 5 - offset);
+
+    if (pScore > bestScore) {
+      bestScore = pScore;
+      bestC1 = c1;
+      bestC2 = c2;
+      bestC3 = c3;
+    }
+  }
+
+  const score = patternFound ? Math.min(100, bestScore) : 0;
   let signal: SmartBullishResult['signal'] = 'weak';
-  if (score >= 75) signal = 'strong_buy';
-  else if (score >= 60) signal = 'buy';
-  else if (score >= 45) signal = 'neutral';
+  if (score >= 85) signal = 'strong_buy';
+  else if (score >= 70) signal = 'buy';
+  else if (score >= 50) signal = 'neutral';
 
   // ========== PRICE TARGETS ==========
   const entryPrice = price;
@@ -996,9 +983,7 @@ export function calculateSmartBullish(candles: Candle[], lookback: number = 30):
 
   return {
     score: Math.max(0, Math.min(100, score)),
-    sellerExhaustion: Math.round(se), buyerAbsorption: Math.round(ba),
-    momentumShift: Math.round(ms), volumeConfirm: Math.round(vc), priceRecovery: Math.round(pr),
-    signal, currentPrice: price, entryPrice, stopLoss,
+    patternFound, signal, currentPrice: price, entryPrice, stopLoss,
     takeProfit1: tp1, takeProfit2: tp2, takeProfit3: tp3,
     riskRewardRatio: rrr, expectedMovePercent: emp, maxDownsidePercent: mdp,
     supportZone: { low: nearSup - zw, high: nearSup + zw },
@@ -1006,5 +991,8 @@ export function calculateSmartBullish(candles: Candle[], lookback: number = 30):
     nearestSupport: nearSup, nearestResistance: nearRes,
     strongSupport: strongSup, strongResistance: strongRes,
     swingLow, swingHigh, atrValue,
+    candle1Low: bestC1.low, candle1Close: bestC1.close,
+    candle2Low: bestC2.low, candle2Close: bestC2.close,
+    candle3Low: bestC3.low, candle3Close: bestC3.close,
   };
 }
