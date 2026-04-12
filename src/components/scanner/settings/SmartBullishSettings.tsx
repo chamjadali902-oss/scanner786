@@ -71,7 +71,7 @@ export function SmartBullishSettings({ condition, onUpdate, disabled }: SmartBul
           />
         </div>
         <p className="text-[10px] text-muted-foreground">
-          How many candles back to search for the 3-candle pattern. Default: 30
+          Minimum 3 candles (finds current pattern). Increase for deeper search. Default: 30
         </p>
       </div>
 
