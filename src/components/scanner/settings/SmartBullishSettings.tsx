@@ -3,8 +3,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { 
-  TrendingUp, Activity, BarChart3, Volume2, ArrowUpCircle, 
-  Target, Shield, Crosshair, ArrowDown, ArrowUp, Layers
+  Target, Shield, Crosshair, ArrowDown, ArrowUp, Layers,
+  CandlestickChart
 } from 'lucide-react';
 
 interface SmartBullishSettingsProps {
@@ -20,21 +20,40 @@ export function SmartBullishSettings({ condition, onUpdate, disabled }: SmartBul
   return (
     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/50">
       <div className="flex items-center gap-2">
-        <TrendingUp className="w-4 h-4 text-primary" />
-        <span className="text-sm font-medium text-primary">Smart-Bullish v2</span>
+        <CandlestickChart className="w-4 h-4 text-primary" />
+        <span className="text-sm font-medium text-primary">Smart-Bullish v3</span>
         <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
-          PRICE TARGETS
+          3-CANDLE BOTTOM
         </span>
       </div>
 
       <p className="text-[11px] text-muted-foreground leading-relaxed">
-        Deep candle analysis + <strong>exact price targets</strong>. Shows Entry, Stop Loss, 3 Take Profit levels,
-        Support/Resistance zones, expected move %, and Risk:Reward ratio.
+        Detects a <strong>3-candle bottom reversal</strong> pattern with price targets.
+        Finds liquidity grabs at strong bottoms for high-probability long entries.
       </p>
+
+      {/* Pattern Explanation */}
+      <div className="space-y-2 p-3 bg-background/50 rounded-md border border-border/30">
+        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Pattern Rules</Label>
+        <div className="grid grid-cols-1 gap-2">
+          <div className="flex items-start gap-2 text-[10px] text-muted-foreground">
+            <span className="text-red-400 font-bold mt-0.5 flex-shrink-0">C1</span>
+            <span><strong className="text-foreground/80">Red Candle:</strong> Bearish candle at a bottom — establishes the key low level</span>
+          </div>
+          <div className="flex items-start gap-2 text-[10px] text-muted-foreground">
+            <span className="text-green-400 font-bold mt-0.5 flex-shrink-0">C2</span>
+            <span><strong className="text-foreground/80">Liquidity Grab:</strong> Breaks below C1's low (grabs stops) then closes above C1's close — strong rejection</span>
+          </div>
+          <div className="flex items-start gap-2 text-[10px] text-muted-foreground">
+            <span className="text-blue-400 font-bold mt-0.5 flex-shrink-0">C3</span>
+            <span><strong className="text-foreground/80">Retest & Hold:</strong> Low equals C1's low (double bottom) and closes bullish — confirms buyers in control</span>
+          </div>
+        </div>
+      </div>
 
       {/* Lookback Period */}
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">Analysis Window (Candles)</Label>
+        <Label className="text-xs text-muted-foreground">Search Window (Candles)</Label>
         <div className="flex items-center gap-3">
           <Slider
             value={[lookback]}
@@ -52,13 +71,13 @@ export function SmartBullishSettings({ condition, onUpdate, disabled }: SmartBul
           />
         </div>
         <p className="text-[10px] text-muted-foreground">
-          More candles = more confirmation + better S/R levels. Default: 30
+          How many candles back to search for the 3-candle pattern. Default: 30
         </p>
       </div>
 
       {/* Threshold */}
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">Signal Threshold (Score 0-100)</Label>
+        <Label className="text-xs text-muted-foreground">Quality Threshold (Score 0-100)</Label>
         <div className="flex items-center gap-3">
           <Slider
             value={[threshold]}
@@ -76,7 +95,7 @@ export function SmartBullishSettings({ condition, onUpdate, disabled }: SmartBul
           />
         </div>
         <p className="text-[10px] text-muted-foreground">
-          75+ = Strong Buy, 60+ = Buy, 45+ = Neutral. Default: 60
+          85+ = Strong Buy, 70+ = Buy, 50+ = Neutral. Default: 60
         </p>
       </div>
 
@@ -85,10 +104,10 @@ export function SmartBullishSettings({ condition, onUpdate, disabled }: SmartBul
         <Label className="text-xs text-muted-foreground uppercase tracking-wider">What You Get</Label>
         <div className="grid grid-cols-1 gap-1.5">
           {[
-            { icon: Crosshair, label: 'Entry Price', desc: 'Exact entry point based on current price action', color: 'text-blue-400' },
-            { icon: Shield, label: 'Stop Loss', desc: 'Below nearest support + ATR buffer for safety', color: 'text-red-400' },
+            { icon: Crosshair, label: 'Entry Price', desc: 'Current price when pattern is detected', color: 'text-blue-400' },
+            { icon: Shield, label: 'Stop Loss', desc: 'Below nearest support + ATR buffer', color: 'text-red-400' },
             { icon: Target, label: '3 Take Profit Levels', desc: 'TP1 (conservative), TP2 (moderate), TP3 (aggressive)', color: 'text-green-400' },
-            { icon: ArrowUp, label: 'Expected Move %', desc: 'How much price can move up to TP2', color: 'text-emerald-400' },
+            { icon: ArrowUp, label: 'Expected Move %', desc: 'Upside potential to TP2', color: 'text-emerald-400' },
             { icon: ArrowDown, label: 'Max Downside %', desc: 'Maximum loss if SL hits', color: 'text-orange-400' },
             { icon: Layers, label: 'Support/Resistance Zones', desc: 'Key zones from swing points + volume profile', color: 'text-purple-400' },
           ].map(({ icon: Icon, label, desc, color }) => (
@@ -100,34 +119,16 @@ export function SmartBullishSettings({ condition, onUpdate, disabled }: SmartBul
         </div>
       </div>
 
-      {/* Analysis Factors */}
+      {/* Score Bonuses */}
       <div className="pt-3 border-t border-border/50 space-y-2">
-        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Score Factors</Label>
-        <div className="grid grid-cols-1 gap-1.5">
-          {[
-            { icon: Activity, label: 'Seller Exhaustion', desc: 'Bearish bodies shrinking (25%)' },
-            { icon: ArrowUpCircle, label: 'Buyer Absorption', desc: 'Lower wicks increasing (20%)' },
-            { icon: TrendingUp, label: 'Momentum Shift', desc: 'Buyer power trend rising (25%)' },
-            { icon: Volume2, label: 'Volume Confirmation', desc: 'Higher volume on bullish candles (15%)' },
-            { icon: BarChart3, label: 'Price Recovery', desc: 'Higher lows + closes trending up (15%)' },
-          ].map(({ icon: Icon, label, desc }) => (
-            <div key={label} className="flex items-start gap-2 text-[10px] text-muted-foreground">
-              <Icon className="w-3 h-3 mt-0.5 text-primary/70 flex-shrink-0" />
-              <span><strong className="text-foreground/80">{label}:</strong> {desc}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Target Calculation Methods */}
-      <div className="pt-3 border-t border-border/50 space-y-2">
-        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Target Calculation</Label>
+        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Quality Score Factors</Label>
         <div className="grid grid-cols-1 gap-1">
           {[
-            'ATR-based: Volatility-adjusted targets & stop loss',
-            'Swing Points: Previous highs/lows as natural targets',
-            'Volume Profile: High-volume zones as strong S/R levels',
-            'All combined for most accurate price prediction',
+            'Base 70 points when 3-candle pattern is found',
+            'Bonus: Deeper C2 wick below C1 low (bigger liquidity grab)',
+            'Bonus: C3 closes higher than C2 close (momentum)',
+            'Bonus: Volume increases on C2 and C3 vs C1',
+            'Bonus: More recent pattern gets higher priority',
           ].map((text) => (
             <p key={text} className="text-[9px] text-muted-foreground pl-3 border-l-2 border-primary/30">
               {text}

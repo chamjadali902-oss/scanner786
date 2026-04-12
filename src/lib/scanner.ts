@@ -150,15 +150,11 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.fib_level_0786 = fib.levels['0.786'];
   values.fib_level_1 = fib.levels['1'];
 
-  // Smart-Bullish
+  // Smart-Bullish (3-Candle Bottom Pattern)
   const sbLookback = condition?.smartBullishLookback ?? 30;
   const smartBullish = indicators.calculateSmartBullish(candles, sbLookback);
   values.smart_bullish = smartBullish.score;
-  values.smart_bullish_seller_exhaustion = smartBullish.sellerExhaustion;
-  values.smart_bullish_buyer_absorption = smartBullish.buyerAbsorption;
-  values.smart_bullish_momentum_shift = smartBullish.momentumShift;
-  values.smart_bullish_volume_confirm = smartBullish.volumeConfirm;
-  values.smart_bullish_price_recovery = smartBullish.priceRecovery;
+  values.smart_bullish_pattern_found = smartBullish.patternFound;
   values.smart_bullish_signal = smartBullish.signal;
   values.smart_bullish_entry = smartBullish.entryPrice;
   values.smart_bullish_sl = smartBullish.stopLoss;
@@ -179,6 +175,12 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.smart_bullish_swing_low = smartBullish.swingLow;
   values.smart_bullish_swing_high = smartBullish.swingHigh;
   values.smart_bullish_atr = smartBullish.atrValue;
+  values.smart_bullish_c1_low = smartBullish.candle1Low;
+  values.smart_bullish_c1_close = smartBullish.candle1Close;
+  values.smart_bullish_c2_low = smartBullish.candle2Low;
+  values.smart_bullish_c2_close = smartBullish.candle2Close;
+  values.smart_bullish_c3_low = smartBullish.candle3Low;
+  values.smart_bullish_c3_close = smartBullish.candle3Close;
 
   // Current price
   values.price = candles[lastIndex].close;
@@ -681,10 +683,13 @@ function evaluateCondition(
     }
 
     case 'smart-bullish': {
-      const score = values.smart_bullish;
-      if (typeof score !== 'number' || isNaN(score)) return { matched: false, reason: '' };
+      const patternFound = values.smart_bullish_pattern_found;
+      if (!patternFound) return { matched: false, reason: '' };
 
+      const score = values.smart_bullish as number;
       const threshold = condition.smartBullishThreshold ?? 60;
+      if (score < threshold) return { matched: false, reason: '' };
+
       const signal = values.smart_bullish_signal as string;
       const entry = values.smart_bullish_entry as number;
       const sl = values.smart_bullish_sl as number;
@@ -697,15 +702,12 @@ function evaluateCondition(
       const support = values.smart_bullish_support as number;
       const resistance = values.smart_bullish_resistance as number;
 
-      if (score >= threshold) {
-        const signalLabel = signal === 'strong_buy' ? '🟢 STRONG BUY' : signal === 'buy' ? '🟡 BUY' : '⚪ NEUTRAL';
-        const fmt = (v: number) => v >= 1 ? v.toFixed(2) : v.toFixed(6);
-        return {
-          matched: true,
-          reason: `Smart-Bullish ${signalLabel} (${score}/100) | Entry: ${fmt(entry)} | SL: ${fmt(sl)} (-${maxDown}%) | TP1: ${fmt(tp1)} | TP2: ${fmt(tp2)} (+${expMove}%) | TP3: ${fmt(tp3)} | R:R ${rr} | Support: ${fmt(support)} | Resistance: ${fmt(resistance)}`,
-        };
-      }
-      return { matched: false, reason: '' };
+      const signalLabel = signal === 'strong_buy' ? '🟢 STRONG BUY' : signal === 'buy' ? '🟡 BUY' : '⚪ NEUTRAL';
+      const fmt = (v: number) => v >= 1 ? v.toFixed(2) : v.toFixed(6);
+      return {
+        matched: true,
+        reason: `🔻 3-Candle Bottom ${signalLabel} (${score}/100) | Entry: ${fmt(entry)} | SL: ${fmt(sl)} (-${maxDown}%) | TP1: ${fmt(tp1)} | TP2: ${fmt(tp2)} (+${expMove}%) | TP3: ${fmt(tp3)} | R:R ${rr} | S: ${fmt(support)} | R: ${fmt(resistance)}`,
+      };
     }
 
     default:
