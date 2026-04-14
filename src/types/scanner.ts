@@ -130,6 +130,10 @@ export interface ScanCondition {
   smartBullishLookback?: number; // Number of candles to analyze (default 30)
   smartBullishThreshold?: number; // Minimum score to trigger (default 60)
   
+  // Trend (uptrend/downtrend) settings
+  trendMinRetracement?: number; // Minimum Fibonacci retracement % for valid pullback (default 25)
+  trendBosCount?: number; // Number of BOS required to confirm trend (1-5, default 2)
+  
   // Price position relative to indicator
   pricePosition?: PricePosition;
 }

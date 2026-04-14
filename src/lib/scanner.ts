@@ -262,8 +262,8 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.discount_zone = smc.detectDiscountZone(candles);
   values.breaker_block = smc.detectBreakerBlock(candles);
   values.volume_spike = smc.detectVolumeSpike(candles);
-  values.uptrend = smc.detectUptrend(candles);
-  values.downtrend = smc.detectDowntrend(candles);
+  values.uptrend = smc.detectUptrend(candles, condition?.trendMinRetracement ?? 25, condition?.trendBosCount ?? 2);
+  values.downtrend = smc.detectDowntrend(candles, condition?.trendMinRetracement ?? 25, condition?.trendBosCount ?? 2);
   
   return values;
 }
