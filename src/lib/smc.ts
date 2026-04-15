@@ -483,9 +483,6 @@ export function detectDowntrendDetail(candles: Candle[], minRetracementPct: numb
   };
 }
   
-  const recentHighs = swingHighs.slice(-requiredSwings);
-  const recentLows = swingLows.slice(-requiredSwings);
-  
   // Check required number of Lower Highs
   for (let i = 1; i < recentHighs.length; i++) {
     if (recentHighs[i].price >= recentHighs[i - 1].price) return false;
