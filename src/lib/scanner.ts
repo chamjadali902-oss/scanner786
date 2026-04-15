@@ -228,7 +228,7 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
                                    (currPrice < bb.lower[lastIndex] && prevPrice >= bb.lower[lastIndex - 1]) ? 'bearish' : 'none';
   }
 
-  // Candlestick Patterns
+  // Candlestick Patterns - detect on latest candles
   values.doji = patterns.detectDoji(candles);
   values.hammer = patterns.detectHammer(candles);
   values.shooting_star = patterns.detectShootingStar(candles);
@@ -244,6 +244,26 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.three_black_crows = patterns.detectThreeBlackCrows(candles);
   values.inside_bar = patterns.detectInsideBar(candles);
   values.spinning_top = patterns.detectSpinningTop(candles);
+
+  // Also detect patterns one candle back (for confirmation mode)
+  const prevCandles = candles.slice(0, -1);
+  if (prevCandles.length >= 3) {
+    values.doji_prev = patterns.detectDoji(prevCandles);
+    values.hammer_prev = patterns.detectHammer(prevCandles);
+    values.shooting_star_prev = patterns.detectShootingStar(prevCandles);
+    values.bullish_engulfing_prev = patterns.detectBullishEngulfing(prevCandles);
+    values.bearish_engulfing_prev = patterns.detectBearishEngulfing(prevCandles);
+    values.morning_star_prev = patterns.detectMorningStar(prevCandles);
+    values.evening_star_prev = patterns.detectEveningStar(prevCandles);
+    values.marubozu_prev = patterns.detectMarubozu(prevCandles);
+    values.bullish_harami_prev = patterns.detectBullishHarami(prevCandles);
+    values.bearish_harami_prev = patterns.detectBearishHarami(prevCandles);
+    values.inverted_hammer_prev = patterns.detectInvertedHammer(prevCandles);
+    values.three_white_soldiers_prev = patterns.detectThreeWhiteSoldiers(prevCandles);
+    values.three_black_crows_prev = patterns.detectThreeBlackCrows(prevCandles);
+    values.inside_bar_prev = patterns.detectInsideBar(prevCandles);
+    values.spinning_top_prev = patterns.detectSpinningTop(prevCandles);
+  }
   
   // SMC Concepts
   values.bos_bullish = smc.detectBullishBOS(candles);
