@@ -482,40 +482,5 @@ export function detectDowntrendDetail(candles: Candle[], minRetracementPct: numb
     bosCount,
   };
 }
-  
-  // Check required number of Lower Highs
-  for (let i = 1; i < recentHighs.length; i++) {
-    if (recentHighs[i].price >= recentHighs[i - 1].price) return false;
-  }
-  
-  // Check required number of Lower Lows (BOS confirmations)
-  for (let i = 1; i < recentLows.length; i++) {
-    if (recentLows[i].price >= recentLows[i - 1].price) return false;
-  }
-  
-  // Validate pullback retracement
-  const minRetracement = minRetracementPct / 100;
-  
-  for (let i = 0; i < recentLows.length - 1; i++) {
-    const swingLow = recentLows[i];
-    const nextSwingLow = recentLows[i + 1];
-    
-    // Find the swing high between these two swing lows
-    const pullbackHigh = swingHighs.find(
-      p => p.index > swingLow.index && p.index < nextSwingLow.index
-    );
-    
-    if (!pullbackHigh) return false;
-    
-    // Calculate retracement: how much did price pull back from the swing low to the swing high
-    const impulseRange = (i > 0 ? recentHighs[i - 1]?.price ?? pullbackHigh.price : pullbackHigh.price) - swingLow.price;
-    if (impulseRange <= 0) continue;
-    
-    const pullbackDepth = pullbackHigh.price - swingLow.price;
-    const retracementRatio = pullbackDepth / impulseRange;
-    
-    if (retracementRatio < minRetracement) return false;
-  }
-  
-  return true;
-}
+
+
