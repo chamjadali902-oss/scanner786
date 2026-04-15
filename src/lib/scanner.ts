@@ -228,7 +228,7 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
                                    (currPrice < bb.lower[lastIndex] && prevPrice >= bb.lower[lastIndex - 1]) ? 'bearish' : 'none';
   }
 
-  // Candlestick Patterns
+  // Candlestick Patterns - detect on latest candles
   values.doji = patterns.detectDoji(candles);
   values.hammer = patterns.detectHammer(candles);
   values.shooting_star = patterns.detectShootingStar(candles);
@@ -244,6 +244,26 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.three_black_crows = patterns.detectThreeBlackCrows(candles);
   values.inside_bar = patterns.detectInsideBar(candles);
   values.spinning_top = patterns.detectSpinningTop(candles);
+
+  // Also detect patterns one candle back (for confirmation mode)
+  const prevCandles = candles.slice(0, -1);
+  if (prevCandles.length >= 3) {
+    values.doji_prev = patterns.detectDoji(prevCandles);
+    values.hammer_prev = patterns.detectHammer(prevCandles);
+    values.shooting_star_prev = patterns.detectShootingStar(prevCandles);
+    values.bullish_engulfing_prev = patterns.detectBullishEngulfing(prevCandles);
+    values.bearish_engulfing_prev = patterns.detectBearishEngulfing(prevCandles);
+    values.morning_star_prev = patterns.detectMorningStar(prevCandles);
+    values.evening_star_prev = patterns.detectEveningStar(prevCandles);
+    values.marubozu_prev = patterns.detectMarubozu(prevCandles);
+    values.bullish_harami_prev = patterns.detectBullishHarami(prevCandles);
+    values.bearish_harami_prev = patterns.detectBearishHarami(prevCandles);
+    values.inverted_hammer_prev = patterns.detectInvertedHammer(prevCandles);
+    values.three_white_soldiers_prev = patterns.detectThreeWhiteSoldiers(prevCandles);
+    values.three_black_crows_prev = patterns.detectThreeBlackCrows(prevCandles);
+    values.inside_bar_prev = patterns.detectInsideBar(prevCandles);
+    values.spinning_top_prev = patterns.detectSpinningTop(prevCandles);
+  }
   
   // SMC Concepts
   values.bos_bullish = smc.detectBullishBOS(candles);
@@ -612,7 +632,78 @@ function evaluateCondition(
       return { matched: false, reason: '' };
     }
 
-    case 'pattern':
+    case 'pattern': {
+      const featureDef = FEATURES.find(f => f.id === condition.feature);
+      const isBullishPattern = featureDef && (
+        featureDef.name.toLowerCase().includes('bullish') || 
+        ['hammer', 'morning_star', 'inverted_hammer', 'three_white_soldiers'].includes(featureDef.id)
+      );
+      const isBearishPattern = featureDef && (
+        featureDef.name.toLowerCase().includes('bearish') || 
+        ['shooting_star', 'evening_star', 'three_black_crows'].includes(featureDef.id)
+      );
+      const isDirectional = isBullishPattern || isBearishPattern;
+
+      // Confirmation mode
+      if (condition.patternConfirmation && isDirectional) {
+        const prevPatternDetected = values[`${condition.feature}_prev`] === true;
+        if (!prevPatternDetected) return { matched: false, reason: '' };
+
+        const lastCandle = candles[candles.length - 1];
+        const patternCandle = candles[candles.length - 2]; // The candle where pattern formed
+        const confirmParts: string[] = [];
+        let confirmed = true;
+
+        // Liquidity Sweep check
+        if (condition.patternLiquiditySweep !== false) {
+          if (isBullishPattern) {
+            // Wick below pattern candle low = sweep
+            if (lastCandle.low < patternCandle.low) {
+              confirmParts.push(`Sweep ✓ (low ${lastCandle.low < 1 ? lastCandle.low.toFixed(6) : lastCandle.low.toFixed(2)})`);
+            } else {
+              confirmed = false;
+            }
+          } else {
+            // Wick above pattern candle high = sweep
+            if (lastCandle.high > patternCandle.high) {
+              confirmParts.push(`Sweep ✓ (high ${lastCandle.high < 1 ? lastCandle.high.toFixed(6) : lastCandle.high.toFixed(2)})`);
+            } else {
+              confirmed = false;
+            }
+          }
+        }
+
+        // Candle Close check
+        if (condition.patternCandleClose !== false && confirmed) {
+          if (isBullishPattern) {
+            // Close above pattern candle close
+            if (lastCandle.close > patternCandle.close) {
+              confirmParts.push(`Close above ✓`);
+            } else {
+              confirmed = false;
+            }
+          } else {
+            // Close below pattern candle close
+            if (lastCandle.close < patternCandle.close) {
+              confirmParts.push(`Close below ✓`);
+            } else {
+              confirmed = false;
+            }
+          }
+        }
+
+        if (!confirmed) return { matched: false, reason: '' };
+        return { matched: true, reason: `${feature.name} + Confirmation (${confirmParts.join(' | ')})` };
+      }
+
+      // Normal mode - no confirmation
+      const value = values[condition.feature];
+      if (value === true) {
+        return { matched: true, reason: `${feature.name} detected` };
+      }
+      return { matched: false, reason: '' };
+    }
+
     case 'smc': {
       const value = values[condition.feature];
       if (value === true) {
