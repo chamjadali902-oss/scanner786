@@ -262,8 +262,12 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.discount_zone = smc.detectDiscountZone(candles);
   values.breaker_block = smc.detectBreakerBlock(candles);
   values.volume_spike = smc.detectVolumeSpike(candles);
-  values.uptrend = smc.detectUptrend(candles, condition?.trendMinRetracement ?? 25, condition?.trendBosCount ?? 2);
-  values.downtrend = smc.detectDowntrend(candles, condition?.trendMinRetracement ?? 25, condition?.trendBosCount ?? 2);
+  const uptrendDetail = smc.detectUptrendDetail(candles, condition?.trendMinRetracement ?? 25, condition?.trendBosCount ?? 2);
+  values.uptrend = uptrendDetail.detected;
+  values.uptrend_detail = JSON.stringify(uptrendDetail);
+  const downtrendDetail = smc.detectDowntrendDetail(candles, condition?.trendMinRetracement ?? 25, condition?.trendBosCount ?? 2);
+  values.downtrend = downtrendDetail.detected;
+  values.downtrend_detail = JSON.stringify(downtrendDetail);
   
   return values;
 }
@@ -610,9 +614,30 @@ function evaluateCondition(
 
     case 'pattern':
     case 'smc': {
-      // Boolean patterns
       const value = values[condition.feature];
       if (value === true) {
+        // For uptrend/downtrend, show detailed swing point and retracement info
+        if (condition.feature === 'uptrend' || condition.feature === 'downtrend') {
+          const detailKey = condition.feature === 'uptrend' ? 'uptrend_detail' : 'downtrend_detail';
+          const detailStr = values[detailKey] as string;
+          if (detailStr) {
+            try {
+              const detail = JSON.parse(detailStr) as import('./smc').TrendDetail;
+              const fmt = (v: number) => v >= 1 ? v.toFixed(2) : v.toFixed(6);
+              const label = condition.feature === 'uptrend' ? '📈 Uptrend' : '📉 Downtrend';
+              const hhll = condition.feature === 'uptrend' ? 'HH/HL' : 'LH/LL';
+              
+              const swingHighsStr = detail.swingHighs.map(s => fmt(s.price)).join(' → ');
+              const swingLowsStr = detail.swingLows.map(s => fmt(s.price)).join(' → ');
+              const retStr = detail.retracements.map(r => `${r.percent}%`).join(', ');
+              
+              return {
+                matched: true,
+                reason: `${label} (${hhll}) | BOS: ${detail.bosCount} | Highs: ${swingHighsStr} | Lows: ${swingLowsStr} | Pullback: ${retStr}`,
+              };
+            } catch {}
+          }
+        }
         return { matched: true, reason: `${feature.name} detected` };
       }
       return { matched: false, reason: '' };

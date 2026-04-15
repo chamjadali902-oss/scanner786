@@ -346,106 +346,141 @@ export function detectVolumeSpike(candles: Candle[], multiplier: number = 2): bo
   return currentCandle.volume >= avgVolume * multiplier;
 }
 
+// Trend detail result
+export interface TrendDetail {
+  detected: boolean;
+  swingHighs: { price: number; index: number }[];
+  swingLows: { price: number; index: number }[];
+  retracements: { from: number; to: number; percent: number }[];
+  bosCount: number;
+}
+
 // Uptrend - Valid Higher Highs and Higher Lows with Fibonacci retracement pullback validation
 export function detectUptrend(candles: Candle[], minRetracementPct: number = 25, bosCount: number = 2): boolean {
-  if (candles.length < 20) return false;
+  return detectUptrendDetail(candles, minRetracementPct, bosCount).detected;
+}
+
+export function detectUptrendDetail(candles: Candle[], minRetracementPct: number = 25, bosCount: number = 2): TrendDetail {
+  const empty: TrendDetail = { detected: false, swingHighs: [], swingLows: [], retracements: [], bosCount: 0 };
+  if (candles.length < 20) return empty;
   
   const swingPoints = findSwingPoints(candles, 3);
   const swingHighs = swingPoints.filter(p => p.type === 'high');
   const swingLows = swingPoints.filter(p => p.type === 'low');
   
   const requiredSwings = bosCount + 1;
-  if (swingHighs.length < requiredSwings || swingLows.length < requiredSwings) return false;
+  if (swingHighs.length < requiredSwings || swingLows.length < requiredSwings) return empty;
   
   const recentHighs = swingHighs.slice(-requiredSwings);
   const recentLows = swingLows.slice(-requiredSwings);
   
-  // Check required number of Higher Highs (BOS confirmations)
   for (let i = 1; i < recentHighs.length; i++) {
-    if (recentHighs[i].price <= recentHighs[i - 1].price) return false;
+    if (recentHighs[i].price <= recentHighs[i - 1].price) return empty;
   }
   
-  // Check required number of Higher Lows
   for (let i = 1; i < recentLows.length; i++) {
-    if (recentLows[i].price <= recentLows[i - 1].price) return false;
+    if (recentLows[i].price <= recentLows[i - 1].price) return empty;
   }
   
-  // Validate pullback retracement for each swing
-  // For each consecutive HH pair, the pullback (HL between them) must retrace at least minRetracementPct%
   const minRetracement = minRetracementPct / 100;
+  const retracements: { from: number; to: number; percent: number }[] = [];
   
   for (let i = 0; i < recentHighs.length - 1; i++) {
     const swingHigh = recentHighs[i];
     const nextSwingHigh = recentHighs[i + 1];
     
-    // Find the swing low between these two swing highs
     const pullbackLow = swingLows.find(
       p => p.index > swingHigh.index && p.index < nextSwingHigh.index
     );
     
-    if (!pullbackLow) return false;
+    if (!pullbackLow) return empty;
     
-    // Calculate retracement: how much did price pull back from the swing high to the swing low
     const impulseRange = swingHigh.price - (i > 0 ? recentLows[i - 1]?.price ?? pullbackLow.price : pullbackLow.price);
     if (impulseRange <= 0) continue;
     
     const pullbackDepth = swingHigh.price - pullbackLow.price;
     const retracementRatio = pullbackDepth / impulseRange;
     
-    // Pullback must retrace at least the minimum percentage of the previous impulse
-    if (retracementRatio < minRetracement) return false;
+    if (retracementRatio < minRetracement) return empty;
+    
+    retracements.push({
+      from: swingHigh.price,
+      to: pullbackLow.price,
+      percent: Math.round(retracementRatio * 100),
+    });
   }
   
-  return true;
+  return {
+    detected: true,
+    swingHighs: recentHighs.map(p => ({ price: p.price, index: p.index })),
+    swingLows: recentLows.map(p => ({ price: p.price, index: p.index })),
+    retracements,
+    bosCount,
+  };
 }
 
 // Downtrend - Valid Lower Highs and Lower Lows with Fibonacci retracement pullback validation
 export function detectDowntrend(candles: Candle[], minRetracementPct: number = 25, bosCount: number = 2): boolean {
-  if (candles.length < 20) return false;
+  return detectDowntrendDetail(candles, minRetracementPct, bosCount).detected;
+}
+
+export function detectDowntrendDetail(candles: Candle[], minRetracementPct: number = 25, bosCount: number = 2): TrendDetail {
+  const empty: TrendDetail = { detected: false, swingHighs: [], swingLows: [], retracements: [], bosCount: 0 };
+  if (candles.length < 20) return empty;
   
   const swingPoints = findSwingPoints(candles, 3);
   const swingHighs = swingPoints.filter(p => p.type === 'high');
   const swingLows = swingPoints.filter(p => p.type === 'low');
   
   const requiredSwings = bosCount + 1;
-  if (swingHighs.length < requiredSwings || swingLows.length < requiredSwings) return false;
+  if (swingHighs.length < requiredSwings || swingLows.length < requiredSwings) return empty;
   
   const recentHighs = swingHighs.slice(-requiredSwings);
   const recentLows = swingLows.slice(-requiredSwings);
   
-  // Check required number of Lower Highs
   for (let i = 1; i < recentHighs.length; i++) {
-    if (recentHighs[i].price >= recentHighs[i - 1].price) return false;
+    if (recentHighs[i].price >= recentHighs[i - 1].price) return empty;
   }
   
-  // Check required number of Lower Lows (BOS confirmations)
   for (let i = 1; i < recentLows.length; i++) {
-    if (recentLows[i].price >= recentLows[i - 1].price) return false;
+    if (recentLows[i].price >= recentLows[i - 1].price) return empty;
   }
   
-  // Validate pullback retracement
   const minRetracement = minRetracementPct / 100;
+  const retracements: { from: number; to: number; percent: number }[] = [];
   
   for (let i = 0; i < recentLows.length - 1; i++) {
     const swingLow = recentLows[i];
     const nextSwingLow = recentLows[i + 1];
     
-    // Find the swing high between these two swing lows
     const pullbackHigh = swingHighs.find(
       p => p.index > swingLow.index && p.index < nextSwingLow.index
     );
     
-    if (!pullbackHigh) return false;
+    if (!pullbackHigh) return empty;
     
-    // Calculate retracement: how much did price pull back from the swing low to the swing high
     const impulseRange = (i > 0 ? recentHighs[i - 1]?.price ?? pullbackHigh.price : pullbackHigh.price) - swingLow.price;
     if (impulseRange <= 0) continue;
     
     const pullbackDepth = pullbackHigh.price - swingLow.price;
     const retracementRatio = pullbackDepth / impulseRange;
     
-    if (retracementRatio < minRetracement) return false;
+    if (retracementRatio < minRetracement) return empty;
+    
+    retracements.push({
+      from: swingLow.price,
+      to: pullbackHigh.price,
+      percent: Math.round(retracementRatio * 100),
+    });
   }
   
-  return true;
+  return {
+    detected: true,
+    swingHighs: recentHighs.map(p => ({ price: p.price, index: p.index })),
+    swingLows: recentLows.map(p => ({ price: p.price, index: p.index })),
+    retracements,
+    bosCount,
+  };
 }
+
+
