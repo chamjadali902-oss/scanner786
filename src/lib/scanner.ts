@@ -614,9 +614,30 @@ function evaluateCondition(
 
     case 'pattern':
     case 'smc': {
-      // Boolean patterns
       const value = values[condition.feature];
       if (value === true) {
+        // For uptrend/downtrend, show detailed swing point and retracement info
+        if (condition.feature === 'uptrend' || condition.feature === 'downtrend') {
+          const detailKey = condition.feature === 'uptrend' ? 'uptrend_detail' : 'downtrend_detail';
+          const detailStr = values[detailKey] as string;
+          if (detailStr) {
+            try {
+              const detail = JSON.parse(detailStr) as import('./smc').TrendDetail;
+              const fmt = (v: number) => v >= 1 ? v.toFixed(2) : v.toFixed(6);
+              const label = condition.feature === 'uptrend' ? '📈 Uptrend' : '📉 Downtrend';
+              const hhll = condition.feature === 'uptrend' ? 'HH/HL' : 'LH/LL';
+              
+              const swingHighsStr = detail.swingHighs.map(s => fmt(s.price)).join(' → ');
+              const swingLowsStr = detail.swingLows.map(s => fmt(s.price)).join(' → ');
+              const retStr = detail.retracements.map(r => `${r.percent}%`).join(', ');
+              
+              return {
+                matched: true,
+                reason: `${label} (${hhll}) | BOS: ${detail.bosCount} | Highs: ${swingHighsStr} | Lows: ${swingLowsStr} | Pullback: ${retStr}`,
+              };
+            } catch {}
+          }
+        }
         return { matched: true, reason: `${feature.name} detected` };
       }
       return { matched: false, reason: '' };
