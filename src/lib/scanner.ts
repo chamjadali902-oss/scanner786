@@ -632,7 +632,78 @@ function evaluateCondition(
       return { matched: false, reason: '' };
     }
 
-    case 'pattern':
+    case 'pattern': {
+      const featureDef = FEATURES.find(f => f.id === condition.feature);
+      const isBullishPattern = featureDef && (
+        featureDef.name.toLowerCase().includes('bullish') || 
+        ['hammer', 'morning_star', 'inverted_hammer', 'three_white_soldiers'].includes(featureDef.id)
+      );
+      const isBearishPattern = featureDef && (
+        featureDef.name.toLowerCase().includes('bearish') || 
+        ['shooting_star', 'evening_star', 'three_black_crows'].includes(featureDef.id)
+      );
+      const isDirectional = isBullishPattern || isBearishPattern;
+
+      // Confirmation mode
+      if (condition.patternConfirmation && isDirectional) {
+        const prevPatternDetected = values[`${condition.feature}_prev`] === true;
+        if (!prevPatternDetected) return { matched: false, reason: '' };
+
+        const lastCandle = candles[candles.length - 1];
+        const patternCandle = candles[candles.length - 2]; // The candle where pattern formed
+        const confirmParts: string[] = [];
+        let confirmed = true;
+
+        // Liquidity Sweep check
+        if (condition.patternLiquiditySweep !== false) {
+          if (isBullishPattern) {
+            // Wick below pattern candle low = sweep
+            if (lastCandle.low < patternCandle.low) {
+              confirmParts.push(`Sweep ✓ (low ${lastCandle.low < 1 ? lastCandle.low.toFixed(6) : lastCandle.low.toFixed(2)})`);
+            } else {
+              confirmed = false;
+            }
+          } else {
+            // Wick above pattern candle high = sweep
+            if (lastCandle.high > patternCandle.high) {
+              confirmParts.push(`Sweep ✓ (high ${lastCandle.high < 1 ? lastCandle.high.toFixed(6) : lastCandle.high.toFixed(2)})`);
+            } else {
+              confirmed = false;
+            }
+          }
+        }
+
+        // Candle Close check
+        if (condition.patternCandleClose !== false && confirmed) {
+          if (isBullishPattern) {
+            // Close above pattern candle close
+            if (lastCandle.close > patternCandle.close) {
+              confirmParts.push(`Close above ✓`);
+            } else {
+              confirmed = false;
+            }
+          } else {
+            // Close below pattern candle close
+            if (lastCandle.close < patternCandle.close) {
+              confirmParts.push(`Close below ✓`);
+            } else {
+              confirmed = false;
+            }
+          }
+        }
+
+        if (!confirmed) return { matched: false, reason: '' };
+        return { matched: true, reason: `${feature.name} + Confirmation (${confirmParts.join(' | ')})` };
+      }
+
+      // Normal mode - no confirmation
+      const value = values[condition.feature];
+      if (value === true) {
+        return { matched: true, reason: `${feature.name} detected` };
+      }
+      return { matched: false, reason: '' };
+    }
+
     case 'smc': {
       const value = values[condition.feature];
       if (value === true) {
