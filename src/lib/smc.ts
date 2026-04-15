@@ -483,62 +483,6 @@ export function detectDowntrendDetail(candles: Candle[], minRetracementPct: numb
   };
 }
   
-  const requiredSwings = bosCount + 1;
-  if (swingHighs.length < requiredSwings || swingLows.length < requiredSwings) return false;
-  
-  const recentHighs = swingHighs.slice(-requiredSwings);
-  const recentLows = swingLows.slice(-requiredSwings);
-  
-  // Check required number of Higher Highs (BOS confirmations)
-  for (let i = 1; i < recentHighs.length; i++) {
-    if (recentHighs[i].price <= recentHighs[i - 1].price) return false;
-  }
-  
-  // Check required number of Higher Lows
-  for (let i = 1; i < recentLows.length; i++) {
-    if (recentLows[i].price <= recentLows[i - 1].price) return false;
-  }
-  
-  // Validate pullback retracement for each swing
-  // For each consecutive HH pair, the pullback (HL between them) must retrace at least minRetracementPct%
-  const minRetracement = minRetracementPct / 100;
-  
-  for (let i = 0; i < recentHighs.length - 1; i++) {
-    const swingHigh = recentHighs[i];
-    const nextSwingHigh = recentHighs[i + 1];
-    
-    // Find the swing low between these two swing highs
-    const pullbackLow = swingLows.find(
-      p => p.index > swingHigh.index && p.index < nextSwingHigh.index
-    );
-    
-    if (!pullbackLow) return false;
-    
-    // Calculate retracement: how much did price pull back from the swing high to the swing low
-    const impulseRange = swingHigh.price - (i > 0 ? recentLows[i - 1]?.price ?? pullbackLow.price : pullbackLow.price);
-    if (impulseRange <= 0) continue;
-    
-    const pullbackDepth = swingHigh.price - pullbackLow.price;
-    const retracementRatio = pullbackDepth / impulseRange;
-    
-    // Pullback must retrace at least the minimum percentage of the previous impulse
-    if (retracementRatio < minRetracement) return false;
-  }
-  
-  return true;
-}
-
-// Downtrend - Valid Lower Highs and Lower Lows with Fibonacci retracement pullback validation
-export function detectDowntrend(candles: Candle[], minRetracementPct: number = 25, bosCount: number = 2): boolean {
-  if (candles.length < 20) return false;
-  
-  const swingPoints = findSwingPoints(candles, 3);
-  const swingHighs = swingPoints.filter(p => p.type === 'high');
-  const swingLows = swingPoints.filter(p => p.type === 'low');
-  
-  const requiredSwings = bosCount + 1;
-  if (swingHighs.length < requiredSwings || swingLows.length < requiredSwings) return false;
-  
   const recentHighs = swingHighs.slice(-requiredSwings);
   const recentLows = swingLows.slice(-requiredSwings);
   
