@@ -136,6 +136,11 @@ export interface ScanCondition {
   
   // Price position relative to indicator
   pricePosition?: PricePosition;
+  
+  // Pattern confirmation settings
+  patternConfirmation?: boolean; // Master toggle for confirmation
+  patternLiquiditySweep?: boolean; // Require liquidity sweep before reversal
+  patternCandleClose?: boolean; // Require candle close above/below pattern
 }
 
 export interface ScanResult {
