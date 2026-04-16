@@ -646,54 +646,101 @@ function evaluateCondition(
 
       // Confirmation mode
       if (condition.patternConfirmation && isDirectional) {
-        const prevPatternDetected = values[`${condition.feature}_prev`] === true;
-        if (!prevPatternDetected) return { matched: false, reason: '' };
-
-        const lastCandle = candles[candles.length - 1];
-        const patternCandle = candles[candles.length - 2]; // The candle where pattern formed
-        const confirmParts: string[] = [];
-        let confirmed = true;
-
-        // Liquidity Sweep check
-        if (condition.patternLiquiditySweep !== false) {
-          if (isBullishPattern) {
-            // Wick below pattern candle low = sweep
-            if (lastCandle.low < patternCandle.low) {
-              confirmParts.push(`Sweep ✓ (low ${lastCandle.low < 1 ? lastCandle.low.toFixed(6) : lastCandle.low.toFixed(2)})`);
-            } else {
-              confirmed = false;
+        const lookback = Math.min(Math.max(condition.patternConfirmLookback ?? 2, 2), 7);
+        const sweepType = condition.patternSweepType ?? 'wick';
+        
+        // Check if pattern was detected on any candle within the lookback window
+        // Pattern detected on candle at index (len - offset), confirmation candles are after it
+        let bestMatch: { confirmParts: string[]; patternIdx: number } | null = null;
+        
+        for (let offset = 2; offset <= lookback; offset++) {
+          if (candles.length < offset + 1) continue;
+          
+          // Detect pattern on candles up to (len - offset + 1) 
+          const sliceEnd = candles.length - offset + 1;
+          const patternSlice = candles.slice(0, sliceEnd);
+          if (patternSlice.length < 3) continue;
+          
+          const patternDetected = values[`${condition.feature}_prev`] === true && offset === 2
+            ? true
+            : (() => {
+                // Re-detect pattern on this specific slice
+                const p = require('./patterns') as typeof import('./patterns');
+                const detectFn: Record<string, (c: typeof candles) => boolean> = {
+                  hammer: p.detectHammer, shooting_star: p.detectShootingStar,
+                  bullish_engulfing: p.detectBullishEngulfing, bearish_engulfing: p.detectBearishEngulfing,
+                  morning_star: p.detectMorningStar, evening_star: p.detectEveningStar,
+                  marubozu: p.detectMarubozu, bullish_harami: p.detectBullishHarami,
+                  bearish_harami: p.detectBearishHarami, inverted_hammer: p.detectInvertedHammer,
+                  three_white_soldiers: p.detectThreeWhiteSoldiers, three_black_crows: p.detectThreeBlackCrows,
+                  inside_bar: p.detectInsideBar, spinning_top: p.detectSpinningTop, doji: p.detectDoji,
+                };
+                return detectFn[condition.feature]?.(patternSlice) ?? false;
+              })();
+          
+          if (!patternDetected) continue;
+          
+          const patternCandle = candles[sliceEnd - 1]; // The candle where pattern formed
+          // Check ALL confirmation candles after the pattern candle
+          const confirmCandles = candles.slice(sliceEnd, candles.length);
+          if (confirmCandles.length === 0) continue;
+          
+          const confirmParts: string[] = [];
+          let confirmed = true;
+          const fmt = (v: number) => v < 1 ? v.toFixed(6) : v.toFixed(2);
+          
+          // Liquidity Sweep check - any confirmation candle must sweep
+          if (condition.patternLiquiditySweep !== false) {
+            let swept = false;
+            for (const cc of confirmCandles) {
+              if (isBullishPattern) {
+                const wickSweep = cc.low < patternCandle.low;
+                const closeSweep = cc.close < patternCandle.low;
+                if (sweepType === 'wick' && wickSweep) { swept = true; confirmParts.push(`Wick Sweep ✓ (${fmt(cc.low)})`); break; }
+                if (sweepType === 'close' && closeSweep) { swept = true; confirmParts.push(`Close Sweep ✓ (${fmt(cc.close)})`); break; }
+                if (sweepType === 'both' && (wickSweep || closeSweep)) { 
+                  swept = true; 
+                  confirmParts.push(wickSweep ? `Wick Sweep ✓ (${fmt(cc.low)})` : `Close Sweep ✓ (${fmt(cc.close)})`); 
+                  break; 
+                }
+              } else {
+                const wickSweep = cc.high > patternCandle.high;
+                const closeSweep = cc.close > patternCandle.high;
+                if (sweepType === 'wick' && wickSweep) { swept = true; confirmParts.push(`Wick Sweep ✓ (${fmt(cc.high)})`); break; }
+                if (sweepType === 'close' && closeSweep) { swept = true; confirmParts.push(`Close Sweep ✓ (${fmt(cc.close)})`); break; }
+                if (sweepType === 'both' && (wickSweep || closeSweep)) { 
+                  swept = true; 
+                  confirmParts.push(wickSweep ? `Wick Sweep ✓ (${fmt(cc.high)})` : `Close Sweep ✓ (${fmt(cc.close)})`); 
+                  break; 
+                }
+              }
             }
-          } else {
-            // Wick above pattern candle high = sweep
-            if (lastCandle.high > patternCandle.high) {
-              confirmParts.push(`Sweep ✓ (high ${lastCandle.high < 1 ? lastCandle.high.toFixed(6) : lastCandle.high.toFixed(2)})`);
+            if (!swept) confirmed = false;
+          }
+          
+          // Candle Close check - last confirmation candle must close in direction
+          if (condition.patternCandleClose !== false && confirmed) {
+            const lastConfirm = confirmCandles[confirmCandles.length - 1];
+            if (isBullishPattern) {
+              if (lastConfirm.close > patternCandle.close) {
+                confirmParts.push(`Close above ✓`);
+              } else { confirmed = false; }
             } else {
-              confirmed = false;
+              if (lastConfirm.close < patternCandle.close) {
+                confirmParts.push(`Close below ✓`);
+              } else { confirmed = false; }
             }
           }
-        }
-
-        // Candle Close check
-        if (condition.patternCandleClose !== false && confirmed) {
-          if (isBullishPattern) {
-            // Close above pattern candle close
-            if (lastCandle.close > patternCandle.close) {
-              confirmParts.push(`Close above ✓`);
-            } else {
-              confirmed = false;
-            }
-          } else {
-            // Close below pattern candle close
-            if (lastCandle.close < patternCandle.close) {
-              confirmParts.push(`Close below ✓`);
-            } else {
-              confirmed = false;
-            }
+          
+          if (confirmed) {
+            bestMatch = { confirmParts, patternIdx: sliceEnd - 1 };
+            break; // Use first (most recent) confirmed match
           }
         }
-
-        if (!confirmed) return { matched: false, reason: '' };
-        return { matched: true, reason: `${feature.name} + Confirmation (${confirmParts.join(' | ')})` };
+        
+        if (!bestMatch) return { matched: false, reason: '' };
+        const candlesAgo = candles.length - 1 - bestMatch.patternIdx;
+        return { matched: true, reason: `${feature.name} + Confirmation ${candlesAgo > 1 ? `(${candlesAgo} candles ago)` : ''} (${bestMatch.confirmParts.join(' | ')})` };
       }
 
       // Normal mode - no confirmation

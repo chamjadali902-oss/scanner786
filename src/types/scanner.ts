@@ -139,7 +139,9 @@ export interface ScanCondition {
   
   // Pattern confirmation settings
   patternConfirmation?: boolean; // Master toggle for confirmation
+  patternConfirmLookback?: number; // How many candles to check for confirmation (2-7, default 2)
   patternLiquiditySweep?: boolean; // Require liquidity sweep before reversal
+  patternSweepType?: 'wick' | 'close' | 'both'; // How to detect sweep: wick only, candle close, or both
   patternCandleClose?: boolean; // Require candle close above/below pattern
 }
 
