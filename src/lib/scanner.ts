@@ -288,6 +288,19 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   const downtrendDetail = smc.detectDowntrendDetail(candles, condition?.trendMinRetracement ?? 25, condition?.trendBosCount ?? 2);
   values.downtrend = downtrendDetail.detected;
   values.downtrend_detail = JSON.stringify(downtrendDetail);
+
+  // SMC _prev detection for confirmation (detect on candles minus last N)
+  const smcDetectors: Record<string, (c: typeof candles) => boolean> = {
+    bos_bullish: smc.detectBullishBOS, bos_bearish: smc.detectBearishBOS,
+    choch_bullish: smc.detectBullishChoCH, choch_bearish: smc.detectBearishChoCH,
+    bullish_ob: smc.detectBullishOrderBlock, bearish_ob: smc.detectBearishOrderBlock,
+    bullish_fvg: smc.detectBullishFVG, bearish_fvg: smc.detectBearishFVG,
+    liquidity_sweep_high: smc.detectLiquiditySweepHigh, liquidity_sweep_low: smc.detectLiquiditySweepLow,
+    equal_highs: smc.detectEqualHighs, equal_lows: smc.detectEqualLows,
+    premium_zone: smc.detectPremiumZone, discount_zone: smc.detectDiscountZone,
+    breaker_block: smc.detectBreakerBlock, volume_spike: smc.detectVolumeSpike,
+  };
+  values.smc_detectors = smcDetectors as any;
   
   return values;
 }
@@ -752,6 +765,91 @@ function evaluateCondition(
 
     case 'smc': {
       const value = values[condition.feature];
+      
+      // Determine directionality for SMC
+      const featureDef = FEATURES.find(f => f.id === condition.feature);
+      const isSmcBullish = featureDef && (
+        featureDef.id.includes('bullish') || featureDef.id === 'discount_zone' || 
+        featureDef.id === 'liquidity_sweep_low' || featureDef.id === 'equal_lows' || featureDef.id === 'uptrend'
+      );
+      const isSmcBearish = featureDef && (
+        featureDef.id.includes('bearish') || featureDef.id === 'premium_zone' || 
+        featureDef.id === 'liquidity_sweep_high' || featureDef.id === 'equal_highs' || featureDef.id === 'downtrend'
+      );
+      const isSmcDirectional = isSmcBullish || isSmcBearish;
+      const isTrendFeature = condition.feature === 'uptrend' || condition.feature === 'downtrend';
+      
+      // SMC Confirmation mode (not for uptrend/downtrend which have their own settings)
+      if (condition.smcConfirmation && isSmcDirectional && !isTrendFeature) {
+        const lookback = Math.min(Math.max(condition.smcConfirmLookback ?? 2, 2), 7);
+        const sweepType = condition.smcSweepType ?? 'wick';
+        const smcDetectors = values.smc_detectors as any as Record<string, (c: Candle[]) => boolean> | undefined;
+        const detectFn = smcDetectors?.[condition.feature];
+        
+        let bestMatch: { confirmParts: string[]; smcIdx: number } | null = null;
+        
+        for (let offset = 2; offset <= lookback; offset++) {
+          if (candles.length < offset + 3) continue;
+          
+          const sliceEnd = candles.length - offset + 1;
+          const smcSlice = candles.slice(0, sliceEnd);
+          
+          // Check if SMC was detected at this point
+          const smcDetected = offset === 2 ? (value === true) : (detectFn?.(smcSlice) ?? false);
+          if (!smcDetected) continue;
+          
+          const smcCandle = candles[sliceEnd - 1];
+          const confirmCandles = candles.slice(sliceEnd, candles.length);
+          if (confirmCandles.length === 0) continue;
+          
+          const confirmParts: string[] = [];
+          let confirmed = true;
+          const fmt = (v: number) => v < 1 ? v.toFixed(6) : v.toFixed(2);
+          
+          // Liquidity Sweep check
+          if (condition.smcLiquiditySweep !== false) {
+            let swept = false;
+            for (const cc of confirmCandles) {
+              if (isSmcBullish) {
+                const wickSweep = cc.low < smcCandle.low;
+                const closeSweep = cc.close < smcCandle.low;
+                if (sweepType === 'wick' && wickSweep) { swept = true; confirmParts.push(`Wick Sweep ✓ (${fmt(cc.low)})`); break; }
+                if (sweepType === 'close' && closeSweep) { swept = true; confirmParts.push(`Close Sweep ✓ (${fmt(cc.close)})`); break; }
+                if (sweepType === 'both' && (wickSweep || closeSweep)) { swept = true; confirmParts.push(wickSweep ? `Wick Sweep ✓ (${fmt(cc.low)})` : `Close Sweep ✓ (${fmt(cc.close)})`); break; }
+              } else {
+                const wickSweep = cc.high > smcCandle.high;
+                const closeSweep = cc.close > smcCandle.high;
+                if (sweepType === 'wick' && wickSweep) { swept = true; confirmParts.push(`Wick Sweep ✓ (${fmt(cc.high)})`); break; }
+                if (sweepType === 'close' && closeSweep) { swept = true; confirmParts.push(`Close Sweep ✓ (${fmt(cc.close)})`); break; }
+                if (sweepType === 'both' && (wickSweep || closeSweep)) { swept = true; confirmParts.push(wickSweep ? `Wick Sweep ✓ (${fmt(cc.high)})` : `Close Sweep ✓ (${fmt(cc.close)})`); break; }
+              }
+            }
+            if (!swept) confirmed = false;
+          }
+          
+          // Candle Close check
+          if (condition.smcCandleClose !== false && confirmed) {
+            const lastConfirm = confirmCandles[confirmCandles.length - 1];
+            if (isSmcBullish) {
+              if (lastConfirm.close > smcCandle.close) confirmParts.push(`Close above ✓`);
+              else confirmed = false;
+            } else {
+              if (lastConfirm.close < smcCandle.close) confirmParts.push(`Close below ✓`);
+              else confirmed = false;
+            }
+          }
+          
+          if (confirmed) {
+            bestMatch = { confirmParts, smcIdx: sliceEnd - 1 };
+            break;
+          }
+        }
+        
+        if (!bestMatch) return { matched: false, reason: '' };
+        const candlesAgo = candles.length - 1 - bestMatch.smcIdx;
+        return { matched: true, reason: `${feature.name} + Confirmation ${candlesAgo > 1 ? `(${candlesAgo} candles ago)` : ''} (${bestMatch.confirmParts.join(' | ')})` };
+      }
+      
       if (value === true) {
         // For uptrend/downtrend, show detailed swing point and retracement info
         if (condition.feature === 'uptrend' || condition.feature === 'downtrend') {
