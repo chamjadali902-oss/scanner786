@@ -288,6 +288,19 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   const downtrendDetail = smc.detectDowntrendDetail(candles, condition?.trendMinRetracement ?? 25, condition?.trendBosCount ?? 2);
   values.downtrend = downtrendDetail.detected;
   values.downtrend_detail = JSON.stringify(downtrendDetail);
+
+  // SMC _prev detection for confirmation (detect on candles minus last N)
+  const smcDetectors: Record<string, (c: typeof candles) => boolean> = {
+    bos_bullish: smc.detectBullishBOS, bos_bearish: smc.detectBearishBOS,
+    choch_bullish: smc.detectBullishChoCH, choch_bearish: smc.detectBearishChoCH,
+    bullish_ob: smc.detectBullishOrderBlock, bearish_ob: smc.detectBearishOrderBlock,
+    bullish_fvg: smc.detectBullishFVG, bearish_fvg: smc.detectBearishFVG,
+    liquidity_sweep_high: smc.detectLiquiditySweepHigh, liquidity_sweep_low: smc.detectLiquiditySweepLow,
+    equal_highs: smc.detectEqualHighs, equal_lows: smc.detectEqualLows,
+    premium_zone: smc.detectPremiumZone, discount_zone: smc.detectDiscountZone,
+    breaker_block: smc.detectBreakerBlock, volume_spike: smc.detectVolumeSpike,
+  };
+  values.smc_detectors = smcDetectors as any;
   
   return values;
 }

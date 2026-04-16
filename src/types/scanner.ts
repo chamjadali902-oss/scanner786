@@ -143,6 +143,13 @@ export interface ScanCondition {
   patternLiquiditySweep?: boolean; // Require liquidity sweep before reversal
   patternSweepType?: 'wick' | 'close' | 'both'; // How to detect sweep: wick only, candle close, or both
   patternCandleClose?: boolean; // Require candle close above/below pattern
+  
+  // SMC confirmation settings
+  smcConfirmation?: boolean; // Master toggle for SMC confirmation
+  smcConfirmLookback?: number; // How many candles to check (2-7, default 2)
+  smcLiquiditySweep?: boolean; // Require liquidity sweep
+  smcSweepType?: 'wick' | 'close' | 'both'; // Sweep detection method
+  smcCandleClose?: boolean; // Require candle close in direction
 }
 
 export interface ScanResult {
