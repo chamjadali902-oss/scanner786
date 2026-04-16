@@ -665,15 +665,14 @@ function evaluateCondition(
             ? true
             : (() => {
                 // Re-detect pattern on this specific slice
-                const p = require('./patterns') as typeof import('./patterns');
                 const detectFn: Record<string, (c: typeof candles) => boolean> = {
-                  hammer: p.detectHammer, shooting_star: p.detectShootingStar,
-                  bullish_engulfing: p.detectBullishEngulfing, bearish_engulfing: p.detectBearishEngulfing,
-                  morning_star: p.detectMorningStar, evening_star: p.detectEveningStar,
-                  marubozu: p.detectMarubozu, bullish_harami: p.detectBullishHarami,
-                  bearish_harami: p.detectBearishHarami, inverted_hammer: p.detectInvertedHammer,
-                  three_white_soldiers: p.detectThreeWhiteSoldiers, three_black_crows: p.detectThreeBlackCrows,
-                  inside_bar: p.detectInsideBar, spinning_top: p.detectSpinningTop, doji: p.detectDoji,
+                  hammer: patterns.detectHammer, shooting_star: patterns.detectShootingStar,
+                  bullish_engulfing: patterns.detectBullishEngulfing, bearish_engulfing: patterns.detectBearishEngulfing,
+                  morning_star: patterns.detectMorningStar, evening_star: patterns.detectEveningStar,
+                  marubozu: patterns.detectMarubozu, bullish_harami: patterns.detectBullishHarami,
+                  bearish_harami: patterns.detectBearishHarami, inverted_hammer: patterns.detectInvertedHammer,
+                  three_white_soldiers: patterns.detectThreeWhiteSoldiers, three_black_crows: patterns.detectThreeBlackCrows,
+                  inside_bar: patterns.detectInsideBar, spinning_top: patterns.detectSpinningTop, doji: patterns.detectDoji,
                 };
                 return detectFn[condition.feature]?.(patternSlice) ?? false;
               })();
