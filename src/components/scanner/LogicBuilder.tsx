@@ -23,6 +23,7 @@ import {
   PSARSettings,
   FibonacciSettings,
   SmartBullishSettings,
+  ChartPatternSettings,
 } from './settings';
 
 interface LogicBuilderProps {
@@ -35,6 +36,7 @@ const categoryLabels = {
   indicator: 'Technical Indicators',
   pattern: 'Price Action Patterns',
   smc: 'Smart Money Concepts',
+  chart: 'Chart Patterns',
 };
 
 function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition> {
@@ -138,6 +140,12 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         smartBullishLookback: 30,
         smartBullishThreshold: 60,
       };
+    case 'chart-pattern':
+      return {
+        ...defaults,
+        mode: 'value',
+        chartPatternLookback: 80,
+      };
     default:
       return {
         ...defaults,
@@ -184,6 +192,8 @@ function FeatureSettings({
       return <FibonacciSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     case 'smart-bullish':
       return <SmartBullishSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
+    case 'chart-pattern':
+      return <ChartPatternSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     default:
       return null;
   }
@@ -194,6 +204,7 @@ export function LogicBuilder({ conditions, onChange, disabled }: LogicBuilderPro
     indicator: true,
     pattern: false,
     smc: false,
+    chart: false,
   });
   const [expandedConditions, setExpandedConditions] = useState<Record<string, boolean>>({});
 
@@ -236,6 +247,7 @@ export function LogicBuilder({ conditions, onChange, disabled }: LogicBuilderPro
     indicator: FEATURES.filter(f => f.category === 'indicator'),
     pattern: FEATURES.filter(f => f.category === 'pattern'),
     smc: FEATURES.filter(f => f.category === 'smc'),
+    chart: FEATURES.filter(f => f.category === 'chart'),
   };
 
   const activeConditions = conditions.filter(c => c.enabled);
