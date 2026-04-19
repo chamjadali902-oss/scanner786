@@ -2,6 +2,7 @@ import { Candle, ScanCondition, ScanResult, FEATURES } from '@/types/scanner';
 import * as indicators from './indicators';
 import * as patterns from './patterns';
 import * as smc from './smc';
+import * as chartPatterns from './chart-patterns';
 
 interface IndicatorValues {
   [key: string]: number | boolean | string | number[];
