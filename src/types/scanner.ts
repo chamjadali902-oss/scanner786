@@ -48,7 +48,7 @@ export interface EMAConfig {
 export interface ScanCondition {
   id: string;
   feature: string;
-  category: 'indicator' | 'pattern' | 'smc';
+  category: 'indicator' | 'pattern' | 'smc' | 'chart';
   mode: ConditionMode;
   enabled: boolean;
   
@@ -150,6 +150,22 @@ export interface ScanCondition {
   smcLiquiditySweep?: boolean; // Require liquidity sweep
   smcSweepType?: 'wick' | 'close' | 'both'; // Sweep detection method
   smcCandleClose?: boolean; // Require candle close in direction
+
+  // Chart Pattern settings
+  chartPatternLookback?: number; // Window of candles to scan for pattern (default 80)
+
+  // Advanced Fibonacci linking & pullback settings
+  // Source of swing high/low used to compute Fib levels
+  fibSource?: 'lookback' | 'pattern' | 'smc'; // default: 'lookback'
+  fibSourceFeature?: string; // e.g. 'cp_double_bottom' or 'bos_bullish' when source != 'lookback'
+  // Pullback detection mode
+  fibPullbackMode?: 'proximity' | 'sequential'; // default: 'proximity'
+  // Sequential mode: price must touch fromLevel first, then move to toLevel
+  fibSequentialFromLevel?: string;
+  fibSequentialToLevel?: string;
+  fibSequentialMaxAge?: number; // candles within which sequence must complete (default 20)
+  // Sequence: source pattern/SMC must have formed within last N candles (default 30)
+  fibLinkMaxAge?: number;
 }
 
 export interface ScanResult {
@@ -166,7 +182,7 @@ export interface ScanResult {
 export interface FeatureDefinition {
   id: string;
   name: string;
-  category: 'indicator' | 'pattern' | 'smc';
+  category: 'indicator' | 'pattern' | 'smc' | 'chart';
   description: string;
   defaultMode: ConditionMode;
   hasPeriod?: boolean;
@@ -175,7 +191,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern';
 }
 
 // All available features
@@ -235,6 +251,21 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'volume_spike', name: 'Volume Spike', category: 'smc', description: 'Abnormally high volume (2x+ average)', defaultMode: 'value', settingsType: 'smc' },
   { id: 'uptrend', name: 'Uptrend (HH/HL)', category: 'smc', description: 'Valid Higher Highs & Higher Lows', defaultMode: 'value', settingsType: 'smc' },
   { id: 'downtrend', name: 'Downtrend (LH/LL)', category: 'smc', description: 'Valid Lower Highs & Lower Lows', defaultMode: 'value', settingsType: 'smc' },
+
+  // Category D: Chart Patterns
+  { id: 'cp_double_bottom', name: 'Double Bottom (W)', category: 'chart', description: 'Bullish reversal — two equal lows + neckline break', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_double_top', name: 'Double Top (M)', category: 'chart', description: 'Bearish reversal — two equal highs + neckline break', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_triple_bottom', name: 'Triple Bottom', category: 'chart', description: 'Strong bullish reversal — three equal lows', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_triple_top', name: 'Triple Top', category: 'chart', description: 'Strong bearish reversal — three equal highs', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_head_shoulders', name: 'Head & Shoulders', category: 'chart', description: 'Bearish reversal — LS, Head, RS + neckline break', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_inverse_head_shoulders', name: 'Inverse H&S', category: 'chart', description: 'Bullish reversal — inverse Head & Shoulders', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_ascending_triangle', name: 'Ascending Triangle', category: 'chart', description: 'Bullish — flat highs + rising lows breakout', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_descending_triangle', name: 'Descending Triangle', category: 'chart', description: 'Bearish — flat lows + falling highs breakdown', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_symmetrical_triangle', name: 'Symmetrical Triangle', category: 'chart', description: 'Neutral — converging trendlines breakout either side', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_rising_wedge', name: 'Rising Wedge', category: 'chart', description: 'Bearish — both trendlines rising, breakdown', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_falling_wedge', name: 'Falling Wedge', category: 'chart', description: 'Bullish — both trendlines falling, breakout', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_rectangle_breakout_bull', name: 'Rectangle Breakout (Bull)', category: 'chart', description: 'Bullish — flat range upper breakout', defaultMode: 'value', settingsType: 'chart-pattern' },
+  { id: 'cp_rectangle_breakout_bear', name: 'Rectangle Breakout (Bear)', category: 'chart', description: 'Bearish — flat range lower breakdown', defaultMode: 'value', settingsType: 'chart-pattern' },
 ];
 
 export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
