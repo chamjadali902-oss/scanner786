@@ -300,7 +300,8 @@ export function LogicBuilder({ conditions, onChange, disabled }: LogicBuilderPro
                         'text-[10px] px-1.5 py-0.5 rounded-full',
                         feature.category === 'indicator' && 'bg-chart-1/20 text-chart-1',
                         feature.category === 'pattern' && 'bg-chart-2/20 text-chart-2',
-                        feature.category === 'smc' && 'bg-chart-5/20 text-chart-5'
+                        feature.category === 'smc' && 'bg-chart-5/20 text-chart-5',
+                        feature.category === 'chart' && 'bg-chart-4/20 text-chart-4'
                       )}>
                         {feature.category}
                       </span>
@@ -342,7 +343,7 @@ export function LogicBuilder({ conditions, onChange, disabled }: LogicBuilderPro
 
       {/* Feature Categories */}
       <div className="space-y-2 border rounded-lg bg-card/50">
-        {(['indicator', 'pattern', 'smc'] as const).map((category) => (
+        {(['indicator', 'pattern', 'smc', 'chart'] as const).map((category) => (
           <Collapsible
             key={category}
             open={expandedCategories[category]}
@@ -354,7 +355,8 @@ export function LogicBuilder({ conditions, onChange, disabled }: LogicBuilderPro
                   'w-2 h-2 rounded-full',
                   category === 'indicator' && 'bg-chart-1',
                   category === 'pattern' && 'bg-chart-2',
-                  category === 'smc' && 'bg-chart-5'
+                  category === 'smc' && 'bg-chart-5',
+                  category === 'chart' && 'bg-chart-4'
                 )} />
                 <span className="font-medium text-sm">{categoryLabels[category]}</span>
                 <span className="text-xs text-muted-foreground">
