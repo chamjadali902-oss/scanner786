@@ -302,7 +302,23 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
     breaker_block: smc.detectBreakerBlock, volume_spike: smc.detectVolumeSpike,
   };
   values.smc_detectors = smcDetectors as any;
-  
+
+  // ==== CHART PATTERNS (W, M, H&S, Triangles, Wedges, Triple Top/Bottom) ====
+  // Detect each chart pattern + cache full result so Fib can link to its swing
+  const cpResults: Record<string, chartPatterns.ChartPatternResult> = {};
+  const cpLookback = condition?.chartPatternLookback ?? 80;
+  for (const [pid, fn] of Object.entries(chartPatterns.CHART_PATTERN_DETECTORS)) {
+    const r = fn(candles, cpLookback);
+    cpResults[pid] = r;
+    values[pid] = r.detected;
+    values[`${pid}_swing_high`] = r.swingHigh;
+    values[`${pid}_swing_low`] = r.swingLow;
+    values[`${pid}_formed_at`] = r.formedAtIndex;
+    values[`${pid}_direction`] = r.direction;
+  }
+  // Store a lightweight reference for evaluators
+  (values as any).chart_pattern_results = cpResults;
+
   return values;
 }
 
