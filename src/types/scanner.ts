@@ -150,6 +150,22 @@ export interface ScanCondition {
   smcLiquiditySweep?: boolean; // Require liquidity sweep
   smcSweepType?: 'wick' | 'close' | 'both'; // Sweep detection method
   smcCandleClose?: boolean; // Require candle close in direction
+
+  // Chart Pattern settings
+  chartPatternLookback?: number; // Window of candles to scan for pattern (default 80)
+
+  // Advanced Fibonacci linking & pullback settings
+  // Source of swing high/low used to compute Fib levels
+  fibSource?: 'lookback' | 'pattern' | 'smc'; // default: 'lookback'
+  fibSourceFeature?: string; // e.g. 'cp_double_bottom' or 'bos_bullish' when source != 'lookback'
+  // Pullback detection mode
+  fibPullbackMode?: 'proximity' | 'sequential'; // default: 'proximity'
+  // Sequential mode: price must touch fromLevel first, then move to toLevel
+  fibSequentialFromLevel?: string;
+  fibSequentialToLevel?: string;
+  fibSequentialMaxAge?: number; // candles within which sequence must complete (default 20)
+  // Sequence: source pattern/SMC must have formed within last N candles (default 30)
+  fibLinkMaxAge?: number;
 }
 
 export interface ScanResult {
