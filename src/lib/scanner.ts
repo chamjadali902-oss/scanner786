@@ -927,35 +927,134 @@ function evaluateCondition(
       const price = values.price as number;
       const fibLevel = condition.fibLevel ?? '0.618';
       const proximity = condition.fibProximityPercent ?? 1;
-      const fibTrend = values.fib_trend as string;
+      const fibSource = condition.fibSource ?? 'lookback';
+      const pullbackMode = condition.fibPullbackMode ?? 'proximity';
+      const linkMaxAge = condition.fibLinkMaxAge ?? 30;
 
-      // Map level string to stored value key
-      const levelKeyMap: Record<string, string> = {
-        '0': 'fib_level_0',
-        '0.236': 'fib_level_0236',
-        '0.382': 'fib_level_0382',
-        '0.5': 'fib_level_05',
-        '0.618': 'fib_level_0618',
-        '0.786': 'fib_level_0786',
-        '1': 'fib_level_1',
+      // ====== STEP 1: Determine swing high / low ======
+      let swingHigh: number;
+      let swingLow: number;
+      let trend: 'up' | 'down';
+      let sourceLabel: string;
+
+      if (fibSource === 'lookback') {
+        swingHigh = values.fib_swing_high as number;
+        swingLow = values.fib_swing_low as number;
+        trend = (values.fib_trend as 'up' | 'down') ?? 'up';
+        sourceLabel = `lookback ${condition.fibLookback ?? 50}`;
+      } else if (fibSource === 'pattern') {
+        const pid = condition.fibSourceFeature ?? '';
+        const cpAll = (values as any).chart_pattern_results as Record<string, chartPatterns.ChartPatternResult> | undefined;
+        const r = cpAll?.[pid];
+        if (!r || !r.detected) return { matched: false, reason: '' };
+        // Pattern must have formed within link max age
+        const ageCandles = candles.length - 1 - r.formedAtIndex;
+        if (ageCandles > linkMaxAge) return { matched: false, reason: '' };
+        swingHigh = r.swingHigh;
+        swingLow = r.swingLow;
+        trend = r.direction === 'bearish' ? 'down' : 'up';
+        const featDef = FEATURES.find(f => f.id === pid);
+        sourceLabel = `${featDef?.name ?? pid} (${ageCandles}c ago)`;
+      } else {
+        // SMC source — locate signal candle within link window
+        const pid = condition.fibSourceFeature ?? '';
+        const detectors = (values as any).smc_detectors as Record<string, (c: Candle[]) => boolean> | undefined;
+        const detector = detectors?.[pid];
+        if (!detector) return { matched: false, reason: '' };
+
+        let foundAt = -1;
+        for (let back = 0; back <= linkMaxAge && back < candles.length - 10; back++) {
+          const slice = candles.slice(0, candles.length - back);
+          if (detector(slice)) { foundAt = candles.length - 1 - back; break; }
+        }
+        if (foundAt === -1) return { matched: false, reason: '' };
+
+        const isBullish = pid.includes('bullish') || pid === 'liquidity_sweep_low' || pid === 'discount_zone' || pid === 'equal_lows';
+        // Use candles around the signal as swing range
+        const windowCandles = candles.slice(Math.max(0, foundAt - 20), foundAt + 1);
+        swingHigh = Math.max(...windowCandles.map(c => c.high));
+        swingLow = Math.min(...windowCandles.map(c => c.low));
+        trend = isBullish ? 'up' : 'down';
+        const featDef = FEATURES.find(f => f.id === pid);
+        const ageCandles = candles.length - 1 - foundAt;
+        sourceLabel = `${featDef?.name ?? pid} (${ageCandles}c ago)`;
+      }
+
+      if (!isFinite(swingHigh) || !isFinite(swingLow) || swingHigh <= swingLow) {
+        return { matched: false, reason: '' };
+      }
+
+      // ====== STEP 2: Compute Fib levels from chosen swing ======
+      const range = swingHigh - swingLow;
+      const computeLevel = (ratio: number): number =>
+        trend === 'up' ? swingHigh - range * ratio : swingLow + range * ratio;
+
+      const ratioOf = (lv: string): number => {
+        const r = parseFloat(lv);
+        return isNaN(r) ? 0.618 : r;
       };
 
-      const levelValue = values[levelKeyMap[fibLevel] ?? 'fib_level_0618'] as number;
-      if (typeof levelValue !== 'number' || isNaN(levelValue)) return { matched: false, reason: '' };
+      // ====== STEP 3: Pullback evaluation ======
+      if (pullbackMode === 'proximity') {
+        const targetLevel = computeLevel(ratioOf(fibLevel));
+        const distance = Math.abs(price - targetLevel) / price * 100;
+        if (distance > proximity) return { matched: false, reason: '' };
 
-      const distance = Math.abs(price - levelValue) / price * 100;
-      const isNear = distance <= proximity;
+        if (condition.pricePosition === 'above' && price < targetLevel) return { matched: false, reason: '' };
+        if (condition.pricePosition === 'below' && price > targetLevel) return { matched: false, reason: '' };
 
-      if (!isNear) return { matched: false, reason: '' };
+        const levelPercent = (parseFloat(fibLevel) * 100).toFixed(1);
+        return {
+          matched: true,
+          reason: `Fib ${levelPercent}% (${targetLevel.toFixed(4)}) hit | src: ${sourceLabel} | dist ${distance.toFixed(2)}%`,
+        };
+      }
 
-      // Check price position filter
-      if (condition.pricePosition === 'above' && price < levelValue) return { matched: false, reason: '' };
-      if (condition.pricePosition === 'below' && price > levelValue) return { matched: false, reason: '' };
+      // Sequential mode: price touched fromLevel first, then moved to/touched toLevel
+      const fromLv = condition.fibSequentialFromLevel ?? '0.5';
+      const toLv = condition.fibSequentialToLevel ?? '0.618';
+      const seqMaxAge = condition.fibSequentialMaxAge ?? 20;
+      const fromPrice = computeLevel(ratioOf(fromLv));
+      const toPrice = computeLevel(ratioOf(toLv));
 
-      const levelPercent = (parseFloat(fibLevel) * 100).toFixed(1);
+      // Walk recent candles backwards looking for fromLevel touch
+      const recent = candles.slice(-Math.max(seqMaxAge, 5));
+      let touchedFromAt = -1;
+      for (let i = 0; i < recent.length; i++) {
+        const c = recent[i];
+        if (c.low <= fromPrice && c.high >= fromPrice) { touchedFromAt = i; break; }
+      }
+      if (touchedFromAt === -1) return { matched: false, reason: '' };
+
+      // After touching fromLevel, look for movement to toLevel
+      let touchedToAt = -1;
+      for (let i = touchedFromAt + 1; i < recent.length; i++) {
+        const c = recent[i];
+        if (c.low <= toPrice && c.high >= toPrice) { touchedToAt = i; break; }
+      }
+      // Also accept current price near toLevel as final touch
+      if (touchedToAt === -1) {
+        const finalDist = Math.abs(price - toPrice) / price * 100;
+        if (finalDist > proximity) return { matched: false, reason: '' };
+      }
+
+      const fromPct = (parseFloat(fromLv) * 100).toFixed(1);
+      const toPct = (parseFloat(toLv) * 100).toFixed(1);
       return {
         matched: true,
-        reason: `Price near Fib ${levelPercent}% (${levelValue.toFixed(2)}) [${fibTrend}trend, dist: ${distance.toFixed(2)}%]`,
+        reason: `Sequential Fib: ${fromPct}% (${fromPrice.toFixed(4)}) → ${toPct}% (${toPrice.toFixed(4)}) | src: ${sourceLabel}`,
+      };
+    }
+
+    case 'chart-pattern': {
+      const cpAll = (values as any).chart_pattern_results as Record<string, chartPatterns.ChartPatternResult> | undefined;
+      const r = cpAll?.[condition.feature];
+      if (!r || !r.detected) return { matched: false, reason: '' };
+      const ageCandles = candles.length - 1 - r.formedAtIndex;
+      const dirLabel = r.direction === 'bullish' ? '🟢 Bullish' : r.direction === 'bearish' ? '🔴 Bearish' : '⚪ Neutral';
+      return {
+        matched: true,
+        reason: `${feature.name} ${dirLabel} | swing ${r.swingLow.toFixed(4)}–${r.swingHigh.toFixed(4)} | formed ${ageCandles}c ago`,
       };
     }
 
