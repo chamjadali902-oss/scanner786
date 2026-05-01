@@ -51,6 +51,8 @@ export interface ScanCondition {
   category: 'indicator' | 'pattern' | 'smc' | 'chart';
   mode: ConditionMode;
   enabled: boolean;
+  // Strategy Builder grouping: 'must' = required (AND), 'optional' = any-of (min match)
+  group?: 'must' | 'optional';
   
   // Range mode
   minValue?: number;
