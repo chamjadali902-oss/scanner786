@@ -86,7 +86,7 @@ const Index = () => {
             <MultiTimeframeSelector primaryTimeframe={timeframe} onPrimaryChange={setTimeframe} mtfEnabled={mtfEnabled} onMtfToggle={setMtfEnabled} selectedTimeframes={mtfTimeframes} onTimeframesChange={setMtfTimeframes} disabled={isScanning} />
           </div>
           <div className="p-3 sm:p-5 rounded-xl border border-border bg-card card-glow">
-            <LogicBuilder conditions={conditions} onChange={setConditions} disabled={isScanning} />
+            <LogicBuilder conditions={conditions} onChange={setConditions} disabled={isScanning} optionalMinMatch={optionalMinMatch} onOptionalMinMatchChange={setOptionalMinMatch} />
           </div>
 
           {/* Action Buttons - Desktop */}
