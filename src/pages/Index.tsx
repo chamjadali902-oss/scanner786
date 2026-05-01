@@ -55,7 +55,7 @@ const Index = () => {
   const handleScan = () => {
     const favSymbols = scanPool === 'favorites' ? getFavoriteSymbols() : undefined;
     const mtfTfs = mtfEnabled ? mtfTimeframes : undefined;
-    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs);
+    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs, optionalMinMatch);
   };
 
   const handleReset = () => { clearResults(); setConditions([]); };
