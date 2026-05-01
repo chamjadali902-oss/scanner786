@@ -122,7 +122,8 @@ export function useScanner(options: UseScannerOptions = {}) {
             const overallProgress = Math.floor(((i * symbols.length + current) / (allTimeframes.length * symbols.length)) * symbols.length);
             setState(prev => ({ ...prev, progress: { current: overallProgress, total: symbols.length } }));
             options.onProgress?.(overallProgress, symbols.length);
-          }
+          },
+          optionalMinMatch
         );
         tfResults.push(result);
       }
