@@ -30,6 +30,8 @@ interface LogicBuilderProps {
   conditions: ScanCondition[];
   onChange: (conditions: ScanCondition[]) => void;
   disabled?: boolean;
+  optionalMinMatch?: number;
+  onOptionalMinMatchChange?: (n: number) => void;
 }
 
 const categoryLabels = {
