@@ -201,7 +201,7 @@ function FeatureSettings({
   }
 }
 
-export function LogicBuilder({ conditions, onChange, disabled }: LogicBuilderProps) {
+export function LogicBuilder({ conditions, onChange, disabled, optionalMinMatch = 1, onOptionalMinMatchChange }: LogicBuilderProps) {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     indicator: true,
     pattern: false,
