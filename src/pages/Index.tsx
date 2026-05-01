@@ -27,8 +27,9 @@ const Index = () => {
   const [mtfEnabled, setMtfEnabled] = useState(false);
   const [mtfTimeframes, setMtfTimeframes] = useState<Timeframe[]>(['1h', '4h']);
   const [conditions, setConditions] = useState<ScanCondition[]>([
-    { id: 'rsi-default', feature: 'rsi', category: 'indicator', mode: 'range', minValue: 5, maxValue: 30, enabled: true },
+    { id: 'rsi-default', feature: 'rsi', category: 'indicator', mode: 'range', minValue: 5, maxValue: 30, enabled: true, group: 'must' },
   ]);
+  const [optionalMinMatch, setOptionalMinMatch] = useState(1);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showStrategies, setShowStrategies] = useState(false);
