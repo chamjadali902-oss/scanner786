@@ -30,7 +30,8 @@ export function useScanner(options: UseScannerOptions = {}) {
     timeframe: Timeframe,
     conditions: ScanCondition[],
     tickerMap: Map<string, TickerData>,
-    onProgress?: (current: number, total: number) => void
+    onProgress?: (current: number, total: number) => void,
+    optionalMinMatch: number = 1
   ): Promise<Map<string, { matched: boolean; reasons: string[]; values: Record<string, any>; isBullish: boolean; price: number }>> => {
     const enabledConditions = conditions.filter(c => c.enabled);
     const resultMap = new Map();
@@ -46,7 +47,7 @@ export function useScanner(options: UseScannerOptions = {}) {
         indicatorValues = { ...indicatorValues, ...values };
       }
 
-      const { matched, reasons } = evaluateConditions(enabledConditions, indicatorValues, candles);
+      const { matched, reasons } = evaluateConditions(enabledConditions, indicatorValues, candles, optionalMinMatch);
       
       resultMap.set(symbol, {
         matched,
@@ -65,7 +66,8 @@ export function useScanner(options: UseScannerOptions = {}) {
     timeframe: Timeframe,
     conditions: ScanCondition[],
     favoriteSymbols?: string[],
-    mtfTimeframes?: Timeframe[]
+    mtfTimeframes?: Timeframe[],
+    optionalMinMatch: number = 1
   ) => {
     const enabledConditions = conditions.filter(c => c.enabled);
     
@@ -120,7 +122,8 @@ export function useScanner(options: UseScannerOptions = {}) {
             const overallProgress = Math.floor(((i * symbols.length + current) / (allTimeframes.length * symbols.length)) * symbols.length);
             setState(prev => ({ ...prev, progress: { current: overallProgress, total: symbols.length } }));
             options.onProgress?.(overallProgress, symbols.length);
-          }
+          },
+          optionalMinMatch
         );
         tfResults.push(result);
       }

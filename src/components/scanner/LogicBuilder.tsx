@@ -30,6 +30,8 @@ interface LogicBuilderProps {
   conditions: ScanCondition[];
   onChange: (conditions: ScanCondition[]) => void;
   disabled?: boolean;
+  optionalMinMatch?: number;
+  onOptionalMinMatchChange?: (n: number) => void;
 }
 
 const categoryLabels = {
@@ -199,7 +201,7 @@ function FeatureSettings({
   }
 }
 
-export function LogicBuilder({ conditions, onChange, disabled }: LogicBuilderProps) {
+export function LogicBuilder({ conditions, onChange, disabled, optionalMinMatch = 1, onOptionalMinMatchChange }: LogicBuilderProps) {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     indicator: true,
     pattern: false,
@@ -251,95 +253,174 @@ export function LogicBuilder({ conditions, onChange, disabled }: LogicBuilderPro
   };
 
   const activeConditions = conditions.filter(c => c.enabled);
+  const mustList = conditions.filter(c => (c.group ?? 'must') === 'must');
+  const optionalList = conditions.filter(c => c.group === 'optional');
+  const optionalEnabledCount = optionalList.filter(c => c.enabled).length;
+  const effectiveMin = Math.min(Math.max(1, optionalMinMatch), Math.max(1, optionalEnabledCount));
+
+  const renderConditionRow = (condition: ScanCondition) => {
+    const feature = FEATURES.find(f => f.id === condition.feature);
+    if (!feature) return null;
+    const isExpanded = expandedConditions[condition.id] ?? false;
+    const group = condition.group ?? 'must';
+
+    return (
+      <div
+        key={condition.id}
+        className={cn(
+          'rounded-lg border bg-card transition-all overflow-hidden',
+          condition.enabled
+            ? group === 'must' ? 'border-primary/40' : 'border-chart-3/40'
+            : 'border-border opacity-60'
+        )}
+      >
+        <div className="flex items-center gap-2 p-3 flex-wrap">
+          <Switch
+            checked={condition.enabled}
+            onCheckedChange={(enabled) => updateCondition(condition.id, { enabled })}
+            disabled={disabled}
+          />
+          <button
+            onClick={() => toggleConditionExpand(condition.id)}
+            className="flex-1 min-w-0 flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
+          >
+            <Settings2 className="w-4 h-4 text-primary flex-shrink-0" />
+            <span className="font-medium text-sm truncate">{feature.name}</span>
+            <span className={cn(
+              'text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0',
+              feature.category === 'indicator' && 'bg-chart-1/20 text-chart-1',
+              feature.category === 'pattern' && 'bg-chart-2/20 text-chart-2',
+              feature.category === 'smc' && 'bg-chart-5/20 text-chart-5',
+              feature.category === 'chart' && 'bg-chart-4/20 text-chart-4'
+            )}>
+              {feature.category}
+            </span>
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground ml-auto flex-shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto flex-shrink-0" />
+            )}
+          </button>
+
+          <div className="flex items-center rounded-md border border-border overflow-hidden text-[10px] font-semibold">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => updateCondition(condition.id, { group: 'must' })}
+              className={cn(
+                'px-2 py-1 transition-colors',
+                group === 'must' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-muted'
+              )}
+              title="Must — required for match"
+            >
+              MUST
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => updateCondition(condition.id, { group: 'optional' })}
+              className={cn(
+                'px-2 py-1 transition-colors',
+                group === 'optional' ? 'bg-chart-3 text-background' : 'bg-transparent text-muted-foreground hover:bg-muted'
+              )}
+              title="Optional — counts toward minimum match"
+            >
+              OPTIONAL
+            </button>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => removeCondition(condition.id)}
+            disabled={disabled}
+            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {isExpanded && (
+          <div className="px-3 pb-3">
+            <FeatureSettings
+              condition={condition}
+              feature={feature}
+              onUpdate={(updates) => updateCondition(condition.id, updates)}
+              disabled={disabled || !condition.enabled}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Logic Builder
+          Strategy Builder
         </label>
         <span className="text-xs text-primary font-mono">
-          {activeConditions.length} active condition{activeConditions.length !== 1 ? 's' : ''}
+          {activeConditions.length} active
         </span>
       </div>
 
-      {/* Active Conditions */}
-      {conditions.length > 0 && (
-        <div className="space-y-2 mb-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Active Filters</p>
-          <div className="space-y-2">
-            {conditions.map((condition) => {
-              const feature = FEATURES.find(f => f.id === condition.feature);
-              if (!feature) return null;
-
-              const isExpanded = expandedConditions[condition.id] ?? false;
-
-              return (
-                <div
-                  key={condition.id}
-                  className={cn(
-                    'rounded-lg border bg-card transition-all overflow-hidden',
-                    condition.enabled ? 'border-primary/30' : 'border-border opacity-60'
-                  )}
-                >
-                  {/* Header Row */}
-                  <div className="flex items-center gap-3 p-3">
-                    <Switch
-                      checked={condition.enabled}
-                      onCheckedChange={(enabled) => updateCondition(condition.id, { enabled })}
-                      disabled={disabled}
-                    />
-
-                    <button
-                      onClick={() => toggleConditionExpand(condition.id)}
-                      className="flex-1 flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
-                    >
-                      <Settings2 className="w-4 h-4 text-primary" />
-                      <span className="font-medium text-sm">{feature.name}</span>
-                      <span className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded-full',
-                        feature.category === 'indicator' && 'bg-chart-1/20 text-chart-1',
-                        feature.category === 'pattern' && 'bg-chart-2/20 text-chart-2',
-                        feature.category === 'smc' && 'bg-chart-5/20 text-chart-5',
-                        feature.category === 'chart' && 'bg-chart-4/20 text-chart-4'
-                      )}>
-                        {feature.category}
-                      </span>
-                      {isExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-muted-foreground ml-auto" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto" />
-                      )}
-                    </button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeCondition(condition.id)}
-                      disabled={disabled}
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  {/* Expandable Settings */}
-                  {isExpanded && (
-                    <div className="px-3 pb-3">
-                      <FeatureSettings
-                        condition={condition}
-                        feature={feature}
-                        onUpdate={(updates) => updateCondition(condition.id, updates)}
-                        disabled={disabled || !condition.enabled}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+      {mustList.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            <p className="text-xs font-semibold uppercase tracking-wider">
+              Must Have <span className="text-muted-foreground font-normal normal-case">— sab match honi chahiye (AND)</span>
+            </p>
           </div>
+          <div className="space-y-2">{mustList.map(renderConditionRow)}</div>
         </div>
       )}
+
+      {optionalList.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="w-2 h-2 rounded-full bg-chart-3" />
+            <p className="text-xs font-semibold uppercase tracking-wider">
+              Optional <span className="text-muted-foreground font-normal normal-case">— in mein se minimum match required</span>
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 p-3 rounded-lg border border-chart-3/30 bg-chart-3/5 flex-wrap">
+            <span className="text-xs text-muted-foreground">Minimum match:</span>
+            <div className="flex items-center gap-1 flex-wrap">
+              {Array.from({ length: Math.max(1, optionalEnabledCount) }, (_, i) => i + 1).map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={disabled || !onOptionalMinMatchChange}
+                  onClick={() => onOptionalMinMatchChange?.(n)}
+                  className={cn(
+                    'px-2.5 py-1 rounded text-xs font-mono border transition-colors',
+                    effectiveMin === n
+                      ? 'bg-chart-3 text-background border-chart-3'
+                      : 'bg-transparent border-border text-muted-foreground hover:bg-muted'
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground ml-auto font-mono">
+              {effectiveMin} of {optionalEnabledCount || optionalList.length}
+            </span>
+          </div>
+
+          <div className="space-y-2">{optionalList.map(renderConditionRow)}</div>
+        </div>
+      )}
+
+      {conditions.length === 0 && (
+        <div className="p-3 rounded-lg border border-dashed border-border bg-muted/20 text-[11px] text-muted-foreground">
+          Niche se conditions add karein. Har condition ko <span className="font-semibold text-primary">MUST</span> ya <span className="font-semibold text-chart-3">OPTIONAL</span> mein daal sakte hain.
+        </div>
+      )}
+
 
       {/* Feature Categories */}
       <div className="space-y-2 border rounded-lg bg-card/50">

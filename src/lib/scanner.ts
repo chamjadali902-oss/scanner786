@@ -1102,7 +1102,8 @@ function evaluateCondition(
 export function evaluateConditions(
   conditions: ScanCondition[],
   values: IndicatorValues,
-  candles: Candle[]
+  candles: Candle[],
+  optionalMinMatch: number = 1
 ): { matched: boolean; reasons: string[] } {
   const enabledConditions = conditions.filter(c => c.enabled);
 
@@ -1110,20 +1111,47 @@ export function evaluateConditions(
     return { matched: false, reasons: [] };
   }
 
-  const reasons: string[] = [];
-  let allMatched = true;
+  const mustConditions = enabledConditions.filter(c => (c.group ?? 'must') === 'must');
+  const optionalConditions = enabledConditions.filter(c => c.group === 'optional');
 
-  for (const condition of enabledConditions) {
+  const reasons: string[] = [];
+
+  // 1) ALL must-conditions must match
+  for (const condition of mustConditions) {
     const result = evaluateCondition(condition, values, candles);
     if (result.matched) {
-      reasons.push(result.reason);
+      reasons.push(`✓ ${result.reason}`);
     } else {
-      allMatched = false;
+      // Any must fail => whole strategy fails
+      return { matched: false, reasons: [] };
     }
   }
 
-  // All enabled conditions must match
-  return { matched: allMatched && reasons.length > 0, reasons };
+  // 2) Optional group: at least `optionalMinMatch` must match (if any optional defined)
+  if (optionalConditions.length > 0) {
+    const required = Math.min(Math.max(1, optionalMinMatch), optionalConditions.length);
+    const optReasons: string[] = [];
+    let optMatchCount = 0;
+    for (const condition of optionalConditions) {
+      const result = evaluateCondition(condition, values, candles);
+      if (result.matched) {
+        optMatchCount++;
+        optReasons.push(`+ ${result.reason}`);
+      }
+    }
+    if (optMatchCount < required) {
+      return { matched: false, reasons: [] };
+    }
+    reasons.push(`Optional: ${optMatchCount}/${optionalConditions.length} matched (min ${required})`);
+    reasons.push(...optReasons);
+  }
+
+  // If no must AND no optional matched => fail
+  if (mustConditions.length === 0 && optionalConditions.length === 0) {
+    return { matched: false, reasons: [] };
+  }
+
+  return { matched: reasons.length > 0, reasons };
 }
 
 export function determineBullishness(values: IndicatorValues): boolean {

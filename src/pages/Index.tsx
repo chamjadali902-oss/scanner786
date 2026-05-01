@@ -27,8 +27,9 @@ const Index = () => {
   const [mtfEnabled, setMtfEnabled] = useState(false);
   const [mtfTimeframes, setMtfTimeframes] = useState<Timeframe[]>(['1h', '4h']);
   const [conditions, setConditions] = useState<ScanCondition[]>([
-    { id: 'rsi-default', feature: 'rsi', category: 'indicator', mode: 'range', minValue: 5, maxValue: 30, enabled: true },
+    { id: 'rsi-default', feature: 'rsi', category: 'indicator', mode: 'range', minValue: 5, maxValue: 30, enabled: true, group: 'must' },
   ]);
+  const [optionalMinMatch, setOptionalMinMatch] = useState(1);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showStrategies, setShowStrategies] = useState(false);
@@ -54,7 +55,7 @@ const Index = () => {
   const handleScan = () => {
     const favSymbols = scanPool === 'favorites' ? getFavoriteSymbols() : undefined;
     const mtfTfs = mtfEnabled ? mtfTimeframes : undefined;
-    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs);
+    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs, optionalMinMatch);
   };
 
   const handleReset = () => { clearResults(); setConditions([]); };
@@ -85,7 +86,7 @@ const Index = () => {
             <MultiTimeframeSelector primaryTimeframe={timeframe} onPrimaryChange={setTimeframe} mtfEnabled={mtfEnabled} onMtfToggle={setMtfEnabled} selectedTimeframes={mtfTimeframes} onTimeframesChange={setMtfTimeframes} disabled={isScanning} />
           </div>
           <div className="p-3 sm:p-5 rounded-xl border border-border bg-card card-glow">
-            <LogicBuilder conditions={conditions} onChange={setConditions} disabled={isScanning} />
+            <LogicBuilder conditions={conditions} onChange={setConditions} disabled={isScanning} optionalMinMatch={optionalMinMatch} onOptionalMinMatchChange={setOptionalMinMatch} />
           </div>
 
           {/* Action Buttons - Desktop */}
