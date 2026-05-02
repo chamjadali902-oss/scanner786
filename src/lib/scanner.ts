@@ -1088,6 +1088,8 @@ function evaluateCondition(
         reason: `${arrow} Impulse | ${r.impulseCandles} candle break | ${lvlLabel}: ${fmt(lvl)} | ${r.candlesSinceImpulse}c since impulse`,
       };
     }
+
+    case 'smart-bullish': {
       const patternFound = values.smart_bullish_pattern_found;
       if (!patternFound) return { matched: false, reason: '' };
 
