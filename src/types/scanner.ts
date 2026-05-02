@@ -156,6 +156,13 @@ export interface ScanCondition {
   // Chart Pattern settings
   chartPatternLookback?: number; // Window of candles to scan for pattern (default 80)
 
+  // Impulse Move (untested) settings
+  impulseMinCandles?: number;        // min consecutive bull/bear candles after base (default 2)
+  impulseLookback?: number;          // candles back to scan (default 30)
+  impulseMaxAge?: number;            // max candles since impulse ended (default 10)
+  impulseRetestTolerance?: number;   // % tolerance for retest detection (default 0)
+  impulseRequireBreak?: boolean;     // require impulse close to break base high/low (default true)
+
   // Advanced Fibonacci linking & pullback settings
   // Source of swing high/low used to compute Fib levels
   fibSource?: 'lookback' | 'pattern' | 'smc'; // default: 'lookback'
@@ -193,7 +200,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern' | 'impulse-move';
 }
 
 // All available features
@@ -268,6 +275,10 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'cp_falling_wedge', name: 'Falling Wedge', category: 'chart', description: 'Bullish — both trendlines falling, breakout', defaultMode: 'value', settingsType: 'chart-pattern' },
   { id: 'cp_rectangle_breakout_bull', name: 'Rectangle Breakout (Bull)', category: 'chart', description: 'Bullish — flat range upper breakout', defaultMode: 'value', settingsType: 'chart-pattern' },
   { id: 'cp_rectangle_breakout_bear', name: 'Rectangle Breakout (Bear)', category: 'chart', description: 'Bearish — flat range lower breakdown', defaultMode: 'value', settingsType: 'chart-pattern' },
+
+  // Impulse Move (untested) — buy/sell setups
+  { id: 'impulse_bullish', name: 'Impulse Move (Bullish)', category: 'pattern', description: 'Red candle ke baad 2+ green candles ne break kiya, abhi tk retest nahi hua', defaultMode: 'value', settingsType: 'impulse-move' },
+  { id: 'impulse_bearish', name: 'Impulse Move (Bearish)', category: 'pattern', description: 'Green candle ke baad 2+ red candles ne break kiya, abhi tk retest nahi hua', defaultMode: 'value', settingsType: 'impulse-move' },
 ];
 
 export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
