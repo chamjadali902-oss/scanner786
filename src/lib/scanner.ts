@@ -3,6 +3,7 @@ import * as indicators from './indicators';
 import * as patterns from './patterns';
 import * as smc from './smc';
 import * as chartPatterns from './chart-patterns';
+import { detectBullishImpulse, detectBearishImpulse, ImpulseMoveResult } from './impulse-move';
 
 interface IndicatorValues {
   [key: string]: number | boolean | string | number[];
@@ -318,6 +319,21 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   }
   // Store a lightweight reference for evaluators
   (values as any).chart_pattern_results = cpResults;
+
+  // ==== IMPULSE MOVE (untested) ====
+  const impulseOpts = {
+    minImpulseCandles: condition?.impulseMinCandles ?? 2,
+    lookback: condition?.impulseLookback ?? 30,
+    maxAgeCandles: condition?.impulseMaxAge ?? 10,
+    retestTolerancePct: condition?.impulseRetestTolerance ?? 0,
+    requireBreak: condition?.impulseRequireBreak ?? true,
+  };
+  const impulseBull = detectBullishImpulse(candles, impulseOpts);
+  const impulseBear = detectBearishImpulse(candles, impulseOpts);
+  values.impulse_bullish = impulseBull.detected;
+  values.impulse_bearish = impulseBear.detected;
+  (values as any).impulse_bullish_result = impulseBull;
+  (values as any).impulse_bearish_result = impulseBear;
 
   return values;
 }
@@ -1058,7 +1074,20 @@ function evaluateCondition(
       };
     }
 
-    case 'smart-bullish': {
+    case 'impulse-move': {
+      const key = condition.feature === 'impulse_bullish' ? 'impulse_bullish_result' : 'impulse_bearish_result';
+      const r = (values as any)[key] as ImpulseMoveResult | undefined;
+      if (!r || !r.detected) return { matched: false, reason: '' };
+      const isBull = condition.feature === 'impulse_bullish';
+      const lvl = isBull ? r.baseHigh : r.baseLow;
+      const fmt = (v: number) => v >= 1 ? v.toFixed(4) : v.toFixed(6);
+      const arrow = isBull ? '🟢 Bullish' : '🔴 Bearish';
+      const lvlLabel = isBull ? 'untested high' : 'untested low';
+      return {
+        matched: true,
+        reason: `${arrow} Impulse | ${r.impulseCandles} candle break | ${lvlLabel}: ${fmt(lvl)} | ${r.candlesSinceImpulse}c since impulse`,
+      };
+    }
       const patternFound = values.smart_bullish_pattern_found;
       if (!patternFound) return { matched: false, reason: '' };
 
