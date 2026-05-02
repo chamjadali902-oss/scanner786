@@ -24,6 +24,7 @@ import {
   FibonacciSettings,
   SmartBullishSettings,
   ChartPatternSettings,
+  ImpulseMoveSettings,
 } from './settings';
 
 interface LogicBuilderProps {
@@ -148,6 +149,16 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         mode: 'value',
         chartPatternLookback: 80,
       };
+    case 'impulse-move':
+      return {
+        ...defaults,
+        mode: 'value',
+        impulseMinCandles: 2,
+        impulseLookback: 30,
+        impulseMaxAge: 10,
+        impulseRetestTolerance: 0,
+        impulseRequireBreak: true,
+      };
     default:
       return {
         ...defaults,
@@ -196,6 +207,8 @@ function FeatureSettings({
       return <SmartBullishSettings condition={condition} onUpdate={onUpdate} disabled={disabled} />;
     case 'chart-pattern':
       return <ChartPatternSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
+    case 'impulse-move':
+      return <ImpulseMoveSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     default:
       return null;
   }
