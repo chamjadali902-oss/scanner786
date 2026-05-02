@@ -12,3 +12,4 @@ export { PSARSettings } from './PSARSettings';
 export { FibonacciSettings } from './FibonacciSettings';
 export { SmartBullishSettings } from './SmartBullishSettings';
 export { ChartPatternSettings } from './ChartPatternSettings';
+export { ImpulseMoveSettings } from './ImpulseMoveSettings';
