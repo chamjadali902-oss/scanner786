@@ -299,13 +299,28 @@ export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
   { value: '1M', label: '1 Month' },
 ];
 
-// Binance-supported intervals for validation of custom user input
+// Binance-native intervals (fetched directly from API)
 export const VALID_BINANCE_INTERVALS: Timeframe[] = [
   '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'
 ];
 
+// Accepts ANY timeframe like 9m, 10m, 45m, 3h, 5h, 2d etc.
+// Non-native ones will be built by aggregating a base interval.
 export function isValidTimeframe(tf: string): boolean {
-  return VALID_BINANCE_INTERVALS.includes(tf);
+  if (!tf) return false;
+  if (VALID_BINANCE_INTERVALS.includes(tf)) return true;
+  const m = /^(\d+)(m|h|d|w|M)$/.exec(tf);
+  if (!m) return false;
+  const n = parseInt(m[1], 10);
+  const unit = m[2];
+  if (n <= 0) return false;
+  // Reasonable upper bounds
+  if (unit === 'm' && n > 720) return false;
+  if (unit === 'h' && n > 168) return false;
+  if (unit === 'd' && n > 30) return false;
+  if (unit === 'w' && n > 12) return false;
+  if (unit === 'M' && n > 12) return false;
+  return true;
 }
 
 export const SCAN_POOL_OPTIONS: { value: ScanPool; label: string; description: string }[] = [
