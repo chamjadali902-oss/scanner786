@@ -151,8 +151,8 @@ export function MultiTimeframeSelector({
       {mtfEnabled && (
         <div className="p-3 rounded-lg border border-primary/20 bg-primary/5 space-y-2">
           <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">Confluence Timeframes (pick 2-3)</p>
-          <div className="flex gap-1.5">
-            {MTF_OPTIONS.map(tf => (
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from(new Set([...MTF_OPTIONS, ...customTfs, ...selectedTimeframes])).map(tf => (
               <button
                 key={tf}
                 onClick={() => toggleMtfTimeframe(tf)}
