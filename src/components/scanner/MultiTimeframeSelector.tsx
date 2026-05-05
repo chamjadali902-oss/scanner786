@@ -40,7 +40,7 @@ export function MultiTimeframeSelector({
     }
   };
 
-  return (
+
   const [customTfs, setCustomTfs] = useState<Timeframe[]>(() => {
     try { return JSON.parse(localStorage.getItem('customTimeframes') || '[]'); } catch { return []; }
   });
