@@ -2,7 +2,7 @@
 
 export type ScanPool = 'losers' | 'gainers' | 'volume' | 'favorites' | 'all';
 
-export type Timeframe = '1m' | '3m' | '5m' | '15m' | '1h' | '4h' | '1d';
+export type Timeframe = string; // e.g. '1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M' or any Binance-supported interval
 
 export type ConditionMode = 'range' | 'comparison' | 'cross' | 'value';
 
@@ -286,10 +286,27 @@ export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
   { value: '3m', label: '3 Minutes' },
   { value: '5m', label: '5 Minutes' },
   { value: '15m', label: '15 Minutes' },
+  { value: '30m', label: '30 Minutes' },
   { value: '1h', label: '1 Hour' },
+  { value: '2h', label: '2 Hours' },
   { value: '4h', label: '4 Hours' },
+  { value: '6h', label: '6 Hours' },
+  { value: '8h', label: '8 Hours' },
+  { value: '12h', label: '12 Hours' },
   { value: '1d', label: '1 Day' },
+  { value: '3d', label: '3 Days' },
+  { value: '1w', label: '1 Week' },
+  { value: '1M', label: '1 Month' },
 ];
+
+// Binance-supported intervals for validation of custom user input
+export const VALID_BINANCE_INTERVALS: Timeframe[] = [
+  '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'
+];
+
+export function isValidTimeframe(tf: string): boolean {
+  return VALID_BINANCE_INTERVALS.includes(tf);
+}
 
 export const SCAN_POOL_OPTIONS: { value: ScanPool; label: string; description: string }[] = [
   { value: 'all', label: 'All Coins', description: 'Scan all Binance USDT pairs' },
