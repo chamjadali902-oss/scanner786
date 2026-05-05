@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Timeframe, TIMEFRAME_OPTIONS } from '@/types/scanner';
-import { Layers } from 'lucide-react';
+import { Timeframe, TIMEFRAME_OPTIONS, isValidTimeframe } from '@/types/scanner';
+import { Layers, Plus, X } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface MultiTimeframeSelectorProps {
   primaryTimeframe: Timeframe;
