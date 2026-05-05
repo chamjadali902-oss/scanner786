@@ -297,7 +297,21 @@ export function getTradingViewLink(symbol: string, interval: Timeframe): string 
     '1h': '60', '2h': '120', '4h': '240', '6h': '360', '8h': '480', '12h': '720',
     '1d': 'D', '3d': '3D', '1w': 'W', '1M': 'M',
   };
-  const tvInterval = tvIntervalMap[interval] || '60';
+  // For custom timeframes (e.g. 9m, 45m, 3h), TradingView supports raw minute counts as numbers
+  let tvInterval = tvIntervalMap[interval];
+  if (!tvInterval) {
+    const m = /^(\d+)(m|h|d|w|M)$/.exec(interval);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      const unit = m[2];
+      if (unit === 'm') tvInterval = String(n);
+      else if (unit === 'h') tvInterval = String(n * 60);
+      else if (unit === 'd') tvInterval = `${n}D`;
+      else if (unit === 'w') tvInterval = `${n}W`;
+      else if (unit === 'M') tvInterval = `${n}M`;
+    }
+  }
+  if (!tvInterval) tvInterval = '60';
   
   return `https://www.tradingview.com/chart/?symbol=BINANCE:${pair}USDT&interval=${tvInterval}`;
 }
