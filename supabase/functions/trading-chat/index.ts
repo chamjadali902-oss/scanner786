@@ -499,8 +499,13 @@ serve(async (req) => {
 
     const systemPrompt = await loadSystemPrompt();
     const finalSystem = systemPrompt + liveData + (liveData
-      ? `\n\nIMPORTANT: All numbers above are FRESHLY computed from 500 live candles. Quote them exactly. Do not estimate.`
-      : '');
+      ? `\n\n⚠️ CRITICAL RULES — READ CAREFULLY:
+1. The LIVE DATA block above is the SINGLE SOURCE OF TRUTH. It was just fetched live from Binance moments ago.
+2. IGNORE any prices, indicator values, levels, or numbers mentioned in PRIOR conversation messages — those are STALE.
+3. When quoting the current price, RSI, EMAs, swing highs/lows, OBs, FVGs etc., you MUST copy the exact values from the LIVE DATA block above. Do NOT round, estimate, or recall from earlier.
+4. If the user asks "what is the price now?" — answer with the "Live Price" value from above.
+5. Never invent symbols or numbers not present in the LIVE DATA block.`
+      : `\n\nNOTE: No symbol/timeframe detected in the user's question. If they ask for analysis, politely ask them to specify both (e.g., "BTCUSDT 1h" or "ETH 4h futures"). Do NOT invent prices.`);
 
     const response = await callAIWithFallback({
       model: "google/gemini-3-flash-preview",
