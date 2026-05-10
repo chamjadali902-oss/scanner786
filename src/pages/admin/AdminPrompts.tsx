@@ -23,6 +23,7 @@ const PROMPT_COLORS: Record<string, string> = {
   dashboard_ai: 'text-bullish bg-bullish/10 border-bullish/20',
   journal_ai: 'text-warning bg-warning/10 border-warning/20',
   smart_signals_ai: 'text-accent bg-accent/10 border-accent/20',
+  trading_chat_ai: 'text-bearish bg-bearish/10 border-bearish/20',
 };
 
 export default function AdminPrompts() {

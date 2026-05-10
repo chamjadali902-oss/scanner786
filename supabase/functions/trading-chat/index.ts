@@ -1,404 +1,443 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callAIWithFallback } from "../_shared/ai-fallback.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const BINANCE_API = "https://api.binance.com/api/v3";
+const SPOT_API = "https://api.binance.com/api/v3";
+const FUTURES_API = "https://fapi.binance.com/fapi/v1";
 
-/** Extract potential crypto symbols from the latest user messages */
-function extractSymbols(messages: { role: string; content: string }[]): string[] {
-  const userMessages = messages.filter(m => m.role === 'user').slice(-3);
-  const text = userMessages.map(m => m.content).join(' ').toUpperCase();
-  
-  const knownCoins = [
-    'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'DOT', 'MATIC',
-    'LINK', 'UNI', 'ATOM', 'LTC', 'FIL', 'APT', 'ARB', 'OP', 'NEAR', 'FTM',
-    'ALGO', 'VET', 'SAND', 'MANA', 'AXS', 'SHIB', 'PEPE', 'WIF', 'BONK',
-    'SUI', 'SEI', 'TIA', 'JUP', 'WLD', 'INJ', 'TRX', 'TON', 'RENDER', 'FET',
-    'HBAR', 'ICP', 'RUNE', 'AAVE', 'MKR', 'CRV', 'SNX', 'COMP', 'SUSHI',
-    'ENA', 'PENDLE', 'STX', 'KAS', 'TAO', 'ONDO', 'JASMY', 'GALA', 'IMX',
-    'ORDI', 'WOO', 'CAKE', '1000PEPE', '1000SHIB', 'NOT', 'PEOPLE',
-  ];
+// ─────────────────────────────────────────────────────────
+// PARSING — extract symbol, timeframe, market from user msg
+// ─────────────────────────────────────────────────────────
+const KNOWN_COINS = [
+  'BTC','ETH','BNB','SOL','XRP','DOGE','ADA','AVAX','DOT','MATIC','LINK','UNI','ATOM','LTC',
+  'FIL','APT','ARB','OP','NEAR','FTM','ALGO','VET','SAND','MANA','AXS','SHIB','PEPE','WIF',
+  'BONK','SUI','SEI','TIA','JUP','WLD','INJ','TRX','TON','RENDER','FET','HBAR','ICP','RUNE',
+  'AAVE','MKR','CRV','SNX','COMP','SUSHI','ENA','PENDLE','STX','KAS','TAO','ONDO','JASMY',
+  'GALA','IMX','ORDI','WOO','CAKE','NOT','PEOPLE','POPCAT','FLOKI','HYPE','PNUT','MEW','TRUMP'
+];
+const VALID_TFS = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M'];
 
-  const found: string[] = [];
-  
-  for (const coin of knownCoins) {
-    const patterns = [
-      new RegExp(`\\b${coin}USDT\\b`),
-      new RegExp(`\\b${coin}/USDT\\b`),
-      new RegExp(`\\b${coin}\\b`),
-    ];
-    if (patterns.some(p => p.test(text))) {
-      found.push(coin + 'USDT');
+function parseRequest(messages: { role: string; content: string }[]) {
+  const lastUser = [...messages].reverse().find(m => m.role === 'user');
+  const text = (lastUser?.content || '').trim();
+  const upper = text.toUpperCase();
+
+  // Market detection
+  const market: 'spot' | 'futures' = /\b(FUTURES?|PERP|PERPETUAL|FUT)\b/i.test(text) ? 'futures' : 'spot';
+
+  // Timeframe detection (case-sensitive for "M" vs "m")
+  let tf: string | null = null;
+  for (const t of VALID_TFS) {
+    const re = new RegExp(`(^|[^A-Za-z0-9])${t}([^A-Za-z0-9]|$)`, t === '1M' ? '' : 'i');
+    if (re.test(text)) { tf = t; break; }
+  }
+
+  // Symbol detection
+  let symbol: string | null = null;
+  // Pattern XXXUSDT / XXX/USDT / XXX-USDT
+  const explicit = upper.match(/\b([A-Z0-9]{2,10})[/\-]?USDT\b/);
+  if (explicit) symbol = explicit[1] + 'USDT';
+  if (!symbol) {
+    for (const c of KNOWN_COINS) {
+      const re = new RegExp(`\\b${c}\\b`);
+      if (re.test(upper)) { symbol = c + 'USDT'; break; }
     }
   }
 
-  const usdtMatch = text.match(/\b([A-Z1-9]{2,10})USDT\b/g);
-  if (usdtMatch) {
-    for (const m of usdtMatch) {
-      if (!found.includes(m)) found.push(m);
-    }
-  }
-
-  return [...new Set(found)].slice(0, 5);
+  return { symbol, timeframe: tf, market };
 }
 
-// ─── Wilder's Smoothed RSI (matches TradingView exactly) ───
-function calcWildersRSI(closes: number[], period = 14): number | null {
-  if (closes.length < period + 1) return null;
-
-  // First average: simple average of first `period` changes
-  let avgGain = 0;
-  let avgLoss = 0;
-  for (let i = 1; i <= period; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff > 0) avgGain += diff;
-    else avgLoss += Math.abs(diff);
-  }
-  avgGain /= period;
-  avgLoss /= period;
-
-  // Wilder's smoothing for remaining candles
-  for (let i = period + 1; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1];
-    const gain = diff > 0 ? diff : 0;
-    const loss = diff < 0 ? Math.abs(diff) : 0;
-    avgGain = (avgGain * (period - 1) + gain) / period;
-    avgLoss = (avgLoss * (period - 1) + loss) / period;
-  }
-
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return 100 - (100 / (1 + rs));
+// ─────────────────────────────────────────────────────────
+// FETCH 500 candles from Binance (Spot or Futures)
+// ─────────────────────────────────────────────────────────
+async function fetchKlines(symbol: string, interval: string, market: 'spot' | 'futures'): Promise<number[][] | null> {
+  const base = market === 'futures' ? FUTURES_API : SPOT_API;
+  try {
+    const r = await fetch(`${base}/klines?symbol=${symbol}&interval=${interval}&limit=500`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
 }
 
-// ─── EMA with SMA seed (matches TradingView) ───
-function calcEMA(closes: number[], period: number): number | null {
-  if (closes.length < period) return null;
-  
-  // SMA seed from first `period` values
+async function fetchTicker(symbol: string, market: 'spot' | 'futures') {
+  const base = market === 'futures' ? FUTURES_API : SPOT_API;
+  try {
+    const r = await fetch(`${base}/ticker/24hr?symbol=${symbol}`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+// ─────────────────────────────────────────────────────────
+// INDICATORS — TradingView-equivalent
+// ─────────────────────────────────────────────────────────
+function wildersRSI(closes: number[], p = 14): number | null {
+  if (closes.length < p + 1) return null;
+  let g = 0, l = 0;
+  for (let i = 1; i <= p; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d > 0) g += d; else l += Math.abs(d);
+  }
+  g /= p; l /= p;
+  for (let i = p + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    g = (g * (p - 1) + (d > 0 ? d : 0)) / p;
+    l = (l * (p - 1) + (d < 0 ? Math.abs(d) : 0)) / p;
+  }
+  if (l === 0) return 100;
+  return 100 - 100 / (1 + g / l);
+}
+
+function emaSeries(closes: number[], p: number): number[] {
+  if (closes.length < p) return [];
+  const k = 2 / (p + 1);
   let ema = 0;
-  for (let i = 0; i < period; i++) {
-    ema += closes[i];
-  }
-  ema /= period;
-
-  const k = 2 / (period + 1);
-  for (let i = period; i < closes.length; i++) {
+  for (let i = 0; i < p; i++) ema += closes[i];
+  ema /= p;
+  const out: number[] = [ema];
+  for (let i = p; i < closes.length; i++) {
     ema = closes[i] * k + ema * (1 - k);
+    out.push(ema);
   }
-  return ema;
+  return out;
 }
 
-// ─── MACD (12, 26, 9) ───
-function calcMACD(closes: number[]): { macd: number; signal: number; histogram: number } | null {
+function ema(closes: number[], p: number): number | null {
+  const s = emaSeries(closes, p);
+  return s.length ? s[s.length - 1] : null;
+}
+
+function macd(closes: number[]) {
   if (closes.length < 35) return null;
-
-  const ema12 = calcEMAFromArray(closes, 12);
-  const ema26 = calcEMAFromArray(closes, 26);
-  if (ema12 === null || ema26 === null) return null;
-
-  // Build MACD line history for signal
+  const e12 = emaSeries(closes, 12);
+  const e26 = emaSeries(closes, 26);
+  const offset = e12.length - e26.length;
   const macdLine: number[] = [];
-  let e12 = 0, e26 = 0;
-  for (let i = 0; i < 12; i++) e12 += closes[i];
-  e12 /= 12;
-  for (let i = 0; i < 26; i++) e26 += closes[i];
-  e26 /= 26;
-  
-  const k12 = 2 / 13, k26 = 2 / 27;
-  for (let i = 26; i < closes.length; i++) {
-    e12 = closes[i] * k12 + e12 * (1 - k12);
-    e26 = closes[i] * k26 + e26 * (1 - k26);
-    macdLine.push(e12 - e26);
-  }
-  // Recalc e12 properly from start
-  // Simplified: just use last values
+  for (let i = 0; i < e26.length; i++) macdLine.push(e12[i + offset] - e26[i]);
   if (macdLine.length < 9) return null;
-
-  let signal = 0;
-  for (let i = 0; i < 9; i++) signal += macdLine[i];
-  signal /= 9;
-  const kSig = 2 / 10;
-  for (let i = 9; i < macdLine.length; i++) {
-    signal = macdLine[i] * kSig + signal * (1 - kSig);
-  }
-
-  const macdVal = macdLine[macdLine.length - 1];
-  return { macd: macdVal, signal, histogram: macdVal - signal };
+  const sigSeries = emaSeries(macdLine, 9);
+  const signal = sigSeries[sigSeries.length - 1];
+  const m = macdLine[macdLine.length - 1];
+  return { macd: m, signal, histogram: m - signal };
 }
 
-function calcEMAFromArray(data: number[], period: number): number | null {
-  if (data.length < period) return null;
-  let ema = 0;
-  for (let i = 0; i < period; i++) ema += data[i];
-  ema /= period;
-  const k = 2 / (period + 1);
-  for (let i = period; i < data.length; i++) {
-    ema = data[i] * k + ema * (1 - k);
-  }
-  return ema;
+function bbands(closes: number[], p = 20, mult = 2) {
+  if (closes.length < p) return null;
+  const s = closes.slice(-p);
+  const mid = s.reduce((a, b) => a + b, 0) / p;
+  const v = s.reduce((sum, x) => sum + (x - mid) ** 2, 0) / p;
+  const sd = Math.sqrt(v);
+  return { upper: mid + mult * sd, middle: mid, lower: mid - mult * sd, bandwidth: ((2 * mult * sd) / mid) * 100 };
 }
 
-// ─── Supertrend (10, 3) ───
-function calcSupertrend(candles: any[][], period = 10, multiplier = 3): { value: number; direction: 'UP' | 'DOWN' } | null {
-  if (candles.length < period + 1) return null;
-
-  const highs = candles.map(c => +c[2]);
-  const lows = candles.map(c => +c[3]);
-  const closes = candles.map(c => +c[4]);
-
-  // ATR using Wilder's smoothing
-  const trueRanges: number[] = [];
-  for (let i = 1; i < candles.length; i++) {
-    const tr = Math.max(
-      highs[i] - lows[i],
-      Math.abs(highs[i] - closes[i - 1]),
-      Math.abs(lows[i] - closes[i - 1])
-    );
-    trueRanges.push(tr);
+function stochRSI(closes: number[], rp = 14, sp = 14, k = 3, d = 3) {
+  if (closes.length < rp + sp + k + d) return null;
+  const rsis: number[] = [];
+  let g = 0, l = 0;
+  for (let i = 1; i <= rp; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff > 0) g += diff; else l += Math.abs(diff);
   }
+  g /= rp; l /= rp;
+  rsis.push(l === 0 ? 100 : 100 - 100 / (1 + g / l));
+  for (let i = rp + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    g = (g * (rp - 1) + (diff > 0 ? diff : 0)) / rp;
+    l = (l * (rp - 1) + (diff < 0 ? Math.abs(diff) : 0)) / rp;
+    rsis.push(l === 0 ? 100 : 100 - 100 / (1 + g / l));
+  }
+  if (rsis.length < sp) return null;
+  const stoch: number[] = [];
+  for (let i = sp - 1; i < rsis.length; i++) {
+    const w = rsis.slice(i - sp + 1, i + 1);
+    const min = Math.min(...w), max = Math.max(...w);
+    stoch.push(max === min ? 50 : ((rsis[i] - min) / (max - min)) * 100);
+  }
+  if (stoch.length < k) return null;
+  const sk: number[] = [];
+  for (let i = k - 1; i < stoch.length; i++) {
+    sk.push(stoch.slice(i - k + 1, i + 1).reduce((a, b) => a + b, 0) / k);
+  }
+  if (sk.length < d) return null;
+  const lastD = sk.slice(-d).reduce((a, b) => a + b, 0) / d;
+  return { k: sk[sk.length - 1], d: lastD };
+}
 
-  if (trueRanges.length < period) return null;
-
+function atrWilder(highs: number[], lows: number[], closes: number[], p = 14): number | null {
+  if (highs.length < p + 1) return null;
+  const trs: number[] = [];
+  for (let i = 1; i < highs.length; i++) {
+    trs.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1])));
+  }
   let atr = 0;
-  for (let i = 0; i < period; i++) atr += trueRanges[i];
-  atr /= period;
+  for (let i = 0; i < p; i++) atr += trs[i];
+  atr /= p;
+  for (let i = p; i < trs.length; i++) atr = (atr * (p - 1) + trs[i]) / p;
+  return atr;
+}
 
-  let upperBand = 0, lowerBand = 0;
-  let supertrend = 0;
-  let direction: 'UP' | 'DOWN' = 'UP';
-
-  for (let i = period; i < trueRanges.length; i++) {
-    atr = (atr * (period - 1) + trueRanges[i]) / period;
-
-    const idx = i + 1; // offset because trueRanges starts from index 1
+function supertrend(highs: number[], lows: number[], closes: number[], p = 10, mult = 3) {
+  if (highs.length < p + 2) return null;
+  const trs: number[] = [];
+  for (let i = 1; i < highs.length; i++) {
+    trs.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1])));
+  }
+  let atr = 0;
+  for (let i = 0; i < p; i++) atr += trs[i];
+  atr /= p;
+  let dir: 'UP' | 'DOWN' = 'UP', val = 0, ub = 0, lb = 0;
+  let inited = false;
+  for (let i = p; i < trs.length; i++) {
+    atr = (atr * (p - 1) + trs[i]) / p;
+    const idx = i + 1;
     const hl2 = (highs[idx] + lows[idx]) / 2;
-    const newUpper = hl2 + multiplier * atr;
-    const newLower = hl2 - multiplier * atr;
-
-    upperBand = (newUpper < upperBand || closes[idx - 1] > upperBand) ? newUpper : upperBand;
-    lowerBand = (newLower > lowerBand || closes[idx - 1] < lowerBand) ? newLower : lowerBand;
-
-    if (i === period) {
-      // Initialize
-      upperBand = newUpper;
-      lowerBand = newLower;
-      direction = closes[idx] > upperBand ? 'UP' : 'DOWN';
-      supertrend = direction === 'UP' ? lowerBand : upperBand;
+    const nu = hl2 + mult * atr, nl = hl2 - mult * atr;
+    if (!inited) { ub = nu; lb = nl; dir = closes[idx] > nu ? 'UP' : 'DOWN'; val = dir === 'UP' ? lb : ub; inited = true; continue; }
+    ub = (nu < ub || closes[idx - 1] > ub) ? nu : ub;
+    lb = (nl > lb || closes[idx - 1] < lb) ? nl : lb;
+    if (dir === 'UP') {
+      if (closes[idx] < lb) { dir = 'DOWN'; val = ub; } else val = lb;
     } else {
-      if (direction === 'UP') {
-        if (closes[idx] < lowerBand) {
-          direction = 'DOWN';
-          supertrend = upperBand;
-        } else {
-          supertrend = lowerBand;
-        }
-      } else {
-        if (closes[idx] > upperBand) {
-          direction = 'UP';
-          supertrend = lowerBand;
-        } else {
-          supertrend = upperBand;
-        }
-      }
+      if (closes[idx] > ub) { dir = 'UP'; val = lb; } else val = ub;
     }
   }
-
-  return { value: supertrend, direction };
+  return { value: val, direction: dir };
 }
 
-// ─── Bollinger Bands (20, 2) ───
-function calcBollingerBands(closes: number[], period = 20, mult = 2): { upper: number; middle: number; lower: number; bandwidth: number } | null {
-  if (closes.length < period) return null;
-  const slice = closes.slice(-period);
-  const sma = slice.reduce((a, b) => a + b, 0) / period;
-  const variance = slice.reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period;
-  const stdDev = Math.sqrt(variance);
+// ─────────────────────────────────────────────────────────
+// SMC / ICT  — swings, BOS/CHoCH, OB, FVG, liquidity
+// ─────────────────────────────────────────────────────────
+interface Candle { o: number; h: number; l: number; c: number; t: number; }
+
+function findSwings(cs: Candle[], lb = 3) {
+  const out: { i: number; price: number; type: 'high' | 'low' }[] = [];
+  for (let i = lb; i < cs.length - lb; i++) {
+    let isH = true, isL = true;
+    for (let j = i - lb; j <= i + lb; j++) {
+      if (j === i) continue;
+      if (cs[j].h >= cs[i].h) isH = false;
+      if (cs[j].l <= cs[i].l) isL = false;
+    }
+    if (isH) out.push({ i, price: cs[i].h, type: 'high' });
+    if (isL) out.push({ i, price: cs[i].l, type: 'low' });
+  }
+  return out;
+}
+
+function detectStructure(cs: Candle[]) {
+  const sw = findSwings(cs, 3);
+  const highs = sw.filter(s => s.type === 'high');
+  const lows = sw.filter(s => s.type === 'low');
+  const last = cs[cs.length - 1];
+
+  const lastSH = highs[highs.length - 1];
+  const prevSH = highs[highs.length - 2];
+  const lastSL = lows[lows.length - 1];
+  const prevSL = lows[lows.length - 2];
+
+  let event = 'None';
+  if (lastSH && last.c > lastSH.price) {
+    event = (prevSH && lastSH.price < prevSH.price) ? 'Bullish CHoCH' : 'Bullish BOS';
+  } else if (lastSL && last.c < lastSL.price) {
+    event = (prevSL && lastSL.price > prevSL.price) ? 'Bearish CHoCH' : 'Bearish BOS';
+  }
+
   return {
-    upper: sma + mult * stdDev,
-    middle: sma,
-    lower: sma - mult * stdDev,
-    bandwidth: ((sma + mult * stdDev) - (sma - mult * stdDev)) / sma * 100,
+    event,
+    lastSwingHigh: lastSH?.price ?? null,
+    prevSwingHigh: prevSH?.price ?? null,
+    lastSwingLow: lastSL?.price ?? null,
+    prevSwingLow: prevSL?.price ?? null,
+    recentHighs: highs.slice(-4).map(s => s.price),
+    recentLows: lows.slice(-4).map(s => s.price),
   };
 }
 
-// ─── Stochastic RSI ───
-function calcStochRSI(closes: number[], rsiPeriod = 14, stochPeriod = 14, kSmooth = 3, dSmooth = 3): { k: number; d: number } | null {
-  if (closes.length < rsiPeriod + stochPeriod + kSmooth + dSmooth) return null;
-
-  // Calculate RSI series
-  const rsiValues: number[] = [];
-  let avgGain = 0, avgLoss = 0;
-  for (let i = 1; i <= rsiPeriod; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff > 0) avgGain += diff; else avgLoss += Math.abs(diff);
+function findFVGs(cs: Candle[], maxAge = 30) {
+  const start = Math.max(2, cs.length - maxAge);
+  const fvgs: { type: 'bull' | 'bear'; top: number; bottom: number; age: number; filled: boolean }[] = [];
+  for (let i = start; i < cs.length; i++) {
+    const a = cs[i - 2], b = cs[i - 1], c = cs[i];
+    if (c.l > a.h && b.c > b.o) {
+      const top = c.l, bottom = a.h;
+      const filled = cs.slice(i + 1).some(x => x.l <= bottom);
+      fvgs.push({ type: 'bull', top, bottom, age: cs.length - 1 - i, filled });
+    } else if (c.h < a.l && b.c < b.o) {
+      const top = a.l, bottom = c.h;
+      const filled = cs.slice(i + 1).some(x => x.h >= top);
+      fvgs.push({ type: 'bear', top, bottom, age: cs.length - 1 - i, filled });
+    }
   }
-  avgGain /= rsiPeriod;
-  avgLoss /= rsiPeriod;
-  rsiValues.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
-
-  for (let i = rsiPeriod + 1; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1];
-    avgGain = (avgGain * (rsiPeriod - 1) + (diff > 0 ? diff : 0)) / rsiPeriod;
-    avgLoss = (avgLoss * (rsiPeriod - 1) + (diff < 0 ? Math.abs(diff) : 0)) / rsiPeriod;
-    rsiValues.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
-  }
-
-  if (rsiValues.length < stochPeriod) return null;
-
-  // Stochastic of RSI
-  const stochK: number[] = [];
-  for (let i = stochPeriod - 1; i < rsiValues.length; i++) {
-    const window = rsiValues.slice(i - stochPeriod + 1, i + 1);
-    const min = Math.min(...window);
-    const max = Math.max(...window);
-    stochK.push(max === min ? 50 : ((rsiValues[i] - min) / (max - min)) * 100);
-  }
-
-  // Smooth K
-  if (stochK.length < kSmooth) return null;
-  const smoothedK: number[] = [];
-  for (let i = kSmooth - 1; i < stochK.length; i++) {
-    const sum = stochK.slice(i - kSmooth + 1, i + 1).reduce((a, b) => a + b, 0);
-    smoothedK.push(sum / kSmooth);
-  }
-
-  // D line (SMA of smoothed K)
-  if (smoothedK.length < dSmooth) return null;
-  const lastD = smoothedK.slice(-dSmooth).reduce((a, b) => a + b, 0) / dSmooth;
-
-  return { k: smoothedK[smoothedK.length - 1], d: lastD };
+  return fvgs.filter(f => !f.filled).slice(-5);
 }
 
-interface TickerData {
-  symbol: string;
-  price: string;
-  priceChangePercent: string;
-  highPrice: string;
-  lowPrice: string;
-  volume: string;
-  quoteVolume: string;
+function findOrderBlocks(cs: Candle[], lookback = 50) {
+  const start = Math.max(0, cs.length - lookback);
+  const obs: { type: 'bull' | 'bear'; top: number; bottom: number; index: number }[] = [];
+  for (let i = start; i < cs.length - 3; i++) {
+    const ob = cs[i];
+    const next3 = cs.slice(i + 1, i + 4);
+    if (ob.c < ob.o) {
+      const broke = next3.some(x => x.c > ob.h);
+      if (broke) obs.push({ type: 'bull', top: ob.h, bottom: ob.l, index: i });
+    } else if (ob.c > ob.o) {
+      const broke = next3.some(x => x.c < ob.l);
+      if (broke) obs.push({ type: 'bear', top: ob.h, bottom: ob.l, index: i });
+    }
+  }
+  return obs.slice(-4);
 }
 
-async function fetchMarketData(symbol: string): Promise<string | null> {
+function detectLiquiditySweeps(cs: Candle[]) {
+  const lb = Math.min(20, cs.length - 1);
+  const recent = cs.slice(-lb - 1, -1);
+  const last = cs[cs.length - 1];
+  const prevHigh = Math.max(...recent.map(c => c.h));
+  const prevLow = Math.min(...recent.map(c => c.l));
+  return {
+    sweepHigh: last.h > prevHigh && last.c < prevHigh ? prevHigh : null,
+    sweepLow: last.l < prevLow && last.c > prevLow ? prevLow : null,
+    prevHigh, prevLow,
+  };
+}
+
+function equalLevels(cs: Candle[], tol = 0.001) {
+  const sw = findSwings(cs, 3);
+  const highs = sw.filter(s => s.type === 'high').slice(-6).map(s => s.price);
+  const lows = sw.filter(s => s.type === 'low').slice(-6).map(s => s.price);
+  let eqh = false, eql = false;
+  for (let i = 0; i < highs.length; i++)
+    for (let j = i + 1; j < highs.length; j++)
+      if (Math.abs(highs[i] - highs[j]) / highs[i] < tol) eqh = true;
+  for (let i = 0; i < lows.length; i++)
+    for (let j = i + 1; j < lows.length; j++)
+      if (Math.abs(lows[i] - lows[j]) / lows[i] < tol) eql = true;
+  return { eqh, eql };
+}
+
+// ─────────────────────────────────────────────────────────
+// BUILD ANALYSIS CONTEXT
+// ─────────────────────────────────────────────────────────
+async function buildAnalysisContext(symbol: string, tf: string, market: 'spot' | 'futures'): Promise<string | null> {
+  const [klines, ticker] = await Promise.all([
+    fetchKlines(symbol, tf, market),
+    fetchTicker(symbol, market),
+  ]);
+  if (!klines || klines.length < 50) return null;
+
+  const candles: Candle[] = klines.map(k => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4] }));
+  const closes = candles.map(c => c.c);
+  const highs = candles.map(c => c.h);
+  const lows = candles.map(c => c.l);
+  const last = candles[candles.length - 1];
+  const price = last.c;
+
+  // Indicators
+  const rsi = wildersRSI(closes);
+  const e9 = ema(closes, 9), e20 = ema(closes, 20), e50 = ema(closes, 50), e200 = ema(closes, 200);
+  const m = macd(closes);
+  const bb = bbands(closes);
+  const sr = stochRSI(closes);
+  const st = supertrend(highs, lows, closes);
+  const atr = atrWilder(highs, lows, closes);
+
+  // SMC
+  const struct = detectStructure(candles);
+  const fvgs = findFVGs(candles);
+  const obs = findOrderBlocks(candles);
+  const sweeps = detectLiquiditySweeps(candles);
+  const eq = equalLevels(candles);
+
+  // Premium / discount zones (last leg)
+  let zone = 'N/A';
+  if (struct.lastSwingHigh && struct.lastSwingLow) {
+    const mid = (struct.lastSwingHigh + struct.lastSwingLow) / 2;
+    zone = price > mid ? 'PREMIUM (sell zone)' : 'DISCOUNT (buy zone)';
+  }
+
+  // Last 5 candles
+  const last5 = candles.slice(-5).map((c, i) => {
+    const body = c.c - c.o;
+    const range = c.h - c.l;
+    const upper = c.h - Math.max(c.o, c.c);
+    const lower = Math.min(c.o, c.c) - c.l;
+    let label = body > 0 ? 'Green' : 'Red';
+    if (Math.abs(body) / range < 0.15) label = 'Doji';
+    else if (lower > Math.abs(body) * 2 && body > 0) label = 'Hammer (bull)';
+    else if (upper > Math.abs(body) * 2 && body < 0) label = 'Shooting Star (bear)';
+    return `#${i + 1} ${label} O:${c.o} H:${c.h} L:${c.l} C:${c.c}`;
+  });
+
+  const fmt = (v: number | null | undefined, d = 4) => (v == null ? 'N/A' : (+v).toFixed(d));
+  const change = ticker ? (+ticker.priceChangePercent).toFixed(2) : 'N/A';
+  const vol = ticker ? (+ticker.quoteVolume / 1e6).toFixed(2) : 'N/A';
+
+  return `
+═══════════════════════════════════════════════════════════
+LIVE BINANCE ${market.toUpperCase()} DATA — ${symbol} @ ${tf}
+Computed on 500 fresh candles (TradingView-accurate)
+═══════════════════════════════════════════════════════════
+
+PRICE
+• Current: $${price}
+• 24h Change: ${change}%  | 24h Quote Vol: $${vol}M
+• ATR(14): ${fmt(atr)}
+
+TECHNICAL INDICATORS
+• RSI(14) Wilder: ${fmt(rsi, 2)} ${rsi && rsi > 70 ? '(OVERBOUGHT)' : rsi && rsi < 30 ? '(OVERSOLD)' : ''}
+• Stoch RSI: K=${fmt(sr?.k, 2)} D=${fmt(sr?.d, 2)} ${sr && sr.k > 80 ? '(OB)' : sr && sr.k < 20 ? '(OS)' : ''}
+• MACD(12,26,9): MACD=${fmt(m?.macd)} Signal=${fmt(m?.signal)} Hist=${fmt(m?.histogram)} ${m ? (m.histogram > 0 ? '(Bullish)' : '(Bearish)') : ''}
+• EMA9=${fmt(e9)} | EMA20=${fmt(e20)} | EMA50=${fmt(e50)} | EMA200=${fmt(e200)}
+• Price vs EMAs: ${e20 ? (price > e20 ? 'Above EMA20' : 'Below EMA20') : ''} | ${e50 ? (price > e50 ? 'Above EMA50' : 'Below EMA50') : ''} | ${e200 ? (price > e200 ? 'Above EMA200' : 'Below EMA200') : ''}
+• Bollinger(20,2): U=${fmt(bb?.upper)} M=${fmt(bb?.middle)} L=${fmt(bb?.lower)} BW=${fmt(bb?.bandwidth, 2)}%
+• Supertrend(10,3): ${st ? `${st.direction} @ $${fmt(st.value)}` : 'N/A'}
+
+MARKET STRUCTURE (SMC/ICT)
+• Most Recent Event: ${struct.event}
+• Last Swing High: $${fmt(struct.lastSwingHigh)} | Prev: $${fmt(struct.prevSwingHigh)}
+• Last Swing Low:  $${fmt(struct.lastSwingLow)}  | Prev: $${fmt(struct.prevSwingLow)}
+• Recent Swing Highs: ${struct.recentHighs.map(p => '$' + p.toFixed(4)).join(', ')}
+• Recent Swing Lows:  ${struct.recentLows.map(p => '$' + p.toFixed(4)).join(', ')}
+• Current Zone: ${zone}
+• Equal Highs (EQH): ${eq.eqh ? 'YES — buy-side liquidity above' : 'No'}
+• Equal Lows  (EQL): ${eq.eql ? 'YES — sell-side liquidity below' : 'No'}
+
+LIQUIDITY
+• Buy-side pool (recent high): $${fmt(sweeps.prevHigh)}
+• Sell-side pool (recent low): $${fmt(sweeps.prevLow)}
+• Sweep High this candle: ${sweeps.sweepHigh ? `YES — wicked $${sweeps.sweepHigh.toFixed(4)} then closed back below (bearish reversal signal)` : 'No'}
+• Sweep Low  this candle: ${sweeps.sweepLow  ? `YES — wicked $${sweeps.sweepLow.toFixed(4)}  then closed back above (bullish reversal signal)` : 'No'}
+
+UNFILLED FAIR VALUE GAPS (FVG)
+${fvgs.length === 0 ? '• None active' : fvgs.map(f => `• ${f.type === 'bull' ? 'Bullish' : 'Bearish'} FVG: $${f.bottom.toFixed(4)} – $${f.top.toFixed(4)} (age ${f.age} candles)`).join('\n')}
+
+ACTIVE ORDER BLOCKS
+${obs.length === 0 ? '• None detected' : obs.map(o => `• ${o.type === 'bull' ? 'Bullish' : 'Bearish'} OB: $${o.bottom.toFixed(4)} – $${o.top.toFixed(4)}`).join('\n')}
+
+PRICE ACTION — Last 5 Candles (oldest → newest)
+${last5.join('\n')}
+═══════════════════════════════════════════════════════════`;
+}
+
+// ─────────────────────────────────────────────────────────
+// MAIN HANDLER
+// ─────────────────────────────────────────────────────────
+const DEFAULT_SYSTEM = `You are CryptoMentor AI — an elite crypto trading analyst with LIVE Binance data access. Use the supplied LIVE DATA block as the single source of truth. Never invent numbers. Provide structured analysis: Market Structure (SMC/ICT) → Liquidity → OB/FVG → Price Action → Technicals → Confluence Bias → Trade Plan (entry, SL, TPs, R:R) → Bull/Bear scenarios. End with: *Educational only — not financial advice.*`;
+
+async function loadSystemPrompt(): Promise<string> {
   try {
-    // Fetch 500 candles for accurate Wilder's smoothed indicators
-    const [tickerRes, klines1hRes, klines4hRes, klines1dRes] = await Promise.all([
-      fetch(`${BINANCE_API}/ticker/24hr?symbol=${symbol}`),
-      fetch(`${BINANCE_API}/klines?symbol=${symbol}&interval=1h&limit=500`),
-      fetch(`${BINANCE_API}/klines?symbol=${symbol}&interval=4h&limit=500`),
-      fetch(`${BINANCE_API}/klines?symbol=${symbol}&interval=1d&limit=500`),
-    ]);
-
-    if (!tickerRes.ok) return null;
-
-    const ticker: TickerData = await tickerRes.json();
-    const klines1h: any[][] = klines1hRes.ok ? await klines1hRes.json() : [];
-    const klines4h: any[][] = klines4hRes.ok ? await klines4hRes.json() : [];
-    const klines1d: any[][] = klines1dRes.ok ? await klines1dRes.json() : [];
-
-    const closes1h = klines1h.map(c => +c[4]);
-    const closes4h = klines4h.map(c => +c[4]);
-    const closes1d = klines1d.map(c => +c[4]);
-
-    // ── Wilder's RSI (14) ──
-    const rsi1h = calcWildersRSI(closes1h);
-    const rsi4h = calcWildersRSI(closes4h);
-    const rsi1d = calcWildersRSI(closes1d);
-
-    // ── EMAs ──
-    const ema9_1h = calcEMA(closes1h, 9);
-    const ema20_1h = calcEMA(closes1h, 20);
-    const ema50_1h = calcEMA(closes1h, 50);
-    const ema200_1h = calcEMA(closes1h, 200);
-    const ema9_4h = calcEMA(closes4h, 9);
-    const ema20_4h = calcEMA(closes4h, 20);
-    const ema50_4h = calcEMA(closes4h, 50);
-    const ema20_1d = calcEMA(closes1d, 20);
-    const ema50_1d = calcEMA(closes1d, 50);
-    const ema200_1d = calcEMA(closes1d, 200);
-
-    // ── MACD (12, 26, 9) ──
-    const macd1h = calcMACD(closes1h);
-    const macd4h = calcMACD(closes4h);
-    const macd1d = calcMACD(closes1d);
-
-    // ── Supertrend (10, 3) ──
-    const st1h = calcSupertrend(klines1h);
-    const st4h = calcSupertrend(klines4h);
-    const st1d = calcSupertrend(klines1d);
-
-    // ── Bollinger Bands (20, 2) ──
-    const bb1h = calcBollingerBands(closes1h);
-    const bb4h = calcBollingerBands(closes4h);
-
-    // ── Stochastic RSI ──
-    const stochRsi1h = calcStochRSI(closes1h);
-    const stochRsi4h = calcStochRSI(closes4h);
-
-    const price = +ticker.price;
-    const change24h = +ticker.priceChangePercent;
-
-    // Recent price action
-    const recentCandles = klines1h.slice(-6).map(c => ({
-      time: new Date(+c[0]).toISOString().slice(11, 16),
-      c: (+c[4]).toFixed(4),
-    }));
-
-    // Support/Resistance from daily
-    const dailyHighs = klines1d.map(c => +c[2]);
-    const dailyLows = klines1d.map(c => +c[3]);
-    const recentHigh = Math.max(...dailyHighs.slice(-7));
-    const recentLow = Math.min(...dailyLows.slice(-7));
-
-    const fmt = (v: number | null, decimals = 2) => v !== null ? v.toFixed(decimals) : 'N/A';
-    const fmtPrice = (v: number | null) => v !== null ? `$${v.toFixed(4)}` : 'N/A';
-
-    return `
-📊 **${symbol}** — LIVE Market Data (Wilder's smoothed, TradingView-accurate):
-• Price: $${price} | 24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(2)}%
-• 24h High: $${(+ticker.highPrice).toFixed(4)} | Low: $${(+ticker.lowPrice).toFixed(4)}
-• Volume: $${(+ticker.quoteVolume / 1e6).toFixed(2)}M
-• 7d Range: $${recentLow.toFixed(4)} – $${recentHigh.toFixed(4)}
-
-📈 RSI(14) Wilder's Smoothed:
-• 1H: ${fmt(rsi1h, 1)} ${rsi1h && rsi1h > 70 ? '⚠️ OVERBOUGHT' : rsi1h && rsi1h < 30 ? '⚠️ OVERSOLD' : ''}
-• 4H: ${fmt(rsi4h, 1)} ${rsi4h && rsi4h > 70 ? '⚠️ OVERBOUGHT' : rsi4h && rsi4h < 30 ? '⚠️ OVERSOLD' : ''}
-• 1D: ${fmt(rsi1d, 1)} ${rsi1d && rsi1d > 70 ? '⚠️ OVERBOUGHT' : rsi1d && rsi1d < 30 ? '⚠️ OVERSOLD' : ''}
-
-📊 EMAs:
-• 1H: EMA9=${fmtPrice(ema9_1h)} | EMA20=${fmtPrice(ema20_1h)} | EMA50=${fmtPrice(ema50_1h)} | EMA200=${fmtPrice(ema200_1h)}
-• 4H: EMA9=${fmtPrice(ema9_4h)} | EMA20=${fmtPrice(ema20_4h)} | EMA50=${fmtPrice(ema50_4h)}
-• 1D: EMA20=${fmtPrice(ema20_1d)} | EMA50=${fmtPrice(ema50_1d)} | EMA200=${fmtPrice(ema200_1d)}
-• Price vs EMAs (1H): ${ema20_1h ? (price > ema20_1h ? '🟢 Above EMA20' : '🔴 Below EMA20') : ''} | ${ema200_1h ? (price > ema200_1h ? '🟢 Above EMA200' : '🔴 Below EMA200') : ''}
-
-📉 MACD (12,26,9):
-• 1H: MACD=${fmt(macd1h?.macd ?? null, 4)} | Signal=${fmt(macd1h?.signal ?? null, 4)} | Hist=${fmt(macd1h?.histogram ?? null, 4)} ${macd1h ? (macd1h.histogram > 0 ? '🟢 Bullish' : '🔴 Bearish') : ''}
-• 4H: MACD=${fmt(macd4h?.macd ?? null, 4)} | Signal=${fmt(macd4h?.signal ?? null, 4)} | Hist=${fmt(macd4h?.histogram ?? null, 4)} ${macd4h ? (macd4h.histogram > 0 ? '🟢 Bullish' : '🔴 Bearish') : ''}
-• 1D: MACD=${fmt(macd1d?.macd ?? null, 4)} | Signal=${fmt(macd1d?.signal ?? null, 4)} | Hist=${fmt(macd1d?.histogram ?? null, 4)} ${macd1d ? (macd1d.histogram > 0 ? '🟢 Bullish' : '🔴 Bearish') : ''}
-
-🔺 Supertrend (10,3):
-• 1H: ${st1h ? `${st1h.direction === 'UP' ? '🟢 BULLISH' : '🔴 BEARISH'} @ $${st1h.value.toFixed(4)}` : 'N/A'}
-• 4H: ${st4h ? `${st4h.direction === 'UP' ? '🟢 BULLISH' : '🔴 BEARISH'} @ $${st4h.value.toFixed(4)}` : 'N/A'}
-• 1D: ${st1d ? `${st1d.direction === 'UP' ? '🟢 BULLISH' : '🔴 BEARISH'} @ $${st1d.value.toFixed(4)}` : 'N/A'}
-
-📊 Bollinger Bands (20,2):
-• 1H: Upper=${fmtPrice(bb1h?.upper ?? null)} | Mid=${fmtPrice(bb1h?.middle ?? null)} | Lower=${fmtPrice(bb1h?.lower ?? null)} | BW=${fmt(bb1h?.bandwidth ?? null)}%
-• 4H: Upper=${fmtPrice(bb4h?.upper ?? null)} | Mid=${fmtPrice(bb4h?.middle ?? null)} | Lower=${fmtPrice(bb4h?.lower ?? null)} | BW=${fmt(bb4h?.bandwidth ?? null)}%
-
-📈 Stochastic RSI:
-• 1H: K=${fmt(stochRsi1h?.k ?? null, 1)} | D=${fmt(stochRsi1h?.d ?? null, 1)} ${stochRsi1h ? (stochRsi1h.k > 80 ? '⚠️ OVERBOUGHT' : stochRsi1h.k < 20 ? '⚠️ OVERSOLD' : '') : ''}
-• 4H: K=${fmt(stochRsi4h?.k ?? null, 1)} | D=${fmt(stochRsi4h?.d ?? null, 1)} ${stochRsi4h ? (stochRsi4h.k > 80 ? '⚠️ OVERBOUGHT' : stochRsi4h.k < 20 ? '⚠️ OVERSOLD' : '') : ''}
-
-🕐 Recent 1H Candles: ${recentCandles.map(c => `${c.time}→$${c.c}`).join(' | ')}`;
-  } catch (e) {
-    console.error(`Failed to fetch data for ${symbol}:`, e);
-    return null;
-  }
+    const url = Deno.env.get('SUPABASE_URL')!;
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const sb = createClient(url, key);
+    const { data } = await sb.from('ai_prompts').select('system_prompt').eq('key', 'trading_chat_ai').maybeSingle();
+    return (data?.system_prompt as string) || DEFAULT_SYSTEM;
+  } catch { return DEFAULT_SYSTEM; }
 }
 
 serve(async (req) => {
@@ -407,47 +446,31 @@ serve(async (req) => {
   try {
     const { messages } = await req.json();
 
-    const symbols = extractSymbols(messages);
-    let marketContext = '';
+    const { symbol, timeframe, market } = parseRequest(messages);
+    let liveData = '';
 
-    if (symbols.length > 0) {
-      console.log(`Detected symbols: ${symbols.join(', ')}. Fetching live data with 500 candles...`);
-      const dataResults = await Promise.all(symbols.map(s => fetchMarketData(s)));
-      const validData = dataResults.filter(Boolean);
-      if (validData.length > 0) {
-        marketContext = `\n\n--- LIVE REAL-TIME MARKET DATA (Wilder's smoothed RSI, proper EMA with SMA seed — matches TradingView) ---\n${validData.join('\n')}\n--- END LIVE DATA ---\n`;
-      }
+    if (symbol && timeframe) {
+      console.log(`[trading-chat] Analyzing ${symbol} ${timeframe} ${market}`);
+      const ctx = await buildAnalysisContext(symbol, timeframe, market);
+      if (ctx) liveData = `\n\n${ctx}\n`;
+      else liveData = `\n\n[NOTE: Could not fetch ${symbol} ${timeframe} ${market} data. Symbol may not exist on Binance ${market}.]\n`;
+    } else if (symbol && !timeframe) {
+      // Symbol only — give multi-tf snapshot on common TFs
+      const tfs = ['15m', '1h', '4h', '1d'];
+      const ctxs = await Promise.all(tfs.map(t => buildAnalysisContext(symbol, t, market)));
+      const valid = ctxs.filter(Boolean);
+      if (valid.length) liveData = `\n\n${valid.join('\n\n')}\n`;
     }
 
-    const systemPrompt = `You are CryptoMentor AI — an expert cryptocurrency trading assistant with LIVE market data access. All indicator values provided are calculated using industry-standard methods:
-- RSI: Wilder's Smoothed RSI (14) with 500 candle history — matches TradingView exactly
-- EMA: SMA-seeded EMA — matches TradingView exactly  
-- MACD: Standard (12,26,9) — matches TradingView
-- Supertrend: (10,3) with Wilder's ATR — matches TradingView
-- Bollinger Bands: (20,2) standard
-- Stochastic RSI: (14,14,3,3) standard
-
-You help traders with:
-1. **Technical Analysis**: Reference the EXACT indicator values provided. They are accurate.
-2. **Trading Strategies**: Scalping, swing, trend following, breakout, mean reversion.
-3. **Risk Management**: Position sizing, stop-loss, R:R ratios.
-4. **Smart Money Concepts**: Order blocks, FVGs, liquidity sweeps, market structure.
-5. **Multi-Timeframe Analysis**: Compare readings across 1H, 4H, 1D.
-
-Rules:
-- ALWAYS quote exact numbers from the live data — never approximate or guess
-- Highlight overbought (RSI>70, StochRSI>80) and oversold (RSI<30, StochRSI<20)
-- Note Supertrend direction for trend confirmation
-- Compare MACD histogram direction across timeframes
-- State EMA alignment (golden cross, death cross, price position)
-- Use markdown formatting and emojis sparingly (✅ ❌ ⚠️ 📊 🎯)
-- Always say "this is educational, not financial advice"
-${marketContext}`;
+    const systemPrompt = await loadSystemPrompt();
+    const finalSystem = systemPrompt + liveData + (liveData
+      ? `\n\nIMPORTANT: All numbers above are FRESHLY computed from 500 live candles. Quote them exactly. Do not estimate.`
+      : '');
 
     const response = await callAIWithFallback({
       model: "google/gemini-3-flash-preview",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: finalSystem },
         ...messages,
       ],
       stream: true,
