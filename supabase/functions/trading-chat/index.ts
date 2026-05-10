@@ -85,6 +85,30 @@ async function fetchTicker(symbol: string, market: 'spot' | 'futures') {
   } catch { return null; }
 }
 
+async function fetchLivePrice(symbol: string, market: 'spot' | 'futures'): Promise<number | null> {
+  const base = market === 'futures' ? FUTURES_API : SPOT_API;
+  try {
+    const r = await fetch(`${base}/ticker/price?symbol=${symbol}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return +j.price;
+  } catch { return null; }
+}
+
+// Auto-precision based on price magnitude (TradingView style)
+function priceFmt(v: number | null | undefined): string {
+  if (v == null || !isFinite(v)) return 'N/A';
+  const a = Math.abs(v);
+  let d = 2;
+  if (a < 0.0001) d = 10;
+  else if (a < 0.01) d = 8;
+  else if (a < 1) d = 6;
+  else if (a < 100) d = 4;
+  else if (a < 10000) d = 2;
+  else d = 2;
+  return v.toFixed(d);
+}
+
 // ─────────────────────────────────────────────────────────
 // INDICATORS — TradingView-equivalent
 // ─────────────────────────────────────────────────────────
