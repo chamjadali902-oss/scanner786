@@ -23,34 +23,45 @@ const KNOWN_COINS = [
 ];
 const VALID_TFS = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M'];
 
-function parseRequest(messages: { role: string; content: string }[]) {
-  const lastUser = [...messages].reverse().find(m => m.role === 'user');
-  const text = (lastUser?.content || '').trim();
+function parseOne(text: string) {
   const upper = text.toUpperCase();
+  const market: 'spot' | 'futures' | null =
+    /\b(FUTURES?|PERP|PERPETUAL|FUT)\b/i.test(text) ? 'futures'
+    : /\bSPOT\b/i.test(text) ? 'spot' : null;
 
-  // Market detection
-  const market: 'spot' | 'futures' = /\b(FUTURES?|PERP|PERPETUAL|FUT)\b/i.test(text) ? 'futures' : 'spot';
-
-  // Timeframe detection (case-sensitive for "M" vs "m")
   let tf: string | null = null;
   for (const t of VALID_TFS) {
     const re = new RegExp(`(^|[^A-Za-z0-9])${t}([^A-Za-z0-9]|$)`, t === '1M' ? '' : 'i');
     if (re.test(text)) { tf = t; break; }
   }
 
-  // Symbol detection
   let symbol: string | null = null;
-  // Pattern XXXUSDT / XXX/USDT / XXX-USDT
   const explicit = upper.match(/\b([A-Z0-9]{2,10})[/\-]?USDT\b/);
   if (explicit) symbol = explicit[1] + 'USDT';
   if (!symbol) {
     for (const c of KNOWN_COINS) {
-      const re = new RegExp(`\\b${c}\\b`);
-      if (re.test(upper)) { symbol = c + 'USDT'; break; }
+      if (new RegExp(`\\b${c}\\b`).test(upper)) { symbol = c + 'USDT'; break; }
     }
   }
+  return { symbol, tf, market };
+}
 
-  return { symbol, timeframe: tf, market };
+// Scan latest user message FIRST, then fall back to recent history for context carry-over
+function parseRequest(messages: { role: string; content: string }[]) {
+  const userMsgs = messages.filter(m => m.role === 'user').reverse();
+  let symbol: string | null = null;
+  let timeframe: string | null = null;
+  let market: 'spot' | 'futures' = 'spot';
+  let marketSet = false;
+
+  for (const m of userMsgs) {
+    const p = parseOne(m.content || '');
+    if (!symbol && p.symbol) symbol = p.symbol;
+    if (!timeframe && p.tf) timeframe = p.tf;
+    if (!marketSet && p.market) { market = p.market; marketSet = true; }
+    if (symbol && timeframe && marketSet) break;
+  }
+  return { symbol, timeframe, market };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -72,6 +83,30 @@ async function fetchTicker(symbol: string, market: 'spot' | 'futures') {
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }
+}
+
+async function fetchLivePrice(symbol: string, market: 'spot' | 'futures'): Promise<number | null> {
+  const base = market === 'futures' ? FUTURES_API : SPOT_API;
+  try {
+    const r = await fetch(`${base}/ticker/price?symbol=${symbol}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return +j.price;
+  } catch { return null; }
+}
+
+// Auto-precision based on price magnitude (TradingView style)
+function priceFmt(v: number | null | undefined): string {
+  if (v == null || !isFinite(v)) return 'N/A';
+  const a = Math.abs(v);
+  let d = 2;
+  if (a < 0.0001) d = 10;
+  else if (a < 0.01) d = 8;
+  else if (a < 1) d = 6;
+  else if (a < 100) d = 4;
+  else if (a < 10000) d = 2;
+  else d = 2;
+  return v.toFixed(d);
 }
 
 // ─────────────────────────────────────────────────────────
@@ -325,20 +360,23 @@ function equalLevels(cs: Candle[], tol = 0.001) {
 // BUILD ANALYSIS CONTEXT
 // ─────────────────────────────────────────────────────────
 async function buildAnalysisContext(symbol: string, tf: string, market: 'spot' | 'futures'): Promise<string | null> {
-  const [klines, ticker] = await Promise.all([
+  const [klines, ticker, livePrice] = await Promise.all([
     fetchKlines(symbol, tf, market),
     fetchTicker(symbol, market),
+    fetchLivePrice(symbol, market),
   ]);
   if (!klines || klines.length < 50) return null;
 
   const candles: Candle[] = klines.map(k => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4] }));
+  // Replace last candle close with true live price (more accurate than kline cache)
+  if (livePrice && candles.length) candles[candles.length - 1].c = livePrice;
+
   const closes = candles.map(c => c.c);
   const highs = candles.map(c => c.h);
   const lows = candles.map(c => c.l);
   const last = candles[candles.length - 1];
-  const price = last.c;
+  const price = livePrice ?? last.c;
 
-  // Indicators
   const rsi = wildersRSI(closes);
   const e9 = ema(closes, 9), e20 = ema(closes, 20), e50 = ema(closes, 50), e200 = ema(closes, 200);
   const m = macd(closes);
@@ -347,78 +385,75 @@ async function buildAnalysisContext(symbol: string, tf: string, market: 'spot' |
   const st = supertrend(highs, lows, closes);
   const atr = atrWilder(highs, lows, closes);
 
-  // SMC
   const struct = detectStructure(candles);
   const fvgs = findFVGs(candles);
   const obs = findOrderBlocks(candles);
   const sweeps = detectLiquiditySweeps(candles);
   const eq = equalLevels(candles);
 
-  // Premium / discount zones (last leg)
   let zone = 'N/A';
   if (struct.lastSwingHigh && struct.lastSwingLow) {
     const mid = (struct.lastSwingHigh + struct.lastSwingLow) / 2;
     zone = price > mid ? 'PREMIUM (sell zone)' : 'DISCOUNT (buy zone)';
   }
 
-  // Last 5 candles
   const last5 = candles.slice(-5).map((c, i) => {
     const body = c.c - c.o;
-    const range = c.h - c.l;
+    const range = c.h - c.l || 1e-9;
     const upper = c.h - Math.max(c.o, c.c);
     const lower = Math.min(c.o, c.c) - c.l;
     let label = body > 0 ? 'Green' : 'Red';
     if (Math.abs(body) / range < 0.15) label = 'Doji';
     else if (lower > Math.abs(body) * 2 && body > 0) label = 'Hammer (bull)';
     else if (upper > Math.abs(body) * 2 && body < 0) label = 'Shooting Star (bear)';
-    return `#${i + 1} ${label} O:${c.o} H:${c.h} L:${c.l} C:${c.c}`;
+    return `#${i + 1} ${label} O:${priceFmt(c.o)} H:${priceFmt(c.h)} L:${priceFmt(c.l)} C:${priceFmt(c.c)}`;
   });
 
-  const fmt = (v: number | null | undefined, d = 4) => (v == null ? 'N/A' : (+v).toFixed(d));
   const change = ticker ? (+ticker.priceChangePercent).toFixed(2) : 'N/A';
   const vol = ticker ? (+ticker.quoteVolume / 1e6).toFixed(2) : 'N/A';
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
   return `
 ═══════════════════════════════════════════════════════════
 LIVE BINANCE ${market.toUpperCase()} DATA — ${symbol} @ ${tf}
-Computed on 500 fresh candles (TradingView-accurate)
+Fetched: ${now}  |  500 fresh candles
 ═══════════════════════════════════════════════════════════
 
 PRICE
-• Current: $${price}
+• Live Price: $${priceFmt(price)}  ← USE THIS EXACT VALUE
 • 24h Change: ${change}%  | 24h Quote Vol: $${vol}M
-• ATR(14): ${fmt(atr)}
+• ATR(14): ${priceFmt(atr)}
 
 TECHNICAL INDICATORS
-• RSI(14) Wilder: ${fmt(rsi, 2)} ${rsi && rsi > 70 ? '(OVERBOUGHT)' : rsi && rsi < 30 ? '(OVERSOLD)' : ''}
-• Stoch RSI: K=${fmt(sr?.k, 2)} D=${fmt(sr?.d, 2)} ${sr && sr.k > 80 ? '(OB)' : sr && sr.k < 20 ? '(OS)' : ''}
-• MACD(12,26,9): MACD=${fmt(m?.macd)} Signal=${fmt(m?.signal)} Hist=${fmt(m?.histogram)} ${m ? (m.histogram > 0 ? '(Bullish)' : '(Bearish)') : ''}
-• EMA9=${fmt(e9)} | EMA20=${fmt(e20)} | EMA50=${fmt(e50)} | EMA200=${fmt(e200)}
+• RSI(14) Wilder: ${rsi == null ? 'N/A' : rsi.toFixed(2)} ${rsi && rsi > 70 ? '(OVERBOUGHT)' : rsi && rsi < 30 ? '(OVERSOLD)' : ''}
+• Stoch RSI: K=${sr ? sr.k.toFixed(2) : 'N/A'} D=${sr ? sr.d.toFixed(2) : 'N/A'} ${sr && sr.k > 80 ? '(OB)' : sr && sr.k < 20 ? '(OS)' : ''}
+• MACD(12,26,9): MACD=${priceFmt(m?.macd)} Signal=${priceFmt(m?.signal)} Hist=${priceFmt(m?.histogram)} ${m ? (m.histogram > 0 ? '(Bullish)' : '(Bearish)') : ''}
+• EMA9=${priceFmt(e9)} | EMA20=${priceFmt(e20)} | EMA50=${priceFmt(e50)} | EMA200=${priceFmt(e200)}
 • Price vs EMAs: ${e20 ? (price > e20 ? 'Above EMA20' : 'Below EMA20') : ''} | ${e50 ? (price > e50 ? 'Above EMA50' : 'Below EMA50') : ''} | ${e200 ? (price > e200 ? 'Above EMA200' : 'Below EMA200') : ''}
-• Bollinger(20,2): U=${fmt(bb?.upper)} M=${fmt(bb?.middle)} L=${fmt(bb?.lower)} BW=${fmt(bb?.bandwidth, 2)}%
-• Supertrend(10,3): ${st ? `${st.direction} @ $${fmt(st.value)}` : 'N/A'}
+• Bollinger(20,2): U=${priceFmt(bb?.upper)} M=${priceFmt(bb?.middle)} L=${priceFmt(bb?.lower)} BW=${bb ? bb.bandwidth.toFixed(2) : 'N/A'}%
+• Supertrend(10,3): ${st ? `${st.direction} @ $${priceFmt(st.value)}` : 'N/A'}
 
 MARKET STRUCTURE (SMC/ICT)
 • Most Recent Event: ${struct.event}
-• Last Swing High: $${fmt(struct.lastSwingHigh)} | Prev: $${fmt(struct.prevSwingHigh)}
-• Last Swing Low:  $${fmt(struct.lastSwingLow)}  | Prev: $${fmt(struct.prevSwingLow)}
-• Recent Swing Highs: ${struct.recentHighs.map(p => '$' + p.toFixed(4)).join(', ')}
-• Recent Swing Lows:  ${struct.recentLows.map(p => '$' + p.toFixed(4)).join(', ')}
+• Last Swing High: $${priceFmt(struct.lastSwingHigh)} | Prev: $${priceFmt(struct.prevSwingHigh)}
+• Last Swing Low:  $${priceFmt(struct.lastSwingLow)}  | Prev: $${priceFmt(struct.prevSwingLow)}
+• Recent Swing Highs: ${struct.recentHighs.map(p => '$' + priceFmt(p)).join(', ')}
+• Recent Swing Lows:  ${struct.recentLows.map(p => '$' + priceFmt(p)).join(', ')}
 • Current Zone: ${zone}
 • Equal Highs (EQH): ${eq.eqh ? 'YES — buy-side liquidity above' : 'No'}
 • Equal Lows  (EQL): ${eq.eql ? 'YES — sell-side liquidity below' : 'No'}
 
 LIQUIDITY
-• Buy-side pool (recent high): $${fmt(sweeps.prevHigh)}
-• Sell-side pool (recent low): $${fmt(sweeps.prevLow)}
-• Sweep High this candle: ${sweeps.sweepHigh ? `YES — wicked $${sweeps.sweepHigh.toFixed(4)} then closed back below (bearish reversal signal)` : 'No'}
-• Sweep Low  this candle: ${sweeps.sweepLow  ? `YES — wicked $${sweeps.sweepLow.toFixed(4)}  then closed back above (bullish reversal signal)` : 'No'}
+• Buy-side pool (recent high): $${priceFmt(sweeps.prevHigh)}
+• Sell-side pool (recent low): $${priceFmt(sweeps.prevLow)}
+• Sweep High this candle: ${sweeps.sweepHigh ? `YES — wicked $${priceFmt(sweeps.sweepHigh)} then closed back below (bearish reversal signal)` : 'No'}
+• Sweep Low  this candle: ${sweeps.sweepLow  ? `YES — wicked $${priceFmt(sweeps.sweepLow)}  then closed back above (bullish reversal signal)` : 'No'}
 
 UNFILLED FAIR VALUE GAPS (FVG)
-${fvgs.length === 0 ? '• None active' : fvgs.map(f => `• ${f.type === 'bull' ? 'Bullish' : 'Bearish'} FVG: $${f.bottom.toFixed(4)} – $${f.top.toFixed(4)} (age ${f.age} candles)`).join('\n')}
+${fvgs.length === 0 ? '• None active' : fvgs.map(f => `• ${f.type === 'bull' ? 'Bullish' : 'Bearish'} FVG: $${priceFmt(f.bottom)} – $${priceFmt(f.top)} (age ${f.age} candles)`).join('\n')}
 
 ACTIVE ORDER BLOCKS
-${obs.length === 0 ? '• None detected' : obs.map(o => `• ${o.type === 'bull' ? 'Bullish' : 'Bearish'} OB: $${o.bottom.toFixed(4)} – $${o.top.toFixed(4)}`).join('\n')}
+${obs.length === 0 ? '• None detected' : obs.map(o => `• ${o.type === 'bull' ? 'Bullish' : 'Bearish'} OB: $${priceFmt(o.bottom)} – $${priceFmt(o.top)}`).join('\n')}
 
 PRICE ACTION — Last 5 Candles (oldest → newest)
 ${last5.join('\n')}
@@ -464,8 +499,13 @@ serve(async (req) => {
 
     const systemPrompt = await loadSystemPrompt();
     const finalSystem = systemPrompt + liveData + (liveData
-      ? `\n\nIMPORTANT: All numbers above are FRESHLY computed from 500 live candles. Quote them exactly. Do not estimate.`
-      : '');
+      ? `\n\n⚠️ CRITICAL RULES — READ CAREFULLY:
+1. The LIVE DATA block above is the SINGLE SOURCE OF TRUTH. It was just fetched live from Binance moments ago.
+2. IGNORE any prices, indicator values, levels, or numbers mentioned in PRIOR conversation messages — those are STALE.
+3. When quoting the current price, RSI, EMAs, swing highs/lows, OBs, FVGs etc., you MUST copy the exact values from the LIVE DATA block above. Do NOT round, estimate, or recall from earlier.
+4. If the user asks "what is the price now?" — answer with the "Live Price" value from above.
+5. Never invent symbols or numbers not present in the LIVE DATA block.`
+      : `\n\nNOTE: No symbol/timeframe detected in the user's question. If they ask for analysis, politely ask them to specify both (e.g., "BTCUSDT 1h" or "ETH 4h futures"). Do NOT invent prices.`);
 
     const response = await callAIWithFallback({
       model: "google/gemini-3-flash-preview",
