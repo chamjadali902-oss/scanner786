@@ -23,34 +23,45 @@ const KNOWN_COINS = [
 ];
 const VALID_TFS = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M'];
 
-function parseRequest(messages: { role: string; content: string }[]) {
-  const lastUser = [...messages].reverse().find(m => m.role === 'user');
-  const text = (lastUser?.content || '').trim();
+function parseOne(text: string) {
   const upper = text.toUpperCase();
+  const market: 'spot' | 'futures' | null =
+    /\b(FUTURES?|PERP|PERPETUAL|FUT)\b/i.test(text) ? 'futures'
+    : /\bSPOT\b/i.test(text) ? 'spot' : null;
 
-  // Market detection
-  const market: 'spot' | 'futures' = /\b(FUTURES?|PERP|PERPETUAL|FUT)\b/i.test(text) ? 'futures' : 'spot';
-
-  // Timeframe detection (case-sensitive for "M" vs "m")
   let tf: string | null = null;
   for (const t of VALID_TFS) {
     const re = new RegExp(`(^|[^A-Za-z0-9])${t}([^A-Za-z0-9]|$)`, t === '1M' ? '' : 'i');
     if (re.test(text)) { tf = t; break; }
   }
 
-  // Symbol detection
   let symbol: string | null = null;
-  // Pattern XXXUSDT / XXX/USDT / XXX-USDT
   const explicit = upper.match(/\b([A-Z0-9]{2,10})[/\-]?USDT\b/);
   if (explicit) symbol = explicit[1] + 'USDT';
   if (!symbol) {
     for (const c of KNOWN_COINS) {
-      const re = new RegExp(`\\b${c}\\b`);
-      if (re.test(upper)) { symbol = c + 'USDT'; break; }
+      if (new RegExp(`\\b${c}\\b`).test(upper)) { symbol = c + 'USDT'; break; }
     }
   }
+  return { symbol, tf, market };
+}
 
-  return { symbol, timeframe: tf, market };
+// Scan latest user message FIRST, then fall back to recent history for context carry-over
+function parseRequest(messages: { role: string; content: string }[]) {
+  const userMsgs = messages.filter(m => m.role === 'user').reverse();
+  let symbol: string | null = null;
+  let timeframe: string | null = null;
+  let market: 'spot' | 'futures' = 'spot';
+  let marketSet = false;
+
+  for (const m of userMsgs) {
+    const p = parseOne(m.content || '');
+    if (!symbol && p.symbol) symbol = p.symbol;
+    if (!timeframe && p.tf) timeframe = p.tf;
+    if (!marketSet && p.market) { market = p.market; marketSet = true; }
+    if (symbol && timeframe && marketSet) break;
+  }
+  return { symbol, timeframe, market };
 }
 
 // ─────────────────────────────────────────────────────────
