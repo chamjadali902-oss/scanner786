@@ -152,10 +152,10 @@ export default function Chat() {
                 </div>
               )}
               <div className={cn(
-                'rounded-xl px-3 py-2.5 text-sm',
+                'rounded-xl px-3 py-2.5 text-sm min-w-0 overflow-hidden',
                 msg.role === 'user'
                   ? 'max-w-[88%] sm:max-w-[75%] bg-primary text-primary-foreground'
-                  : 'max-w-[92%] sm:max-w-[85%] bg-card border border-border'
+                  : 'max-w-[92%] sm:max-w-[85%] flex-1 bg-card border border-border'
               )}>
                 {msg.role === 'assistant' ? (
                   <MarkdownMessage content={msg.content} />
