@@ -72,13 +72,17 @@ export const MarkdownMessage = memo(function MarkdownMessage({
           '[&_pre_code]:bg-transparent [&_pre_code]:border-0 [&_pre_code]:p-0 [&_pre_code]:text-foreground',
           // Blockquotes
           '[&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:my-2',
-          // Tables
-          '[&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_table]:text-[0.85em] [&_table]:overflow-hidden [&_table]:rounded-md [&_table]:border [&_table]:border-border',
+          // Tables (responsive: horizontal scroll on overflow)
+          'break-words',
+          '[&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_table]:text-[0.8em] sm:[&_table]:text-[0.85em] [&_table]:rounded-md [&_table]:border [&_table]:border-border [&_table]:block sm:[&_table]:table [&_table]:overflow-x-auto [&_table]:whitespace-nowrap sm:[&_table]:whitespace-normal',
           '[&_thead]:bg-primary/10',
-          '[&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:text-primary [&_th]:border-b [&_th]:border-border',
-          '[&_td]:px-2 [&_td]:py-1.5 [&_td]:border-b [&_td]:border-border/50',
+          '[&_th]:px-1.5 sm:[&_th]:px-2 [&_th]:py-1 sm:[&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:text-primary [&_th]:border-b [&_th]:border-border',
+          '[&_td]:px-1.5 sm:[&_td]:px-2 [&_td]:py-1 sm:[&_td]:py-1.5 [&_td]:border-b [&_td]:border-border/50',
           '[&_tbody_tr:hover]:bg-muted/30',
           '[&_tbody_tr:last-child_td]:border-b-0',
+          // Prevent code/pre overflow on small screens
+          '[&_pre]:max-w-full [&_pre]:whitespace-pre [&_pre]:overflow-x-auto',
+          '[&_code]:break-words',
           // Horizontal rule
           '[&_hr]:my-3 [&_hr]:border-border',
           // Links
