@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Brain, Send, Loader2, Trash2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownMessage } from '@/components/MarkdownMessage';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -152,13 +152,13 @@ export default function Chat() {
                 </div>
               )}
               <div className={cn(
-                'max-w-[88%] sm:max-w-[75%] rounded-xl px-3 py-2.5 text-sm',
-                msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border'
+                'rounded-xl px-3 py-2.5 text-sm',
+                msg.role === 'user'
+                  ? 'max-w-[88%] sm:max-w-[75%] bg-primary text-primary-foreground'
+                  : 'max-w-[92%] sm:max-w-[85%] bg-card border border-border'
               )}>
                 {msg.role === 'assistant' ? (
-                  <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-2 [&_ul]:mb-2 [&_ol]:mb-2 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
+                  <MarkdownMessage content={msg.content} />
                 ) : (
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 )}
