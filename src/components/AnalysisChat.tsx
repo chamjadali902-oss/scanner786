@@ -152,8 +152,8 @@ export function AnalysisChat({ contextSummary, className }: AnalysisChatProps) {
               </div>
             )}
             <div className={cn(
-              'max-w-[85%] rounded-lg px-2 py-1.5 text-[11px]',
-              msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 border border-border'
+              'max-w-[85%] min-w-0 overflow-hidden rounded-lg px-2 py-1.5 text-[11px]',
+              msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 border border-border flex-1'
             )}>
               {msg.role === 'assistant' ? (
                 <MarkdownMessage content={msg.content} compact />
