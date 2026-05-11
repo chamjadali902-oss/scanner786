@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Brain, Send, Loader2, Trash2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownMessage } from '@/components/MarkdownMessage';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
