@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Brain, Send, Loader2, MessageCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownMessage } from '@/components/MarkdownMessage';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
