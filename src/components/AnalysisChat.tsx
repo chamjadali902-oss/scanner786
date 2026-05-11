@@ -156,9 +156,7 @@ export function AnalysisChat({ contextSummary, className }: AnalysisChatProps) {
               msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 border border-border'
             )}>
               {msg.role === 'assistant' ? (
-                <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-1 [&_ul]:mb-1 [&_h1]:text-xs [&_h2]:text-xs [&_h3]:text-[11px] [&_code]:text-[9px] [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </div>
+                <MarkdownMessage content={msg.content} compact />
               ) : (
                 <p className="whitespace-pre-wrap">{msg.content}</p>
               )}
