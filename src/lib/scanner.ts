@@ -291,6 +291,14 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.downtrend = downtrendDetail.detected;
   values.downtrend_detail = JSON.stringify(downtrendDetail);
 
+  // Spring (bullish sweep at support) & Upthrust (bearish sweep at resistance)
+  const springRes = smc.detectBullishSpring(candles);
+  const upthrustRes = smc.detectBearishUpthrust(candles);
+  values.spring_bullish = springRes.detected;
+  values.upthrust_bearish = upthrustRes.detected;
+  (values as any).spring_bullish_result = springRes;
+  (values as any).upthrust_bearish_result = upthrustRes;
+
   // SMC _prev detection for confirmation (detect on candles minus last N)
   const smcDetectors: Record<string, (c: typeof candles) => boolean> = {
     bos_bullish: smc.detectBullishBOS, bos_bearish: smc.detectBearishBOS,
@@ -803,11 +811,13 @@ function evaluateCondition(
       const featureDef = FEATURES.find(f => f.id === condition.feature);
       const isSmcBullish = featureDef && (
         featureDef.id.includes('bullish') || featureDef.id === 'discount_zone' || 
-        featureDef.id === 'liquidity_sweep_low' || featureDef.id === 'equal_lows' || featureDef.id === 'uptrend'
+        featureDef.id === 'liquidity_sweep_low' || featureDef.id === 'equal_lows' || featureDef.id === 'uptrend' ||
+        featureDef.id === 'spring_bullish'
       );
       const isSmcBearish = featureDef && (
         featureDef.id.includes('bearish') || featureDef.id === 'premium_zone' || 
-        featureDef.id === 'liquidity_sweep_high' || featureDef.id === 'equal_highs' || featureDef.id === 'downtrend'
+        featureDef.id === 'liquidity_sweep_high' || featureDef.id === 'equal_highs' || featureDef.id === 'downtrend' ||
+        featureDef.id === 'upthrust_bearish'
       );
       const isSmcDirectional = isSmcBullish || isSmcBearish;
       const isTrendFeature = condition.feature === 'uptrend' || condition.feature === 'downtrend';
@@ -904,6 +914,32 @@ function evaluateCondition(
                 reason: `${label} (${hhll}) | BOS: ${detail.bosCount} | Highs: ${swingHighsStr} | Lows: ${swingLowsStr} | Pullback: ${retStr}`,
               };
             } catch {}
+          }
+        }
+        // Spring (bullish liquidity sweep at support)
+        if (condition.feature === 'spring_bullish') {
+          const r = (values as any).spring_bullish_result as import('./smc').SpringResult | undefined;
+          if (r && r.detected) {
+            const fmt = (v: number) => v >= 1 ? v.toFixed(4) : v.toFixed(6);
+            const ago = r.candlesAgo === 0 ? 'now' : `${r.candlesAgo} candle${r.candlesAgo > 1 ? 's' : ''} ago`;
+            const breakPct = ((r.supportLevel - r.sweepLow) / r.supportLevel * 100).toFixed(2);
+            return {
+              matched: true,
+              reason: `🪤 Spring | Support ${fmt(r.supportLevel)} (${r.supportTouches}× tested) swept to ${fmt(r.sweepLow)} (-${breakPct}%) → reclaimed @ ${fmt(r.recoveryClose)} (${ago})${r.volumeSpike ? ' | Vol spike ✓' : ''}`,
+            };
+          }
+        }
+        // Upthrust (bearish liquidity sweep at resistance)
+        if (condition.feature === 'upthrust_bearish') {
+          const r = (values as any).upthrust_bearish_result as import('./smc').UpthrustResult | undefined;
+          if (r && r.detected) {
+            const fmt = (v: number) => v >= 1 ? v.toFixed(4) : v.toFixed(6);
+            const ago = r.candlesAgo === 0 ? 'now' : `${r.candlesAgo} candle${r.candlesAgo > 1 ? 's' : ''} ago`;
+            const breakPct = ((r.sweepHigh - r.resistanceLevel) / r.resistanceLevel * 100).toFixed(2);
+            return {
+              matched: true,
+              reason: `🪤 Upthrust | Resistance ${fmt(r.resistanceLevel)} (${r.resistanceTouches}× tested) swept to ${fmt(r.sweepHigh)} (+${breakPct}%) → rejected @ ${fmt(r.rejectionClose)} (${ago})${r.volumeSpike ? ' | Vol spike ✓' : ''}`,
+            };
           }
         }
         return { matched: true, reason: `${feature.name} detected` };
