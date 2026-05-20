@@ -43,6 +43,8 @@ export function SMCSettings({ condition, feature, onUpdate, disabled }: SMCSetti
       case 'volume_spike': return 'Volume Spike detects when current candle volume is 2x or more than the 20-period average.';
       case 'uptrend': return 'Uptrend is confirmed when price makes valid Higher Highs (HH) and Higher Lows (HL) with valid Fibonacci pullback retracement.';
       case 'downtrend': return 'Downtrend is confirmed when price makes valid Lower Highs (LH) and Lower Lows (LL) with valid Fibonacci pullback retracement.';
+      case 'spring_bullish': return 'Spring (Wyckoff): A tested support level breaks with a wick, but price quickly reclaims it — retail stops are taken out, smart money absorbs. Bullish reversal setup.';
+      case 'upthrust_bearish': return 'Upthrust (Wyckoff): A tested resistance level breaks with a wick, but price gets rejected back below — buy-stops are swept, distribution begins. Bearish reversal setup.';
       default: return feature.description;
     }
   };
