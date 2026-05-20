@@ -260,6 +260,8 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'volume_spike', name: 'Volume Spike', category: 'smc', description: 'Abnormally high volume (2x+ average)', defaultMode: 'value', settingsType: 'smc' },
   { id: 'uptrend', name: 'Uptrend (HH/HL)', category: 'smc', description: 'Valid Higher Highs & Higher Lows', defaultMode: 'value', settingsType: 'smc' },
   { id: 'downtrend', name: 'Downtrend (LH/LL)', category: 'smc', description: 'Valid Lower Highs & Lower Lows', defaultMode: 'value', settingsType: 'smc' },
+  { id: 'spring_bullish', name: 'Spring (Bullish Sweep)', category: 'smc', description: 'Tested support broken with a wick, then reclaimed — institutional absorption (Wyckoff Spring)', defaultMode: 'value', settingsType: 'smc' },
+  { id: 'upthrust_bearish', name: 'Upthrust (Bearish Sweep)', category: 'smc', description: 'Tested resistance broken with a wick, then rejected — distribution / Wyckoff Upthrust', defaultMode: 'value', settingsType: 'smc' },
 
   // Category D: Chart Patterns
   { id: 'cp_double_bottom', name: 'Double Bottom (W)', category: 'chart', description: 'Bullish reversal — two equal lows + neckline break', defaultMode: 'value', settingsType: 'chart-pattern' },
