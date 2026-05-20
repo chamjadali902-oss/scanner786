@@ -291,6 +291,14 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.downtrend = downtrendDetail.detected;
   values.downtrend_detail = JSON.stringify(downtrendDetail);
 
+  // Spring (bullish sweep at support) & Upthrust (bearish sweep at resistance)
+  const springRes = smc.detectBullishSpring(candles);
+  const upthrustRes = smc.detectBearishUpthrust(candles);
+  values.spring_bullish = springRes.detected;
+  values.upthrust_bearish = upthrustRes.detected;
+  (values as any).spring_bullish_result = springRes;
+  (values as any).upthrust_bearish_result = upthrustRes;
+
   // SMC _prev detection for confirmation (detect on candles minus last N)
   const smcDetectors: Record<string, (c: typeof candles) => boolean> = {
     bos_bullish: smc.detectBullishBOS, bos_bearish: smc.detectBearishBOS,
