@@ -483,4 +483,232 @@ export function detectDowntrendDetail(candles: Candle[], minRetracementPct: numb
   };
 }
 
+// ============================================================
+// SPRING (Bullish Liquidity Sweep at Support) — Wyckoff-style
+// Detects: a tested support level got broken (wick below) but
+// price quickly recovered back ABOVE the support (absorption).
+// ============================================================
+export interface SpringResult {
+  detected: boolean;
+  supportLevel: number;
+  sweepLow: number;
+  recoveryClose: number;
+  candlesAgo: number;            // how many candles ago the sweep happened (0 = current)
+  supportTouches: number;        // how many times the support was tested before sweep
+  volumeSpike: boolean;          // sweep candle had above-avg volume
+  reclaimConfirmed: boolean;     // close back above the support
+}
+
+export function detectBullishSpring(
+  candles: Candle[],
+  opts: {
+    lookback?: number;          // how far back to scan for support level (default 60)
+    swingLookback?: number;     // strictness of swing low (default 5)
+    maxAge?: number;            // sweep must have occurred within last N candles (default 5)
+    minBreakPct?: number;       // wick must extend at least this % below support (default 0.05)
+    tolerancePct?: number;      // support touch tolerance (default 0.3%)
+    minTouches?: number;        // support must have been tested at least N times (default 1)
+  } = {}
+): SpringResult {
+  const lookback = opts.lookback ?? 60;
+  const swingLookback = opts.swingLookback ?? 5;
+  const maxAge = opts.maxAge ?? 5;
+  const minBreakPct = opts.minBreakPct ?? 0.05;
+  const tolerancePct = opts.tolerancePct ?? 0.3;
+  const minTouches = opts.minTouches ?? 1;
+
+  const empty: SpringResult = {
+    detected: false, supportLevel: 0, sweepLow: 0, recoveryClose: 0,
+    candlesAgo: 0, supportTouches: 0, volumeSpike: false, reclaimConfirmed: false,
+  };
+
+  if (candles.length < lookback + swingLookback + 2) return empty;
+
+  const len = candles.length;
+  const recentStart = len - maxAge;             // sweep window: [recentStart, len-1]
+  const historyEnd = recentStart - 1;
+  const historyStart = Math.max(swingLookback, len - lookback);
+
+  if (historyEnd <= historyStart) return empty;
+
+  // 1) collect swing lows from the historical window
+  const swings: { idx: number; price: number }[] = [];
+  for (let i = historyStart; i <= historyEnd; i++) {
+    let ok = true;
+    for (let j = i - swingLookback; j <= i + swingLookback; j++) {
+      if (j === i || j < 0 || j >= len) continue;
+      if (candles[j].low <= candles[i].low) { ok = false; break; }
+    }
+    if (ok) swings.push({ idx: i, price: candles[i].low });
+  }
+  if (swings.length === 0) return empty;
+
+  // volume baseline (history only, exclude sweep window)
+  const histVols = candles.slice(historyStart, historyEnd + 1).map(c => c.volume || 0).filter(v => v > 0);
+  const avgVol = histVols.length ? histVols.reduce((a, b) => a + b, 0) / histVols.length : 0;
+
+  let best: SpringResult | null = null;
+
+  for (const s of swings) {
+    // count touches before sweep window: candles whose low approached support within tolerance
+    const tol = s.price * (tolerancePct / 100);
+    let touches = 0;
+    for (let i = s.idx; i <= historyEnd; i++) {
+      if (candles[i].low <= s.price + tol && candles[i].low >= s.price - tol) touches++;
+    }
+    if (touches < minTouches) continue;
+
+    // look for a sweep within the recent window
+    for (let k = recentStart; k < len; k++) {
+      const c = candles[k];
+      const brokeBelow = c.low < s.price * (1 - minBreakPct / 100);
+      if (!brokeBelow) continue;
+
+      // Recovery: either sweep candle closed back above OR a later candle closed above
+      let reclaimed = c.close > s.price;
+      let recoveryClose = c.close;
+      if (!reclaimed) {
+        for (let m = k + 1; m < len; m++) {
+          if (candles[m].close > s.price) { reclaimed = true; recoveryClose = candles[m].close; break; }
+        }
+      }
+      if (!reclaimed) continue;
+
+      // current price must still be above support (setup still valid)
+      if (candles[len - 1].close <= s.price) continue;
+
+      const volSpike = avgVol > 0 && (c.volume || 0) >= avgVol * 1.3;
+
+      const candidate: SpringResult = {
+        detected: true,
+        supportLevel: s.price,
+        sweepLow: c.low,
+        recoveryClose,
+        candlesAgo: len - 1 - k,
+        supportTouches: touches,
+        volumeSpike: volSpike,
+        reclaimConfirmed: true,
+      };
+
+      // Prefer the most recent sweep with the strongest support (most touches)
+      if (!best || candidate.candlesAgo < best.candlesAgo ||
+          (candidate.candlesAgo === best.candlesAgo && candidate.supportTouches > best.supportTouches)) {
+        best = candidate;
+      }
+      break; // one sweep per support
+    }
+  }
+
+  return best ?? empty;
+}
+
+// ============================================================
+// UPTHRUST (Bearish Liquidity Sweep at Resistance) — mirror of Spring
+// ============================================================
+export interface UpthrustResult {
+  detected: boolean;
+  resistanceLevel: number;
+  sweepHigh: number;
+  rejectionClose: number;
+  candlesAgo: number;
+  resistanceTouches: number;
+  volumeSpike: boolean;
+  rejectionConfirmed: boolean;
+}
+
+export function detectBearishUpthrust(
+  candles: Candle[],
+  opts: {
+    lookback?: number;
+    swingLookback?: number;
+    maxAge?: number;
+    minBreakPct?: number;
+    tolerancePct?: number;
+    minTouches?: number;
+  } = {}
+): UpthrustResult {
+  const lookback = opts.lookback ?? 60;
+  const swingLookback = opts.swingLookback ?? 5;
+  const maxAge = opts.maxAge ?? 5;
+  const minBreakPct = opts.minBreakPct ?? 0.05;
+  const tolerancePct = opts.tolerancePct ?? 0.3;
+  const minTouches = opts.minTouches ?? 1;
+
+  const empty: UpthrustResult = {
+    detected: false, resistanceLevel: 0, sweepHigh: 0, rejectionClose: 0,
+    candlesAgo: 0, resistanceTouches: 0, volumeSpike: false, rejectionConfirmed: false,
+  };
+
+  if (candles.length < lookback + swingLookback + 2) return empty;
+
+  const len = candles.length;
+  const recentStart = len - maxAge;
+  const historyEnd = recentStart - 1;
+  const historyStart = Math.max(swingLookback, len - lookback);
+  if (historyEnd <= historyStart) return empty;
+
+  const swings: { idx: number; price: number }[] = [];
+  for (let i = historyStart; i <= historyEnd; i++) {
+    let ok = true;
+    for (let j = i - swingLookback; j <= i + swingLookback; j++) {
+      if (j === i || j < 0 || j >= len) continue;
+      if (candles[j].high >= candles[i].high) { ok = false; break; }
+    }
+    if (ok) swings.push({ idx: i, price: candles[i].high });
+  }
+  if (swings.length === 0) return empty;
+
+  const histVols = candles.slice(historyStart, historyEnd + 1).map(c => c.volume || 0).filter(v => v > 0);
+  const avgVol = histVols.length ? histVols.reduce((a, b) => a + b, 0) / histVols.length : 0;
+
+  let best: UpthrustResult | null = null;
+
+  for (const r of swings) {
+    const tol = r.price * (tolerancePct / 100);
+    let touches = 0;
+    for (let i = r.idx; i <= historyEnd; i++) {
+      if (candles[i].high <= r.price + tol && candles[i].high >= r.price - tol) touches++;
+    }
+    if (touches < minTouches) continue;
+
+    for (let k = recentStart; k < len; k++) {
+      const c = candles[k];
+      const brokeAbove = c.high > r.price * (1 + minBreakPct / 100);
+      if (!brokeAbove) continue;
+
+      let rejected = c.close < r.price;
+      let rejectionClose = c.close;
+      if (!rejected) {
+        for (let m = k + 1; m < len; m++) {
+          if (candles[m].close < r.price) { rejected = true; rejectionClose = candles[m].close; break; }
+        }
+      }
+      if (!rejected) continue;
+      if (candles[len - 1].close >= r.price) continue;
+
+      const volSpike = avgVol > 0 && (c.volume || 0) >= avgVol * 1.3;
+
+      const candidate: UpthrustResult = {
+        detected: true,
+        resistanceLevel: r.price,
+        sweepHigh: c.high,
+        rejectionClose,
+        candlesAgo: len - 1 - k,
+        resistanceTouches: touches,
+        volumeSpike: volSpike,
+        rejectionConfirmed: true,
+      };
+
+      if (!best || candidate.candlesAgo < best.candlesAgo ||
+          (candidate.candlesAgo === best.candlesAgo && candidate.resistanceTouches > best.resistanceTouches)) {
+        best = candidate;
+      }
+      break;
+    }
+  }
+
+  return best ?? empty;
+}
+
+
 
