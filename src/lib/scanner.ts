@@ -811,11 +811,13 @@ function evaluateCondition(
       const featureDef = FEATURES.find(f => f.id === condition.feature);
       const isSmcBullish = featureDef && (
         featureDef.id.includes('bullish') || featureDef.id === 'discount_zone' || 
-        featureDef.id === 'liquidity_sweep_low' || featureDef.id === 'equal_lows' || featureDef.id === 'uptrend'
+        featureDef.id === 'liquidity_sweep_low' || featureDef.id === 'equal_lows' || featureDef.id === 'uptrend' ||
+        featureDef.id === 'spring_bullish'
       );
       const isSmcBearish = featureDef && (
         featureDef.id.includes('bearish') || featureDef.id === 'premium_zone' || 
-        featureDef.id === 'liquidity_sweep_high' || featureDef.id === 'equal_highs' || featureDef.id === 'downtrend'
+        featureDef.id === 'liquidity_sweep_high' || featureDef.id === 'equal_highs' || featureDef.id === 'downtrend' ||
+        featureDef.id === 'upthrust_bearish'
       );
       const isSmcDirectional = isSmcBullish || isSmcBearish;
       const isTrendFeature = condition.feature === 'uptrend' || condition.feature === 'downtrend';
