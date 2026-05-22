@@ -114,14 +114,22 @@ const Index = () => {
 
           {user && showFavorites && (
             <div className="p-3 rounded-xl border border-border bg-card card-glow">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                 <h3 className="text-xs font-semibold flex items-center gap-2"><Star className="w-4 h-4 text-primary" />My Favorites ({favorites.length})</h3>
-                {favorites.length > 0 && (
-                  <Button onClick={removeAllFavorites} variant="ghost" size="sm" className="h-6 text-[10px] text-destructive hover:text-destructive">
-                    Remove All
-                  </Button>
-                )}
+                <div className="flex items-center gap-1">
+                  {favorites.length > 0 && (
+                    <>
+                      <Button onClick={handleCopyFavorites} variant="ghost" size="sm" className="h-6 text-[10px]">
+                        Copy
+                      </Button>
+                      <Button onClick={removeAllFavorites} variant="ghost" size="sm" className="h-6 text-[10px] text-destructive hover:text-destructive">
+                        Remove All
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
+              <ManualAddFavorite onAdd={addManualFavorites} />
               <FavoritesList favorites={favorites} loading={favoritesLoading} onRemove={removeFavorite} />
             </div>
           )}
