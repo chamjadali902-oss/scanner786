@@ -16,6 +16,7 @@ import { StrategiesList } from '@/components/scanner/StrategiesList';
 import { SaveStrategyDialog } from '@/components/scanner/SaveStrategyDialog';
 import { PublishStrategyDialog } from '@/components/scanner/PublishStrategyDialog';
 import { FavoritesList } from '@/components/scanner/FavoritesList';
+import { ManualAddFavorite } from '@/components/scanner/ManualAddFavorite';
 import { Button } from '@/components/ui/button';
 import { Play, RotateCcw, Search, Sparkles, Save, FolderOpen, Star, LogIn, Globe } from 'lucide-react';
 
@@ -68,6 +69,22 @@ const Index = () => {
     if (isFavorite(symbol)) removeFavorite(symbol); else addFavorite(symbol);
   };
 
+  const handleCopyFavorites = async () => {
+    const text = favorites.map(f => f.symbol).join(', ');
+    try {
+      await navigator.clipboard.writeText(text);
+      const { toast } = await import('sonner');
+      toast.success(`Copied ${favorites.length} coin${favorites.length !== 1 ? 's' : ''} to clipboard`);
+    } catch {
+      const { toast } = await import('sonner');
+      toast.error('Failed to copy');
+    }
+  };
+
+  const addManualFavorites = (symbols: string[]) => {
+    addAllFavorites(symbols);
+  };
+
   const handlePublish = (name: string, description: string, authorName: string) => {
     publishStrategy(name, description, scanPool, timeframe, conditions, authorName);
   };
@@ -114,14 +131,22 @@ const Index = () => {
 
           {user && showFavorites && (
             <div className="p-3 rounded-xl border border-border bg-card card-glow">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                 <h3 className="text-xs font-semibold flex items-center gap-2"><Star className="w-4 h-4 text-primary" />My Favorites ({favorites.length})</h3>
-                {favorites.length > 0 && (
-                  <Button onClick={removeAllFavorites} variant="ghost" size="sm" className="h-6 text-[10px] text-destructive hover:text-destructive">
-                    Remove All
-                  </Button>
-                )}
+                <div className="flex items-center gap-1">
+                  {favorites.length > 0 && (
+                    <>
+                      <Button onClick={handleCopyFavorites} variant="ghost" size="sm" className="h-6 text-[10px]">
+                        Copy
+                      </Button>
+                      <Button onClick={removeAllFavorites} variant="ghost" size="sm" className="h-6 text-[10px] text-destructive hover:text-destructive">
+                        Remove All
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
+              <ManualAddFavorite onAdd={addManualFavorites} />
               <FavoritesList favorites={favorites} loading={favoritesLoading} onRemove={removeFavorite} />
             </div>
           )}
