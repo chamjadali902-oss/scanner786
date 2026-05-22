@@ -69,6 +69,22 @@ const Index = () => {
     if (isFavorite(symbol)) removeFavorite(symbol); else addFavorite(symbol);
   };
 
+  const handleCopyFavorites = async () => {
+    const text = favorites.map(f => f.symbol).join(', ');
+    try {
+      await navigator.clipboard.writeText(text);
+      const { toast } = await import('sonner');
+      toast.success(`Copied ${favorites.length} coin${favorites.length !== 1 ? 's' : ''} to clipboard`);
+    } catch {
+      const { toast } = await import('sonner');
+      toast.error('Failed to copy');
+    }
+  };
+
+  const addManualFavorites = (symbols: string[]) => {
+    addAllFavorites(symbols);
+  };
+
   const handlePublish = (name: string, description: string, authorName: string) => {
     publishStrategy(name, description, scanPool, timeframe, conditions, authorName);
   };
