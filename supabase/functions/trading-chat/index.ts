@@ -95,6 +95,50 @@ async function fetchLivePrice(symbol: string, market: 'spot' | 'futures'): Promi
   } catch { return null; }
 }
 
+// ─── Derivatives intelligence (futures only) ───
+async function fetchFundingAndOI(symbol: string) {
+  try {
+    const [premR, oiR] = await Promise.all([
+      fetch(`${FUTURES_API}/premiumIndex?symbol=${symbol}`),
+      fetch(`${FUTURES_API}/openInterest?symbol=${symbol}`),
+    ]);
+    const prem = premR.ok ? await premR.json() : null;
+    const oi = oiR.ok ? await oiR.json() : null;
+    return {
+      fundingRate: prem ? +prem.lastFundingRate : null,
+      markPrice: prem ? +prem.markPrice : null,
+      nextFundingTime: prem ? +prem.nextFundingTime : null,
+      openInterest: oi ? +oi.openInterest : null,
+    };
+  } catch { return null; }
+}
+
+async function fetchLongShortRatio(symbol: string) {
+  try {
+    const r = await fetch(`https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=1h&limit=1`);
+    if (!r.ok) return null;
+    const a = await r.json();
+    if (!Array.isArray(a) || !a.length) return null;
+    return { longShortRatio: +a[0].longShortRatio, longAcct: +a[0].longAccount, shortAcct: +a[0].shortAccount };
+  } catch { return null; }
+}
+
+// ─── Fear & Greed index (free, no key) ───
+let fgCache: { ts: number; data: any } | null = null;
+async function fetchFearGreed() {
+  if (fgCache && Date.now() - fgCache.ts < 10 * 60_000) return fgCache.data;
+  try {
+    const r = await fetch('https://api.alternative.me/fng/?limit=1');
+    if (!r.ok) return null;
+    const j = await r.json();
+    const d = j?.data?.[0];
+    if (!d) return null;
+    const data = { value: +d.value, classification: d.value_classification };
+    fgCache = { ts: Date.now(), data };
+    return data;
+  } catch { return null; }
+}
+
 // Auto-precision based on price magnitude (TradingView style)
 function priceFmt(v: number | null | undefined): string {
   if (v == null || !isFinite(v)) return 'N/A';
