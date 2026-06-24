@@ -95,6 +95,50 @@ async function fetchLivePrice(symbol: string, market: 'spot' | 'futures'): Promi
   } catch { return null; }
 }
 
+// ─── Derivatives intelligence (futures only) ───
+async function fetchFundingAndOI(symbol: string) {
+  try {
+    const [premR, oiR] = await Promise.all([
+      fetch(`${FUTURES_API}/premiumIndex?symbol=${symbol}`),
+      fetch(`${FUTURES_API}/openInterest?symbol=${symbol}`),
+    ]);
+    const prem = premR.ok ? await premR.json() : null;
+    const oi = oiR.ok ? await oiR.json() : null;
+    return {
+      fundingRate: prem ? +prem.lastFundingRate : null,
+      markPrice: prem ? +prem.markPrice : null,
+      nextFundingTime: prem ? +prem.nextFundingTime : null,
+      openInterest: oi ? +oi.openInterest : null,
+    };
+  } catch { return null; }
+}
+
+async function fetchLongShortRatio(symbol: string) {
+  try {
+    const r = await fetch(`https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=1h&limit=1`);
+    if (!r.ok) return null;
+    const a = await r.json();
+    if (!Array.isArray(a) || !a.length) return null;
+    return { longShortRatio: +a[0].longShortRatio, longAcct: +a[0].longAccount, shortAcct: +a[0].shortAccount };
+  } catch { return null; }
+}
+
+// ─── Fear & Greed index (free, no key) ───
+let fgCache: { ts: number; data: any } | null = null;
+async function fetchFearGreed() {
+  if (fgCache && Date.now() - fgCache.ts < 10 * 60_000) return fgCache.data;
+  try {
+    const r = await fetch('https://api.alternative.me/fng/?limit=1');
+    if (!r.ok) return null;
+    const j = await r.json();
+    const d = j?.data?.[0];
+    if (!d) return null;
+    const data = { value: +d.value, classification: d.value_classification };
+    fgCache = { ts: Date.now(), data };
+    return data;
+  } catch { return null; }
+}
+
 // Auto-precision based on price magnitude (TradingView style)
 function priceFmt(v: number | null | undefined): string {
   if (v == null || !isFinite(v)) return 'N/A';
@@ -413,6 +457,40 @@ async function buildAnalysisContext(symbol: string, tf: string, market: 'spot' |
   const vol = ticker ? (+ticker.quoteVolume / 1e6).toFixed(2) : 'N/A';
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
+  // Derivatives data (futures only) + global Fear & Greed (parallel)
+  const [deriv, lsr, fg] = await Promise.all([
+    market === 'futures' ? fetchFundingAndOI(symbol) : Promise.resolve(null),
+    market === 'futures' ? fetchLongShortRatio(symbol) : Promise.resolve(null),
+    fetchFearGreed(),
+  ]);
+
+  // Confluence scoring (helps the AI rate signal strength)
+  const confluences: { bull: string[]; bear: string[] } = { bull: [], bear: [] };
+  if (rsi != null) { if (rsi < 35) confluences.bull.push(`RSI oversold (${rsi.toFixed(1)})`); if (rsi > 65) confluences.bear.push(`RSI overbought (${rsi.toFixed(1)})`); }
+  if (e50 && price > e50) confluences.bull.push('Price > EMA50'); else if (e50) confluences.bear.push('Price < EMA50');
+  if (e200 && price > e200) confluences.bull.push('Price > EMA200 (HTF bull)'); else if (e200) confluences.bear.push('Price < EMA200 (HTF bear)');
+  if (st?.direction === 'UP') confluences.bull.push('Supertrend UP'); else if (st?.direction === 'DOWN') confluences.bear.push('Supertrend DOWN');
+  if (m && m.histogram > 0) confluences.bull.push('MACD histogram positive'); else if (m) confluences.bear.push('MACD histogram negative');
+  if (sweeps.sweepLow) confluences.bull.push(`Liquidity sweep LOW @ $${priceFmt(sweeps.sweepLow)} reclaimed`);
+  if (sweeps.sweepHigh) confluences.bear.push(`Liquidity sweep HIGH @ $${priceFmt(sweeps.sweepHigh)} rejected`);
+  if (struct.event.includes('Bullish')) confluences.bull.push(`Structure: ${struct.event}`);
+  if (struct.event.includes('Bearish')) confluences.bear.push(`Structure: ${struct.event}`);
+  if (zone.includes('DISCOUNT')) confluences.bull.push('In DISCOUNT zone');
+  if (zone.includes('PREMIUM')) confluences.bear.push('In PREMIUM zone');
+  if (deriv?.fundingRate != null) {
+    const fr = deriv.fundingRate * 100;
+    if (fr < -0.01) confluences.bull.push(`Funding negative (${fr.toFixed(4)}%) — shorts paying, squeeze risk`);
+    if (fr > 0.05) confluences.bear.push(`Funding overheated (${fr.toFixed(4)}%) — longs crowded`);
+  }
+  if (lsr?.longShortRatio != null) {
+    if (lsr.longShortRatio < 0.9) confluences.bull.push(`L/S ratio ${lsr.longShortRatio.toFixed(2)} (crowd short → contrarian bull)`);
+    if (lsr.longShortRatio > 2.0) confluences.bear.push(`L/S ratio ${lsr.longShortRatio.toFixed(2)} (crowd over-long → distribution risk)`);
+  }
+
+  const bias = confluences.bull.length > confluences.bear.length + 1 ? 'BULLISH'
+    : confluences.bear.length > confluences.bull.length + 1 ? 'BEARISH' : 'NEUTRAL';
+  const conviction = Math.min(5, Math.max(1, Math.abs(confluences.bull.length - confluences.bear.length)));
+
   return `
 ═══════════════════════════════════════════════════════════
 LIVE BINANCE ${market.toUpperCase()} DATA — ${symbol} @ ${tf}
@@ -447,7 +525,7 @@ LIQUIDITY
 • Buy-side pool (recent high): $${priceFmt(sweeps.prevHigh)}
 • Sell-side pool (recent low): $${priceFmt(sweeps.prevLow)}
 • Sweep High this candle: ${sweeps.sweepHigh ? `YES — wicked $${priceFmt(sweeps.sweepHigh)} then closed back below (bearish reversal signal)` : 'No'}
-• Sweep Low  this candle: ${sweeps.sweepLow  ? `YES — wicked $${priceFmt(sweeps.sweepLow)}  then closed back above (bullish reversal signal)` : 'No'}
+• Sweep Low  this candle: ${sweeps.sweepLow  ? `YES — wicked $${priceFmt(sweeps.sweepLow)}  then closed back above (bullish reversal signal — Wyckoff Spring)` : 'No'}
 
 UNFILLED FAIR VALUE GAPS (FVG)
 ${fvgs.length === 0 ? '• None active' : fvgs.map(f => `• ${f.type === 'bull' ? 'Bullish' : 'Bearish'} FVG: $${priceFmt(f.bottom)} – $${priceFmt(f.top)} (age ${f.age} candles)`).join('\n')}
@@ -455,47 +533,119 @@ ${fvgs.length === 0 ? '• None active' : fvgs.map(f => `• ${f.type === 'bull'
 ACTIVE ORDER BLOCKS
 ${obs.length === 0 ? '• None detected' : obs.map(o => `• ${o.type === 'bull' ? 'Bullish' : 'Bearish'} OB: $${priceFmt(o.bottom)} – $${priceFmt(o.top)}`).join('\n')}
 
+${market === 'futures' ? `DERIVATIVES INTELLIGENCE (Binance Futures)
+• Funding Rate: ${deriv?.fundingRate != null ? (deriv.fundingRate * 100).toFixed(4) + '%' : 'N/A'} ${deriv?.fundingRate != null ? (deriv.fundingRate < -0.01 ? '🟢 (shorts paying — squeeze risk)' : deriv.fundingRate > 0.05 ? '🔴 (longs overheated)' : '🟡 (neutral)') : ''}
+• Open Interest: ${deriv?.openInterest != null ? deriv.openInterest.toFixed(2) + ' ' + symbol.replace('USDT','') : 'N/A'}
+• Mark Price: $${priceFmt(deriv?.markPrice)}
+• Long/Short Ratio (1h, global): ${lsr?.longShortRatio != null ? lsr.longShortRatio.toFixed(2) + ` (Long ${(lsr.longAcct*100).toFixed(1)}% / Short ${(lsr.shortAcct*100).toFixed(1)}%)` : 'N/A'}` : ''}
+
+MARKET SENTIMENT
+• Crypto Fear & Greed Index: ${fg ? `${fg.value}/100 (${fg.classification})` : 'N/A'} ${fg ? (fg.value < 25 ? '🟢 Extreme Fear — contrarian buy zone' : fg.value > 75 ? '🔴 Extreme Greed — caution' : '🟡') : ''}
+
 PRICE ACTION — Last 5 Candles (oldest → newest)
 ${last5.join('\n')}
+
+═══ CONFLUENCE SCORECARD ═══
+• BIAS: ${bias}  |  CONVICTION: ${conviction}/5 ⭐
+• Bullish factors (${confluences.bull.length}):
+${confluences.bull.length ? confluences.bull.map(c => `   ✅ ${c}`).join('\n') : '   (none)'}
+• Bearish factors (${confluences.bear.length}):
+${confluences.bear.length ? confluences.bear.map(c => `   ❌ ${c}`).join('\n') : '   (none)'}
 ═══════════════════════════════════════════════════════════`;
+}
+
+// Compact HTF summary for top-down context
+async function buildHTFSummary(symbol: string, tf: string, market: 'spot' | 'futures'): Promise<string | null> {
+  const klines = await fetchKlines(symbol, tf, market);
+  if (!klines || klines.length < 50) return null;
+  const candles: Candle[] = klines.map(k => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4] }));
+  const closes = candles.map(c => c.c);
+  const last = candles[candles.length - 1];
+  const rsi = wildersRSI(closes);
+  const e50 = ema(closes, 50);
+  const e200 = ema(closes, 200);
+  const struct = detectStructure(candles);
+  const trend = e50 && e200 ? (last.c > e50 && e50 > e200 ? 'UPTREND' : last.c < e50 && e50 < e200 ? 'DOWNTREND' : 'RANGING') : '?';
+  return `• ${tf}: ${trend} | RSI=${rsi?.toFixed(1) ?? 'N/A'} | Event=${struct.event} | SwingH=$${priceFmt(struct.lastSwingHigh)} SwingL=$${priceFmt(struct.lastSwingLow)}`;
 }
 
 // ─────────────────────────────────────────────────────────
 // MAIN HANDLER
 // ─────────────────────────────────────────────────────────
-const DEFAULT_SYSTEM = `You are CryptoMentor AI — a friendly, expert crypto trading analyst with LIVE Binance data access. Talk to the user like ChatGPT does: warm, conversational, clear, and helpful. Use the supplied LIVE DATA block as the single source of truth. Never invent numbers.
+const DEFAULT_SYSTEM = `You are **CryptoMentor AI** — an institutional-grade crypto trading desk in chat form. Your mission: give traders the same caliber of analysis they would get from a paid analyst or premium signal channel — for free. No FOMO, no shilling, no yes-man behavior. Just sharp, honest, data-driven calls.
 
-## VOICE & STYLE (ChatGPT-like)
-- Start with a short, friendly one-line intro that directly addresses what the user asked (e.g. "Sure! Here's a complete look at BTCUSDT on the 1h chart 👇").
-- Write in a natural, human tone — like a smart friend explaining things. Avoid robotic phrasing.
-- Mix short paragraphs, bullet lists, and **only use tables when comparing numbers** (indicators, trade plan, scenarios). Don't force everything into tables.
-- Use **bold** for key values, \`inline code\` for prices/symbols, and tasteful emojis (📊 📈 📉 🟢 🔴 🟡 ⚠️ 🎯 🛑 ✅ 💡) — not on every line.
-- Use \`##\` for main sections and \`###\` for sub-sections. Keep heading text short and human (e.g. "## 📊 Quick Snapshot", "## 💡 My Take").
-- Add \`---\` only between truly major sections.
-- End with a friendly closing line + the disclaimer: *Educational only — not financial advice.*
+## CORE IDENTITY
+- Tone: **confident but humble, conversational, expert** — like a senior prop-desk trader explaining the chart to a friend.
+- Bias: **risk-first**. Every trade idea must have entry, stop, targets, and R:R. No "to the moon" claims.
+- Honesty: If the setup is weak, **say "no trade — wait"**. If the user is chasing a pump, warn them. If a Twitter/influencer call looks like a trap, call it out.
+- Source of truth: the **LIVE DATA block** below. Never invent or recall stale numbers.
 
-## RECOMMENDED FLOW (adapt to the question — don't be rigid)
-1. Friendly opener (1 line).
-2. **## 📊 Quick Snapshot** — small table: Symbol | Timeframe | Live Price | 24h Change | Bias.
-3. **## 🏛️ Market Structure** — short bullets on BOS/CHoCH, trend, key swings.
-4. **## 💧 Liquidity & Key Zones** — bullets or small table for OBs, FVGs, liquidity pools.
-5. **## 📈 Indicators at a Glance** — table: Indicator | Value | Signal.
-6. **## 🕯️ Price Action** — 2-3 sentence read of recent candles.
-7. **## ⚖️ Bullish vs Bearish** — two short bullet lists side by side (or a 2-col table).
-8. **## 🎯 Trade Plan** — table: Direction | Entry | Stop Loss | TP1 | TP2 | TP3 | R:R.
-9. **## 🔄 Scenarios** — short "If price does X → expect Y" bullets for both sides.
-10. **## 💡 My Take** — 2-3 sentence honest summary in plain language.
-11. Closing line + disclaimer.
+## OUTPUT STYLE (ChatGPT-like, fully responsive markdown)
+- Open with a 1-line friendly hook addressing exactly what the user asked.
+- Use \`##\` for major sections, \`###\` for subs. Keep them short and scannable.
+- Bold key values, \`inline code\` for prices/symbols, tasteful emojis (📊 📈 📉 🟢 🔴 🟡 ⚠️ 🎯 🛑 ✅ 💡 🪤 🐋 ⚡) — never overuse.
+- Tables ONLY for: indicator snapshots, trade plan, scenarios, multi-TF comparisons. Otherwise paragraphs + bullets.
+- Always close with **"💡 My Take"** (2-3 sentences, brutally honest) and the disclaimer: *Educational only — not financial advice.*
 
-If the user just asks a quick question (e.g. "what's the price?", "is RSI overbought?"), reply briefly and naturally — DON'T dump the full template.
+## RECOMMENDED FULL ANALYSIS FLOW (adapt — don't force)
+1. **Friendly opener** (1 line).
+2. **## 🎯 TL;DR** — 2-line summary: direction + conviction + key level to watch.
+3. **## 📊 Quick Snapshot** — table: Symbol | TF | Live Price | 24h Change | Bias | Conviction (⭐/5)
+4. **## 🔭 Top-Down Bias** (if HTF data provided) — 1H/4H/1D trend alignment in 2-3 bullets. Always anchor lower-TF entries to higher-TF bias.
+5. **## 🏛️ Market Structure (SMC)** — BOS/CHoCH, premium/discount zone, key swings.
+6. **## 💧 Liquidity Map** — buy-side/sell-side pools, EQH/EQL, recent sweeps. Call out **Wyckoff Spring/Upthrust** when sweeps + reclaim happen.
+7. **## 🧱 Key Zones** — bullet active OBs & unfilled FVGs with prices.
+8. **## 📈 Indicators at a Glance** — table: Indicator | Value | Signal (RSI, MACD, EMAs, Stoch, Supertrend, ATR).
+9. **## ⚡ Derivatives Pulse** (futures only) — funding rate, OI, L/S ratio. Flag **squeeze setups** (negative funding + reclaim) and **crowded trades** (overheated funding).
+10. **## 🧠 Sentiment Check** — Fear & Greed reading + contrarian read.
+11. **## 🕯️ Price Action Read** — 2-3 sentences on last 5 candles (momentum, rejection, absorption).
+12. **## ⚖️ Bull vs Bear Case** — 2-column table or side-by-side bullets pulled from the **Confluence Scorecard**.
+13. **## 🎯 Premium Signal** (only if conviction ≥ 3/5 AND bias is clear). Use this exact format:
 
-## TABLE EXAMPLE
-| Indicator | Value | Signal |
-|-----------|-------|--------|
-| RSI(14)   | 58.3  | 🟡 Neutral |
-| EMA 50    | 67,234 | 🟢 Above |
+\`\`\`
+📍 SIGNAL: {SYMBOL} — {LONG/SHORT} ({conviction} ⭐)
 
-Be precise, warm, and easy to read — exactly like ChatGPT.`;
+🎯 Entry Zone:   {low} – {high}
+🛡 Stop Loss:    {price} ({-X%}, {X×ATR} risk)
+🏆 TP1: {price} (R:R 1:1.5)
+🏆 TP2: {price} (R:R 1:3)
+🏆 TP3: {price} (R:R 1:5+)
+⚖️ Position Size: {1-2% account risk recommended}
+
+🧩 Confluences ({N}/{total}):
+✅ {factor 1}
+✅ {factor 2}
+...
+⚠️ {risk/invalidation factor}
+
+⏱ Setup type: {Scalp 15m–1h / Intraday 1h–4h / Swing 4h–1d}
+🚫 Invalidation: {price level — if broken, abort}
+\`\`\`
+
+If conviction < 3/5 → instead write: **"⏸ No clean setup right now — wait for X to confirm Y."**
+
+14. **## 🔄 Scenarios** — "If price reclaims X → expect Y" / "If price loses X → expect Y" (both sides).
+15. **## 🪤 Trap Watch** — call out fakeouts, distribution, divergence-traps if you see them.
+16. **## 💡 My Take** — honest 2-3 sentence verdict + disclaimer.
+
+## ADAPTIVE BEHAVIOR
+- Quick question ("what's the price?", "is RSI OB?") → answer in 1-2 sentences. Do NOT dump full template.
+- Influencer call paste ("X said long BTC @ 67k") → verify against LIVE DATA, score the setup, give honest verdict (valid / trap / chase).
+- Multiple coins requested → comparison table (Symbol | Bias | Conviction | Key Level | Verdict).
+- User mentions their open trade ("I'm long BTC @ 67k") → assess from LIVE DATA, give actionable hold/scale/exit advice with current PnL context.
+- News/event question → explain likely directional bias + which coins benefit/suffer.
+
+## CONFLUENCE-DRIVEN CONVICTION (built into data block)
+A **Confluence Scorecard** is included in the LIVE DATA. Use it as the **primary** input for bias & conviction. Pull bullish/bearish factors directly from it into your "Bull vs Bear Case" section. Never give a high-conviction signal without ≥3 confluences on one side.
+
+## HARD RULES
+1. **LIVE DATA = single source of truth.** Ignore stale numbers from prior messages.
+2. Never invent prices, levels, or indicator values not in the block.
+3. Never promise gains or use phrases like "guaranteed", "100% win", "moonshot".
+4. Always show **invalidation level** with every signal.
+5. If futures market: always mention funding & L/S ratio context.
+6. Use Pakistani/Hindi (Roman) when the user writes in Roman Urdu — match their language naturally.
+7. Be the kind of analyst the user would PAY for. That's the bar.`;
 
 async function loadSystemPrompt(): Promise<string> {
   try {
@@ -505,6 +655,17 @@ async function loadSystemPrompt(): Promise<string> {
     const { data } = await sb.from('ai_prompts').select('system_prompt').eq('key', 'trading_chat_ai').maybeSingle();
     return (data?.system_prompt as string) || DEFAULT_SYSTEM;
   } catch { return DEFAULT_SYSTEM; }
+}
+
+// Auto-fetch higher-TF context for top-down bias
+function getHTFs(tf: string): string[] {
+  const map: Record<string, string[]> = {
+    '1m': ['15m', '1h'], '3m': ['15m', '1h'], '5m': ['1h', '4h'],
+    '15m': ['1h', '4h'], '30m': ['4h', '1d'], '1h': ['4h', '1d'],
+    '2h': ['4h', '1d'], '4h': ['1d', '1w'], '6h': ['1d', '1w'],
+    '8h': ['1d', '1w'], '12h': ['1d', '1w'], '1d': ['1w'], '3d': ['1w'], '1w': [], '1M': [],
+  };
+  return map[tf] || [];
 }
 
 serve(async (req) => {
@@ -517,12 +678,22 @@ serve(async (req) => {
     let liveData = '';
 
     if (symbol && timeframe) {
-      console.log(`[trading-chat] Analyzing ${symbol} ${timeframe} ${market}`);
-      const ctx = await buildAnalysisContext(symbol, timeframe, market);
-      if (ctx) liveData = `\n\n${ctx}\n`;
-      else liveData = `\n\n[NOTE: Could not fetch ${symbol} ${timeframe} ${market} data. Symbol may not exist on Binance ${market}.]\n`;
+      console.log(`[trading-chat] Analyzing ${symbol} ${timeframe} ${market} + HTF top-down`);
+      const htfs = getHTFs(timeframe);
+      const [ctx, ...htfSummaries] = await Promise.all([
+        buildAnalysisContext(symbol, timeframe, market),
+        ...htfs.map(t => buildHTFSummary(symbol, t, market)),
+      ]);
+      if (ctx) {
+        const htfBlock = htfSummaries.filter(Boolean).length
+          ? `\n\n🔭 HIGHER-TIMEFRAME BIAS (top-down context for ${symbol}):\n${htfSummaries.filter(Boolean).join('\n')}\n`
+          : '';
+        liveData = `\n\n${ctx}${htfBlock}\n`;
+      } else {
+        liveData = `\n\n[NOTE: Could not fetch ${symbol} ${timeframe} ${market} data. Symbol may not exist on Binance ${market}.]\n`;
+      }
     } else if (symbol && !timeframe) {
-      // Symbol only — give multi-tf snapshot on common TFs
+      // Symbol only — multi-tf snapshot on common TFs
       const tfs = ['15m', '1h', '4h', '1d'];
       const ctxs = await Promise.all(tfs.map(t => buildAnalysisContext(symbol, t, market)));
       const valid = ctxs.filter(Boolean);
@@ -534,9 +705,10 @@ serve(async (req) => {
       ? `\n\n⚠️ CRITICAL RULES — READ CAREFULLY:
 1. The LIVE DATA block above is the SINGLE SOURCE OF TRUTH. It was just fetched live from Binance moments ago.
 2. IGNORE any prices, indicator values, levels, or numbers mentioned in PRIOR conversation messages — those are STALE.
-3. When quoting the current price, RSI, EMAs, swing highs/lows, OBs, FVGs etc., you MUST copy the exact values from the LIVE DATA block above. Do NOT round, estimate, or recall from earlier.
-4. If the user asks "what is the price now?" — answer with the "Live Price" value from above.
-5. Never invent symbols or numbers not present in the LIVE DATA block.`
+3. When quoting the current price, RSI, EMAs, swing highs/lows, OBs, FVGs, funding etc., you MUST copy the EXACT values from the LIVE DATA block above.
+4. The Confluence Scorecard is your primary input for bias and conviction — use it directly.
+5. The HTF block (if present) shows higher-timeframe trend — ALWAYS align your trade-plan direction with it. If LTF and HTF disagree, prefer counter-trend mean-reversion or "no trade".
+6. Never invent symbols, numbers, or signals not derivable from the LIVE DATA block.`
       : `\n\nNOTE: No symbol/timeframe detected in the user's question. If they ask for analysis, politely ask them to specify both (e.g., "BTCUSDT 1h" or "ETH 4h futures"). Do NOT invent prices.`);
 
     const response = await callAIWithFallback({
