@@ -457,6 +457,40 @@ async function buildAnalysisContext(symbol: string, tf: string, market: 'spot' |
   const vol = ticker ? (+ticker.quoteVolume / 1e6).toFixed(2) : 'N/A';
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
+  // Derivatives data (futures only) + global Fear & Greed (parallel)
+  const [deriv, lsr, fg] = await Promise.all([
+    market === 'futures' ? fetchFundingAndOI(symbol) : Promise.resolve(null),
+    market === 'futures' ? fetchLongShortRatio(symbol) : Promise.resolve(null),
+    fetchFearGreed(),
+  ]);
+
+  // Confluence scoring (helps the AI rate signal strength)
+  const confluences: { bull: string[]; bear: string[] } = { bull: [], bear: [] };
+  if (rsi != null) { if (rsi < 35) confluences.bull.push(`RSI oversold (${rsi.toFixed(1)})`); if (rsi > 65) confluences.bear.push(`RSI overbought (${rsi.toFixed(1)})`); }
+  if (e50 && price > e50) confluences.bull.push('Price > EMA50'); else if (e50) confluences.bear.push('Price < EMA50');
+  if (e200 && price > e200) confluences.bull.push('Price > EMA200 (HTF bull)'); else if (e200) confluences.bear.push('Price < EMA200 (HTF bear)');
+  if (st?.direction === 'UP') confluences.bull.push('Supertrend UP'); else if (st?.direction === 'DOWN') confluences.bear.push('Supertrend DOWN');
+  if (m && m.histogram > 0) confluences.bull.push('MACD histogram positive'); else if (m) confluences.bear.push('MACD histogram negative');
+  if (sweeps.sweepLow) confluences.bull.push(`Liquidity sweep LOW @ $${priceFmt(sweeps.sweepLow)} reclaimed`);
+  if (sweeps.sweepHigh) confluences.bear.push(`Liquidity sweep HIGH @ $${priceFmt(sweeps.sweepHigh)} rejected`);
+  if (struct.event.includes('Bullish')) confluences.bull.push(`Structure: ${struct.event}`);
+  if (struct.event.includes('Bearish')) confluences.bear.push(`Structure: ${struct.event}`);
+  if (zone.includes('DISCOUNT')) confluences.bull.push('In DISCOUNT zone');
+  if (zone.includes('PREMIUM')) confluences.bear.push('In PREMIUM zone');
+  if (deriv?.fundingRate != null) {
+    const fr = deriv.fundingRate * 100;
+    if (fr < -0.01) confluences.bull.push(`Funding negative (${fr.toFixed(4)}%) — shorts paying, squeeze risk`);
+    if (fr > 0.05) confluences.bear.push(`Funding overheated (${fr.toFixed(4)}%) — longs crowded`);
+  }
+  if (lsr?.longShortRatio != null) {
+    if (lsr.longShortRatio < 0.9) confluences.bull.push(`L/S ratio ${lsr.longShortRatio.toFixed(2)} (crowd short → contrarian bull)`);
+    if (lsr.longShortRatio > 2.0) confluences.bear.push(`L/S ratio ${lsr.longShortRatio.toFixed(2)} (crowd over-long → distribution risk)`);
+  }
+
+  const bias = confluences.bull.length > confluences.bear.length + 1 ? 'BULLISH'
+    : confluences.bear.length > confluences.bull.length + 1 ? 'BEARISH' : 'NEUTRAL';
+  const conviction = Math.min(5, Math.max(1, Math.abs(confluences.bull.length - confluences.bear.length)));
+
   return `
 ═══════════════════════════════════════════════════════════
 LIVE BINANCE ${market.toUpperCase()} DATA — ${symbol} @ ${tf}
@@ -491,7 +525,7 @@ LIQUIDITY
 • Buy-side pool (recent high): $${priceFmt(sweeps.prevHigh)}
 • Sell-side pool (recent low): $${priceFmt(sweeps.prevLow)}
 • Sweep High this candle: ${sweeps.sweepHigh ? `YES — wicked $${priceFmt(sweeps.sweepHigh)} then closed back below (bearish reversal signal)` : 'No'}
-• Sweep Low  this candle: ${sweeps.sweepLow  ? `YES — wicked $${priceFmt(sweeps.sweepLow)}  then closed back above (bullish reversal signal)` : 'No'}
+• Sweep Low  this candle: ${sweeps.sweepLow  ? `YES — wicked $${priceFmt(sweeps.sweepLow)}  then closed back above (bullish reversal signal — Wyckoff Spring)` : 'No'}
 
 UNFILLED FAIR VALUE GAPS (FVG)
 ${fvgs.length === 0 ? '• None active' : fvgs.map(f => `• ${f.type === 'bull' ? 'Bullish' : 'Bearish'} FVG: $${priceFmt(f.bottom)} – $${priceFmt(f.top)} (age ${f.age} candles)`).join('\n')}
@@ -499,9 +533,40 @@ ${fvgs.length === 0 ? '• None active' : fvgs.map(f => `• ${f.type === 'bull'
 ACTIVE ORDER BLOCKS
 ${obs.length === 0 ? '• None detected' : obs.map(o => `• ${o.type === 'bull' ? 'Bullish' : 'Bearish'} OB: $${priceFmt(o.bottom)} – $${priceFmt(o.top)}`).join('\n')}
 
+${market === 'futures' ? `DERIVATIVES INTELLIGENCE (Binance Futures)
+• Funding Rate: ${deriv?.fundingRate != null ? (deriv.fundingRate * 100).toFixed(4) + '%' : 'N/A'} ${deriv?.fundingRate != null ? (deriv.fundingRate < -0.01 ? '🟢 (shorts paying — squeeze risk)' : deriv.fundingRate > 0.05 ? '🔴 (longs overheated)' : '🟡 (neutral)') : ''}
+• Open Interest: ${deriv?.openInterest != null ? deriv.openInterest.toFixed(2) + ' ' + symbol.replace('USDT','') : 'N/A'}
+• Mark Price: $${priceFmt(deriv?.markPrice)}
+• Long/Short Ratio (1h, global): ${lsr?.longShortRatio != null ? lsr.longShortRatio.toFixed(2) + ` (Long ${(lsr.longAcct*100).toFixed(1)}% / Short ${(lsr.shortAcct*100).toFixed(1)}%)` : 'N/A'}` : ''}
+
+MARKET SENTIMENT
+• Crypto Fear & Greed Index: ${fg ? `${fg.value}/100 (${fg.classification})` : 'N/A'} ${fg ? (fg.value < 25 ? '🟢 Extreme Fear — contrarian buy zone' : fg.value > 75 ? '🔴 Extreme Greed — caution' : '🟡') : ''}
+
 PRICE ACTION — Last 5 Candles (oldest → newest)
 ${last5.join('\n')}
+
+═══ CONFLUENCE SCORECARD ═══
+• BIAS: ${bias}  |  CONVICTION: ${conviction}/5 ⭐
+• Bullish factors (${confluences.bull.length}):
+${confluences.bull.length ? confluences.bull.map(c => `   ✅ ${c}`).join('\n') : '   (none)'}
+• Bearish factors (${confluences.bear.length}):
+${confluences.bear.length ? confluences.bear.map(c => `   ❌ ${c}`).join('\n') : '   (none)'}
 ═══════════════════════════════════════════════════════════`;
+}
+
+// Compact HTF summary for top-down context
+async function buildHTFSummary(symbol: string, tf: string, market: 'spot' | 'futures'): Promise<string | null> {
+  const klines = await fetchKlines(symbol, tf, market);
+  if (!klines || klines.length < 50) return null;
+  const candles: Candle[] = klines.map(k => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4] }));
+  const closes = candles.map(c => c.c);
+  const last = candles[candles.length - 1];
+  const rsi = wildersRSI(closes);
+  const e50 = ema(closes, 50);
+  const e200 = ema(closes, 200);
+  const struct = detectStructure(candles);
+  const trend = e50 && e200 ? (last.c > e50 && e50 > e200 ? 'UPTREND' : last.c < e50 && e50 < e200 ? 'DOWNTREND' : 'RANGING') : '?';
+  return `• ${tf}: ${trend} | RSI=${rsi?.toFixed(1) ?? 'N/A'} | Event=${struct.event} | SwingH=$${priceFmt(struct.lastSwingHigh)} SwingL=$${priceFmt(struct.lastSwingLow)}`;
 }
 
 // ─────────────────────────────────────────────────────────
