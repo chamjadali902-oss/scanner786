@@ -13,12 +13,12 @@ type Msg = { role: 'user' | 'assistant'; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/trading-chat`;
 
 const QUICK_PROMPTS = [
-  "What is RSI and how do I use it?",
+  "BTCUSDT 1h ka ready-made daily post banao",
+  "ETHUSDT 4h futures — attractive share post",
+  "SOLUSDT 15m analysis post for all traders",
+  "BNBUSDT 1d ka viral post — beginners + pros dono ke liye",
   "Explain Smart Money Concepts",
   "Best risk management rules?",
-  "How to read MACD signals?",
-  "Scalping vs Swing trading?",
-  "How to set stop loss properly?",
 ];
 
 export default function Chat() {
