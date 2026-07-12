@@ -813,14 +813,16 @@ serve(async (req) => {
 
     const systemPrompt = await loadSystemPrompt();
     const finalSystem = systemPrompt + liveData + (liveData
-      ? `\n\n⚠️ CRITICAL RULES — READ CAREFULLY:
-1. The LIVE DATA block above is the SINGLE SOURCE OF TRUTH. It was just fetched live from Binance moments ago.
-2. IGNORE any prices, indicator values, levels, or numbers mentioned in PRIOR conversation messages — those are STALE.
-3. When quoting the current price, RSI, EMAs, swing highs/lows, OBs, FVGs, funding etc., you MUST copy the EXACT values from the LIVE DATA block above.
-4. The Confluence Scorecard is your primary input for bias and conviction — use it directly.
-5. The HTF block (if present) shows higher-timeframe trend — ALWAYS align your trade-plan direction with it. If LTF and HTF disagree, prefer counter-trend mean-reversion or "no trade".
-6. Never invent symbols, numbers, or signals not derivable from the LIVE DATA block.`
-      : `\n\nNOTE: No symbol/timeframe detected in the user's question. If they ask for analysis, politely ask them to specify both (e.g., "BTCUSDT 1h" or "ETH 4h futures"). Do NOT invent prices.`);
+      ? `\n\nCRITICAL RULES, READ CAREFULLY:
+1. The LIVE DATA block above is the single source of truth. It was fetched live from Binance moments ago.
+2. Ignore any prices, indicator values, levels, or numbers mentioned in prior conversation messages, they are stale.
+3. When quoting the current price, RSI, EMAs, swing highs and lows, order blocks, fair value gaps, funding, and so on, copy the exact values from the LIVE DATA block above.
+4. The Confluence Scorecard is your primary input for bias and conviction, use it directly.
+5. The higher timeframe block, if present, shows higher timeframe trend. Always align your trade plan direction with it. If lower and higher timeframes disagree, prefer counter trend mean reversion or no trade.
+6. Never invent symbols, numbers, or signals not derivable from the LIVE DATA block.
+7. Do not use emojis. Do not use em dashes or en dashes. Write in a clean human document style.`
+      : `\n\nNOTE: No symbol or timeframe detected in the user's question. If they ask for analysis, politely ask them to specify both, for example BTCUSDT 1h or ETH 4h futures. Do not invent prices.`);
+
 
     const response = await callAIWithFallback({
       model: "google/gemini-3-flash-preview",
