@@ -546,13 +546,14 @@ MARKET SENTIMENT
 PRICE ACTION — Last 5 Candles (oldest → newest)
 ${last5.join('\n')}
 
-═══ CONFLUENCE SCORECARD ═══
-• BIAS: ${bias}  |  CONVICTION: ${conviction}/5 ⭐
-• Bullish factors (${confluences.bull.length}):
-${confluences.bull.length ? confluences.bull.map(c => `   ✅ ${c}`).join('\n') : '   (none)'}
-• Bearish factors (${confluences.bear.length}):
-${confluences.bear.length ? confluences.bear.map(c => `   ❌ ${c}`).join('\n') : '   (none)'}
-═══════════════════════════════════════════════════════════`;
+=== CONFLUENCE SCORECARD ===
+- BIAS: ${bias}  |  CONVICTION: ${conviction}/5
+- Bullish factors (${confluences.bull.length}):
+${confluences.bull.length ? confluences.bull.map(c => `   + ${c}`).join('\n') : '   (none)'}
+- Bearish factors (${confluences.bear.length}):
+${confluences.bear.length ? confluences.bear.map(c => `   - ${c}`).join('\n') : '   (none)'}
+===========================================================`;
+
 }
 
 // Compact HTF summary for top-down context
