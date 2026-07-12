@@ -534,13 +534,14 @@ ACTIVE ORDER BLOCKS
 ${obs.length === 0 ? '• None detected' : obs.map(o => `• ${o.type === 'bull' ? 'Bullish' : 'Bearish'} OB: $${priceFmt(o.bottom)} – $${priceFmt(o.top)}`).join('\n')}
 
 ${market === 'futures' ? `DERIVATIVES INTELLIGENCE (Binance Futures)
-• Funding Rate: ${deriv?.fundingRate != null ? (deriv.fundingRate * 100).toFixed(4) + '%' : 'N/A'} ${deriv?.fundingRate != null ? (deriv.fundingRate < -0.01 ? '🟢 (shorts paying — squeeze risk)' : deriv.fundingRate > 0.05 ? '🔴 (longs overheated)' : '🟡 (neutral)') : ''}
-• Open Interest: ${deriv?.openInterest != null ? deriv.openInterest.toFixed(2) + ' ' + symbol.replace('USDT','') : 'N/A'}
-• Mark Price: $${priceFmt(deriv?.markPrice)}
-• Long/Short Ratio (1h, global): ${lsr?.longShortRatio != null ? lsr.longShortRatio.toFixed(2) + ` (Long ${(lsr.longAcct*100).toFixed(1)}% / Short ${(lsr.shortAcct*100).toFixed(1)}%)` : 'N/A'}` : ''}
+- Funding Rate: ${deriv?.fundingRate != null ? (deriv.fundingRate * 100).toFixed(4) + '%' : 'N/A'} ${deriv?.fundingRate != null ? (deriv.fundingRate < -0.01 ? '(shorts paying, squeeze risk)' : deriv.fundingRate > 0.05 ? '(longs overheated)' : '(neutral)') : ''}
+- Open Interest: ${deriv?.openInterest != null ? deriv.openInterest.toFixed(2) + ' ' + symbol.replace('USDT','') : 'N/A'}
+- Mark Price: $${priceFmt(deriv?.markPrice)}
+- Long/Short Ratio (1h, global): ${lsr?.longShortRatio != null ? lsr.longShortRatio.toFixed(2) + ` (Long ${(lsr.longAcct*100).toFixed(1)}% / Short ${(lsr.shortAcct*100).toFixed(1)}%)` : 'N/A'}` : ''}
 
 MARKET SENTIMENT
-• Crypto Fear & Greed Index: ${fg ? `${fg.value}/100 (${fg.classification})` : 'N/A'} ${fg ? (fg.value < 25 ? '🟢 Extreme Fear — contrarian buy zone' : fg.value > 75 ? '🔴 Extreme Greed — caution' : '🟡') : ''}
+- Crypto Fear and Greed Index: ${fg ? `${fg.value}/100 (${fg.classification})` : 'N/A'} ${fg ? (fg.value < 25 ? '(Extreme Fear, contrarian buy zone)' : fg.value > 75 ? '(Extreme Greed, caution)' : '(neutral)') : ''}
+
 
 PRICE ACTION — Last 5 Candles (oldest → newest)
 ${last5.join('\n')}
