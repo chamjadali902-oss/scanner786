@@ -761,22 +761,11 @@ Hashtags on a single line: #COIN #Crypto #Trading #SmartMoney and #BTC or #ETH i
 
 
 async function loadSystemPrompt(): Promise<string> {
-  try {
-    const url = Deno.env.get('SUPABASE_URL')!;
-    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const sb = createClient(url, key);
-    const { data } = await sb.from('ai_prompts').select('system_prompt').eq('key', 'trading_chat_ai').maybeSingle();
-    const dbPrompt = (data?.system_prompt as string) || '';
-    if (!dbPrompt) return DEFAULT_SYSTEM;
-    // Ensure READY-MADE POST MODE is always available even if admin's DB prompt is older
-    if (!dbPrompt.includes('READY-MADE DAILY POST MODE')) {
-      const marker = '## 📢 READY-MADE DAILY POST MODE';
-      const idx = DEFAULT_SYSTEM.indexOf(marker);
-      if (idx !== -1) return dbPrompt + '\n\n' + DEFAULT_SYSTEM.slice(idx);
-    }
-    return dbPrompt;
-  } catch { return DEFAULT_SYSTEM; }
+  // Always use the in-code prompt to guarantee the no-emoji, no-em-dash, human-Word-style
+  // formatting rules the user requires. DB-managed prompts may contain older AI-flavored text.
+  return DEFAULT_SYSTEM;
 }
+
 
 // Auto-fetch higher-TF context for top-down bias
 function getHTFs(tf: string): string[] {
