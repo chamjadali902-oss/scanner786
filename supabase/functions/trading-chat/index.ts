@@ -796,19 +796,20 @@ serve(async (req) => {
       ]);
       if (ctx) {
         const htfBlock = htfSummaries.filter(Boolean).length
-          ? `\n\n🔭 HIGHER-TIMEFRAME BIAS (top-down context for ${symbol}):\n${htfSummaries.filter(Boolean).join('\n')}\n`
+          ? `\n\nHIGHER TIMEFRAME BIAS (top-down context for ${symbol}):\n${htfSummaries.filter(Boolean).join('\n')}\n`
           : '';
         liveData = `\n\n${ctx}${htfBlock}\n`;
       } else {
         liveData = `\n\n[NOTE: Could not fetch ${symbol} ${timeframe} ${market} data. Symbol may not exist on Binance ${market}.]\n`;
       }
     } else if (symbol && !timeframe) {
-      // Symbol only — multi-tf snapshot on common TFs
+      // Symbol only, multi-tf snapshot on common TFs
       const tfs = ['15m', '1h', '4h', '1d'];
       const ctxs = await Promise.all(tfs.map(t => buildAnalysisContext(symbol, t, market)));
       const valid = ctxs.filter(Boolean);
       if (valid.length) liveData = `\n\n${valid.join('\n\n')}\n`;
     }
+
 
     const systemPrompt = await loadSystemPrompt();
     const finalSystem = systemPrompt + liveData + (liveData
