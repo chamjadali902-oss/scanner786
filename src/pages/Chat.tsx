@@ -13,13 +13,14 @@ type Msg = { role: 'user' | 'assistant'; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/trading-chat`;
 
 const QUICK_PROMPTS = [
-  "BTCUSDT 1h ka ready-made daily post banao",
-  "ETHUSDT 4h futures — attractive share post",
+  "BTCUSDT 1h ka ready made daily post banao",
+  "ETHUSDT 4h futures ka attractive share post",
   "SOLUSDT 15m analysis post for all traders",
-  "BNBUSDT 1d ka viral post — beginners + pros dono ke liye",
+  "BNBUSDT 1d ka viral post for beginners and pros",
   "Explain Smart Money Concepts",
-  "Best risk management rules?",
+  "Best risk management rules",
 ];
+
 
 export default function Chat() {
   const { user, loading: authLoading } = useAuth();
