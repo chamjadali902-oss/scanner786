@@ -557,12 +557,17 @@ async function buildAnalysisContext(symbol: string, tf: string, market: 'spot' |
   const vol = ticker ? (+ticker.quoteVolume / 1e6).toFixed(2) : 'N/A';
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
-  // Derivatives data (futures only) + global Fear & Greed (parallel)
-  const [deriv, lsr, fg] = await Promise.all([
+  // Derivatives data (futures only) + global Fear & Greed + fundamentals + macro (parallel)
+  const [deriv, lsr, fg, fund, macro] = await Promise.all([
     market === 'futures' ? fetchFundingAndOI(symbol) : Promise.resolve(null),
     market === 'futures' ? fetchLongShortRatio(symbol) : Promise.resolve(null),
     fetchFearGreed(),
+    fetchCoinFundamentals(symbol),
+    fetchMacro(),
   ]);
+  const categories = fund?.id ? await fetchCoinCategories(fund.id) : null;
+  const baseSym = symbol.replace(/USDT$/i, '');
+  const supplyPct = fund?.circulating && fund?.maxSupply ? (fund.circulating / fund.maxSupply) * 100 : null;
 
   // Confluence scoring (helps the AI rate signal strength)
   const confluences: { bull: string[]; bear: string[] } = { bull: [], bear: [] };
