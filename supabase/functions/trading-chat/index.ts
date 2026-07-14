@@ -806,7 +806,13 @@ Title line: COIN Daily Outlook, DATE in UTC.
 Opening (no header): Three to five sentences that hook the reader with the real current situation, the tension in the market, and a preview of what this post will answer. No emojis, no hype, no listicle feel.
 
 **Where price stands right now**
-A short paragraph with the current price, 24h change, higher timeframe trend in one phrase, and one line on overall market mood using Fear and Greed. Written as prose, not a bullet dump.
+A short paragraph with the current price, 24h change, higher timeframe trend in one phrase, market cap rank, and one line on overall market mood using Fear and Greed and BTC dominance. Written as prose, not a bullet dump.
+
+**Fundamentals and tokenomics** (this is the section people usually hunt across CoinGecko, CoinMarketCap, and project docs — deliver it in one clean paragraph plus a compact table)
+Cover: market cap, fully diluted valuation, circulating vs max supply and what percent is already unlocked, distance from ATH and ATL with dates, 7d / 30d / 1y performance, and the project's sector or narrative. Then in one honest sentence: is this coin structurally cheap, fairly valued, or extended relative to its own history and its category. If circulating supply is well below max supply, explicitly warn about future dilution from unlocks. All numbers must come from the FUNDAMENTALS block in LIVE DATA.
+
+**Macro and BTC context**
+One short paragraph. Total crypto market cap and its 24h change, BTC dominance level and what it implies for this coin (if it is an altcoin, rising dominance is a headwind, falling dominance is a tailwind; for BTC itself, tie it to risk-on and Fear and Greed). No invented macro news, only what the MACRO block gives you.
 
 **What just happened and why it matters**
 A paragraph explaining the recent structural event in real language: the last BOS or CHoCH, the sweep or lack of it, whether we are in a premium or discount zone, and what that tells us about who is in control. Tie it back to why retail traders are likely wrong-footed right now.
@@ -814,11 +820,17 @@ A paragraph explaining the recent structural event in real language: the last BO
 **The key battle zones**
 List the two or three levels that actually decide the next move, each with a one-line reason it matters (active order block, unfilled fair value gap, must-hold support, breakout trigger, liquidity pool above or below). Use plain numbers, no jargon walls.
 
-**What happens next: the two scenarios**
-Write this as two clearly labeled mini-paragraphs.
-- Bullish scenario: if price does X, then the path opens toward level A, then level B, then level C. Explain WHY (liquidity taken, order block held, HTF trend alignment, funding reset, etc.) and give a rough time context (intraday, next one to three days, after which catalyst).
-- Bearish scenario: if price loses Y, the setup flips and the likely path is level A, then B, then C, with the same style of reasoning and time context.
-Make it concrete enough that a reader can act on either scenario without reading anything else.
+**Short-term roadmap (next hours to 3 days)**
+Two clearly labeled mini-paragraphs, this is the intraday and swing view.
+- Bullish path: if price does X in the next few hours or days, expected sequence toward level A, then B, then C, with the reason (liquidity swept, OB holds, funding reset, HTF alignment) and a rough time window.
+- Bearish path: if price loses Y in the same window, expected sequence to level A, then B, then C, with reason and time window.
+Make it concrete enough that a scalper or day trader can act on either path without reading anything else.
+
+**Long-term roadmap (next weeks to months)**
+Two short paragraphs, this is the swing to positional view built from higher timeframe structure, ATH distance, supply dynamics, macro, and BTC dominance.
+- Bullish long-term case: what needs to hold on the weekly or daily, realistic upside targets (prior structure highs, fib extensions from LIVE DATA, previous consolidation ranges, distance to ATH), and roughly how long that path could take. If the coin is far below ATH, explicitly discuss whether a recovery to prior range is realistic given supply and sector strength.
+- Bearish long-term case: what breaks the higher timeframe structure, realistic downside targets (prior range lows, ATL context, sector weakness, dilution risk from unlocks), and roughly how long that could unfold.
+Anchor every long-term claim to something in FUNDAMENTALS, MACRO, or higher timeframe structure. Never invent catalysts, news, ETFs, or events that are not in LIVE DATA.
 
 **If the market is consolidating or recovering**
 One short paragraph. If price is coiling after a big move, explain which side is more likely to break first and why (liquidity location, HTF bias, funding, volume behavior), and what the measured target of that break is. If price is recovering from a dump, explain what needs to hold for the recovery to be real, the first reclaim level, and the realistic upside target with reasoning. If price is topping, mirror this for the downside.
