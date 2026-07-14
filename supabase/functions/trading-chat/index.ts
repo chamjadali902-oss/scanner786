@@ -139,6 +139,106 @@ async function fetchFearGreed() {
   } catch { return null; }
 }
 
+// ─── CoinGecko fundamentals (free, no key) — the stuff users manually hunt across sites ───
+const CG = 'https://api.coingecko.com/api/v3';
+const cgCache = new Map<string, { ts: number; data: any }>();
+async function cgGet(url: string, ttlMs = 5 * 60_000) {
+  const hit = cgCache.get(url);
+  if (hit && Date.now() - hit.ts < ttlMs) return hit.data;
+  try {
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    cgCache.set(url, { ts: Date.now(), data: j });
+    return j;
+  } catch { return null; }
+}
+
+async function fetchCoinFundamentals(symbol: string) {
+  const base = symbol.replace(/USDT$/i, '').toLowerCase();
+  // markets endpoint supports symbol filter — light and gives all key numbers
+  const arr = await cgGet(`${CG}/coins/markets?vs_currency=usd&symbols=${base}&price_change_percentage=1h,24h,7d,30d,1y`);
+  if (!Array.isArray(arr) || !arr.length) return null;
+  // Prefer highest market cap if multiple share the symbol
+  const c = arr.sort((a: any, b: any) => (b.market_cap ?? 0) - (a.market_cap ?? 0))[0];
+  return {
+    id: c.id,
+    name: c.name,
+    rank: c.market_cap_rank,
+    marketCap: c.market_cap,
+    fdv: c.fully_diluted_valuation,
+    volume24h: c.total_volume,
+    circulating: c.circulating_supply,
+    totalSupply: c.total_supply,
+    maxSupply: c.max_supply,
+    ath: c.ath,
+    athChangePct: c.ath_change_percentage,
+    athDate: c.ath_date,
+    atl: c.atl,
+    atlChangePct: c.atl_change_percentage,
+    atlDate: c.atl_date,
+    ch1h: c.price_change_percentage_1h_in_currency,
+    ch24h: c.price_change_percentage_24h_in_currency,
+    ch7d: c.price_change_percentage_7d_in_currency,
+    ch30d: c.price_change_percentage_30d_in_currency,
+    ch1y: c.price_change_percentage_1y_in_currency,
+  };
+}
+
+async function fetchCoinCategories(id: string): Promise<string[] | null> {
+  const j = await cgGet(`${CG}/coins/${id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`, 60 * 60_000);
+  if (!j?.categories) return null;
+  return (j.categories as string[]).filter(Boolean).slice(0, 6);
+}
+
+async function fetchMacro() {
+  const j = await cgGet(`${CG}/global`, 10 * 60_000);
+  const d = j?.data;
+  if (!d) return null;
+  return {
+    totalMcap: d.total_market_cap?.usd,
+    totalVol: d.total_volume?.usd,
+    mcapChange24h: d.market_cap_change_percentage_24h_usd,
+    btcDominance: d.market_cap_percentage?.btc,
+    ethDominance: d.market_cap_percentage?.eth,
+    activeCryptos: d.active_cryptocurrencies,
+  };
+}
+
+function fmtMoney(v: number | null | undefined): string {
+  if (v == null || !isFinite(v)) return 'N/A';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (a >= 1e3) return `$${(v / 1e3).toFixed(2)}K`;
+  return `$${v.toFixed(2)}`;
+}
+
+function fmtSupply(v: number | null | undefined, sym: string): string {
+  if (v == null || !isFinite(v)) return 'N/A';
+  const a = Math.abs(v);
+  if (a >= 1e9) return `${(v / 1e9).toFixed(2)}B ${sym}`;
+  if (a >= 1e6) return `${(v / 1e6).toFixed(2)}M ${sym}`;
+  if (a >= 1e3) return `${(v / 1e3).toFixed(2)}K ${sym}`;
+  return `${v.toFixed(2)} ${sym}`;
+}
+
+function fmtPct(v: number | null | undefined): string {
+  if (v == null || !isFinite(v)) return 'N/A';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+}
+
+function daysSince(iso: string | null | undefined): string {
+  if (!iso) return 'N/A';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'N/A';
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days < 30) return `${days}d ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${(days / 365).toFixed(1)}y ago`;
+}
+
 // Auto-precision based on price magnitude (TradingView style)
 function priceFmt(v: number | null | undefined): string {
   if (v == null || !isFinite(v)) return 'N/A';
