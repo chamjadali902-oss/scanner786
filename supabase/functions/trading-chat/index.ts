@@ -139,6 +139,106 @@ async function fetchFearGreed() {
   } catch { return null; }
 }
 
+// ─── CoinGecko fundamentals (free, no key) — the stuff users manually hunt across sites ───
+const CG = 'https://api.coingecko.com/api/v3';
+const cgCache = new Map<string, { ts: number; data: any }>();
+async function cgGet(url: string, ttlMs = 5 * 60_000) {
+  const hit = cgCache.get(url);
+  if (hit && Date.now() - hit.ts < ttlMs) return hit.data;
+  try {
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    cgCache.set(url, { ts: Date.now(), data: j });
+    return j;
+  } catch { return null; }
+}
+
+async function fetchCoinFundamentals(symbol: string) {
+  const base = symbol.replace(/USDT$/i, '').toLowerCase();
+  // markets endpoint supports symbol filter — light and gives all key numbers
+  const arr = await cgGet(`${CG}/coins/markets?vs_currency=usd&symbols=${base}&price_change_percentage=1h,24h,7d,30d,1y`);
+  if (!Array.isArray(arr) || !arr.length) return null;
+  // Prefer highest market cap if multiple share the symbol
+  const c = arr.sort((a: any, b: any) => (b.market_cap ?? 0) - (a.market_cap ?? 0))[0];
+  return {
+    id: c.id,
+    name: c.name,
+    rank: c.market_cap_rank,
+    marketCap: c.market_cap,
+    fdv: c.fully_diluted_valuation,
+    volume24h: c.total_volume,
+    circulating: c.circulating_supply,
+    totalSupply: c.total_supply,
+    maxSupply: c.max_supply,
+    ath: c.ath,
+    athChangePct: c.ath_change_percentage,
+    athDate: c.ath_date,
+    atl: c.atl,
+    atlChangePct: c.atl_change_percentage,
+    atlDate: c.atl_date,
+    ch1h: c.price_change_percentage_1h_in_currency,
+    ch24h: c.price_change_percentage_24h_in_currency,
+    ch7d: c.price_change_percentage_7d_in_currency,
+    ch30d: c.price_change_percentage_30d_in_currency,
+    ch1y: c.price_change_percentage_1y_in_currency,
+  };
+}
+
+async function fetchCoinCategories(id: string): Promise<string[] | null> {
+  const j = await cgGet(`${CG}/coins/${id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`, 60 * 60_000);
+  if (!j?.categories) return null;
+  return (j.categories as string[]).filter(Boolean).slice(0, 6);
+}
+
+async function fetchMacro() {
+  const j = await cgGet(`${CG}/global`, 10 * 60_000);
+  const d = j?.data;
+  if (!d) return null;
+  return {
+    totalMcap: d.total_market_cap?.usd,
+    totalVol: d.total_volume?.usd,
+    mcapChange24h: d.market_cap_change_percentage_24h_usd,
+    btcDominance: d.market_cap_percentage?.btc,
+    ethDominance: d.market_cap_percentage?.eth,
+    activeCryptos: d.active_cryptocurrencies,
+  };
+}
+
+function fmtMoney(v: number | null | undefined): string {
+  if (v == null || !isFinite(v)) return 'N/A';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (a >= 1e3) return `$${(v / 1e3).toFixed(2)}K`;
+  return `$${v.toFixed(2)}`;
+}
+
+function fmtSupply(v: number | null | undefined, sym: string): string {
+  if (v == null || !isFinite(v)) return 'N/A';
+  const a = Math.abs(v);
+  if (a >= 1e9) return `${(v / 1e9).toFixed(2)}B ${sym}`;
+  if (a >= 1e6) return `${(v / 1e6).toFixed(2)}M ${sym}`;
+  if (a >= 1e3) return `${(v / 1e3).toFixed(2)}K ${sym}`;
+  return `${v.toFixed(2)} ${sym}`;
+}
+
+function fmtPct(v: number | null | undefined): string {
+  if (v == null || !isFinite(v)) return 'N/A';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+}
+
+function daysSince(iso: string | null | undefined): string {
+  if (!iso) return 'N/A';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'N/A';
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days < 30) return `${days}d ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${(days / 365).toFixed(1)}y ago`;
+}
+
 // Auto-precision based on price magnitude (TradingView style)
 function priceFmt(v: number | null | undefined): string {
   if (v == null || !isFinite(v)) return 'N/A';
@@ -457,12 +557,17 @@ async function buildAnalysisContext(symbol: string, tf: string, market: 'spot' |
   const vol = ticker ? (+ticker.quoteVolume / 1e6).toFixed(2) : 'N/A';
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
-  // Derivatives data (futures only) + global Fear & Greed (parallel)
-  const [deriv, lsr, fg] = await Promise.all([
+  // Derivatives data (futures only) + global Fear & Greed + fundamentals + macro (parallel)
+  const [deriv, lsr, fg, fund, macro] = await Promise.all([
     market === 'futures' ? fetchFundingAndOI(symbol) : Promise.resolve(null),
     market === 'futures' ? fetchLongShortRatio(symbol) : Promise.resolve(null),
     fetchFearGreed(),
+    fetchCoinFundamentals(symbol),
+    fetchMacro(),
   ]);
+  const categories = fund?.id ? await fetchCoinCategories(fund.id) : null;
+  const baseSym = symbol.replace(/USDT$/i, '');
+  const supplyPct = fund?.circulating && fund?.maxSupply ? (fund.circulating / fund.maxSupply) * 100 : null;
 
   // Confluence scoring (helps the AI rate signal strength)
   const confluences: { bull: string[]; bear: string[] } = { bull: [], bear: [] };
@@ -542,6 +647,22 @@ ${market === 'futures' ? `DERIVATIVES INTELLIGENCE (Binance Futures)
 MARKET SENTIMENT
 - Crypto Fear and Greed Index: ${fg ? `${fg.value}/100 (${fg.classification})` : 'N/A'} ${fg ? (fg.value < 25 ? '(Extreme Fear, contrarian buy zone)' : fg.value > 75 ? '(Extreme Greed, caution)' : '(neutral)') : ''}
 
+FUNDAMENTALS AND TOKENOMICS (CoinGecko, live)
+- Project: ${fund?.name ?? baseSym} (${baseSym})  |  Market Cap Rank: #${fund?.rank ?? 'N/A'}
+- Market Cap: ${fmtMoney(fund?.marketCap)}  |  Fully Diluted Valuation: ${fmtMoney(fund?.fdv)}
+- 24h Real Volume (spot global): ${fmtMoney(fund?.volume24h)}
+- Circulating Supply: ${fmtSupply(fund?.circulating, baseSym)}  |  Total: ${fmtSupply(fund?.totalSupply, baseSym)}  |  Max: ${fund?.maxSupply ? fmtSupply(fund.maxSupply, baseSym) : 'Uncapped'}
+- Supply in circulation: ${supplyPct != null ? supplyPct.toFixed(2) + '% of max' : 'N/A'} ${supplyPct != null && supplyPct < 60 ? '(significant unlock risk ahead)' : supplyPct != null && supplyPct >= 95 ? '(supply mostly unlocked, low dilution risk)' : ''}
+- All Time High: $${priceFmt(fund?.ath)} (${daysSince(fund?.athDate)}) — currently ${fmtPct(fund?.athChangePct)} from ATH
+- All Time Low: $${priceFmt(fund?.atl)} (${daysSince(fund?.atlDate)}) — currently ${fmtPct(fund?.atlChangePct)} from ATL
+- Performance vs USD: 1h ${fmtPct(fund?.ch1h)} | 24h ${fmtPct(fund?.ch24h)} | 7d ${fmtPct(fund?.ch7d)} | 30d ${fmtPct(fund?.ch30d)} | 1y ${fmtPct(fund?.ch1y)}
+- Sector / Narrative: ${categories?.length ? categories.join(', ') : 'N/A'}
+
+MACRO CONTEXT (whole crypto market, live)
+- Total Crypto Market Cap: ${fmtMoney(macro?.totalMcap)} (${fmtPct(macro?.mcapChange24h)} 24h)
+- Total 24h Volume: ${fmtMoney(macro?.totalVol)}
+- BTC Dominance: ${macro?.btcDominance != null ? macro.btcDominance.toFixed(2) + '%' : 'N/A'}  |  ETH Dominance: ${macro?.ethDominance != null ? macro.ethDominance.toFixed(2) + '%' : 'N/A'}
+- Rising BTC dominance = money rotating out of alts; falling BTC dominance = alt season conditions.
 
 PRICE ACTION — Last 5 Candles (oldest → newest)
 ${last5.join('\n')}
@@ -685,7 +806,13 @@ Title line: COIN Daily Outlook, DATE in UTC.
 Opening (no header): Three to five sentences that hook the reader with the real current situation, the tension in the market, and a preview of what this post will answer. No emojis, no hype, no listicle feel.
 
 **Where price stands right now**
-A short paragraph with the current price, 24h change, higher timeframe trend in one phrase, and one line on overall market mood using Fear and Greed. Written as prose, not a bullet dump.
+A short paragraph with the current price, 24h change, higher timeframe trend in one phrase, market cap rank, and one line on overall market mood using Fear and Greed and BTC dominance. Written as prose, not a bullet dump.
+
+**Fundamentals and tokenomics** (this is the section people usually hunt across CoinGecko, CoinMarketCap, and project docs — deliver it in one clean paragraph plus a compact table)
+Cover: market cap, fully diluted valuation, circulating vs max supply and what percent is already unlocked, distance from ATH and ATL with dates, 7d / 30d / 1y performance, and the project's sector or narrative. Then in one honest sentence: is this coin structurally cheap, fairly valued, or extended relative to its own history and its category. If circulating supply is well below max supply, explicitly warn about future dilution from unlocks. All numbers must come from the FUNDAMENTALS block in LIVE DATA.
+
+**Macro and BTC context**
+One short paragraph. Total crypto market cap and its 24h change, BTC dominance level and what it implies for this coin (if it is an altcoin, rising dominance is a headwind, falling dominance is a tailwind; for BTC itself, tie it to risk-on and Fear and Greed). No invented macro news, only what the MACRO block gives you.
 
 **What just happened and why it matters**
 A paragraph explaining the recent structural event in real language: the last BOS or CHoCH, the sweep or lack of it, whether we are in a premium or discount zone, and what that tells us about who is in control. Tie it back to why retail traders are likely wrong-footed right now.
@@ -693,11 +820,17 @@ A paragraph explaining the recent structural event in real language: the last BO
 **The key battle zones**
 List the two or three levels that actually decide the next move, each with a one-line reason it matters (active order block, unfilled fair value gap, must-hold support, breakout trigger, liquidity pool above or below). Use plain numbers, no jargon walls.
 
-**What happens next: the two scenarios**
-Write this as two clearly labeled mini-paragraphs.
-- Bullish scenario: if price does X, then the path opens toward level A, then level B, then level C. Explain WHY (liquidity taken, order block held, HTF trend alignment, funding reset, etc.) and give a rough time context (intraday, next one to three days, after which catalyst).
-- Bearish scenario: if price loses Y, the setup flips and the likely path is level A, then B, then C, with the same style of reasoning and time context.
-Make it concrete enough that a reader can act on either scenario without reading anything else.
+**Short-term roadmap (next hours to 3 days)**
+Two clearly labeled mini-paragraphs, this is the intraday and swing view.
+- Bullish path: if price does X in the next few hours or days, expected sequence toward level A, then B, then C, with the reason (liquidity swept, OB holds, funding reset, HTF alignment) and a rough time window.
+- Bearish path: if price loses Y in the same window, expected sequence to level A, then B, then C, with reason and time window.
+Make it concrete enough that a scalper or day trader can act on either path without reading anything else.
+
+**Long-term roadmap (next weeks to months)**
+Two short paragraphs, this is the swing to positional view built from higher timeframe structure, ATH distance, supply dynamics, macro, and BTC dominance.
+- Bullish long-term case: what needs to hold on the weekly or daily, realistic upside targets (prior structure highs, fib extensions from LIVE DATA, previous consolidation ranges, distance to ATH), and roughly how long that path could take. If the coin is far below ATH, explicitly discuss whether a recovery to prior range is realistic given supply and sector strength.
+- Bearish long-term case: what breaks the higher timeframe structure, realistic downside targets (prior range lows, ATL context, sector weakness, dilution risk from unlocks), and roughly how long that could unfold.
+Anchor every long-term claim to something in FUNDAMENTALS, MACRO, or higher timeframe structure. Never invent catalysts, news, ETFs, or events that are not in LIVE DATA.
 
 **If the market is consolidating or recovering**
 One short paragraph. If price is coiling after a big move, explain which side is more likely to break first and why (liquidity location, HTF bias, funding, volume behavior), and what the measured target of that break is. If price is recovering from a dump, explain what needs to hold for the recovery to be real, the first reclaim level, and the realistic upside target with reasoning. If price is topping, mirror this for the downside.
