@@ -647,6 +647,22 @@ ${market === 'futures' ? `DERIVATIVES INTELLIGENCE (Binance Futures)
 MARKET SENTIMENT
 - Crypto Fear and Greed Index: ${fg ? `${fg.value}/100 (${fg.classification})` : 'N/A'} ${fg ? (fg.value < 25 ? '(Extreme Fear, contrarian buy zone)' : fg.value > 75 ? '(Extreme Greed, caution)' : '(neutral)') : ''}
 
+FUNDAMENTALS AND TOKENOMICS (CoinGecko, live)
+- Project: ${fund?.name ?? baseSym} (${baseSym})  |  Market Cap Rank: #${fund?.rank ?? 'N/A'}
+- Market Cap: ${fmtMoney(fund?.marketCap)}  |  Fully Diluted Valuation: ${fmtMoney(fund?.fdv)}
+- 24h Real Volume (spot global): ${fmtMoney(fund?.volume24h)}
+- Circulating Supply: ${fmtSupply(fund?.circulating, baseSym)}  |  Total: ${fmtSupply(fund?.totalSupply, baseSym)}  |  Max: ${fund?.maxSupply ? fmtSupply(fund.maxSupply, baseSym) : 'Uncapped'}
+- Supply in circulation: ${supplyPct != null ? supplyPct.toFixed(2) + '% of max' : 'N/A'} ${supplyPct != null && supplyPct < 60 ? '(significant unlock risk ahead)' : supplyPct != null && supplyPct >= 95 ? '(supply mostly unlocked, low dilution risk)' : ''}
+- All Time High: $${priceFmt(fund?.ath)} (${daysSince(fund?.athDate)}) — currently ${fmtPct(fund?.athChangePct)} from ATH
+- All Time Low: $${priceFmt(fund?.atl)} (${daysSince(fund?.atlDate)}) — currently ${fmtPct(fund?.atlChangePct)} from ATL
+- Performance vs USD: 1h ${fmtPct(fund?.ch1h)} | 24h ${fmtPct(fund?.ch24h)} | 7d ${fmtPct(fund?.ch7d)} | 30d ${fmtPct(fund?.ch30d)} | 1y ${fmtPct(fund?.ch1y)}
+- Sector / Narrative: ${categories?.length ? categories.join(', ') : 'N/A'}
+
+MACRO CONTEXT (whole crypto market, live)
+- Total Crypto Market Cap: ${fmtMoney(macro?.totalMcap)} (${fmtPct(macro?.mcapChange24h)} 24h)
+- Total 24h Volume: ${fmtMoney(macro?.totalVol)}
+- BTC Dominance: ${macro?.btcDominance != null ? macro.btcDominance.toFixed(2) + '%' : 'N/A'}  |  ETH Dominance: ${macro?.ethDominance != null ? macro.ethDominance.toFixed(2) + '%' : 'N/A'}
+- Rising BTC dominance = money rotating out of alts; falling BTC dominance = alt season conditions.
 
 PRICE ACTION — Last 5 Candles (oldest → newest)
 ${last5.join('\n')}
