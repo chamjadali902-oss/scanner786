@@ -36,7 +36,8 @@ const Auth = () => {
 
     const { error } = isLogin
       ? await signIn(email, password)
-      : await signUp(email, password, username);
+      : await signUp(email, password, username, redirectTo);
+
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
