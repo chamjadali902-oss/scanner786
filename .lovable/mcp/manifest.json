@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://cijmscjovgmvjcpayfoq.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "pro-new",
+      "version": "0.1.0",
+      "title": "pro new"
+    },
+    "tools": [
+      {
+        "name": "get_market_snapshot",
+        "title": "Get market snapshot",
+        "description": "Fetch a live Binance snapshot for a coin and timeframe: current price, 24h stats, EMA20/EMA50, RSI(14), swing high/low and the last candles. Works for spot and futures.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "minLength": 2,
+              "description": "Coin or pair, e.g. BTC, BTCUSDT, SOLUSDT."
+            },
+            "timeframe": {
+              "default": "1h",
+              "description": "Binance interval such as 15m, 1h, 4h, 1d.",
+              "type": "string"
+            },
+            "market": {
+              "default": "spot",
+              "description": "Binance market.",
+              "type": "string",
+              "enum": [
+                "spot",
+                "futures"
+              ]
+            }
+          },
+          "required": [
+            "symbol"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_favorite_coins",
+        "title": "List favorite coins",
+        "description": "List the signed-in user's favorite coins saved in the scanner watchlist.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_favorite_coin",
+        "title": "Add favorite coin",
+        "description": "Add a coin to the signed-in user's favorite coins watchlist.",
+        "annotations": {
+          "readOnlyHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "minLength": 2,
+              "description": "Coin or pair, e.g. SOL or SOLUSDT."
+            }
+          },
+          "required": [
+            "symbol"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "remove_favorite_coin",
+        "title": "Remove favorite coin",
+        "description": "Remove a coin from the signed-in user's favorite coins watchlist.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "minLength": 2,
+              "description": "Coin or pair to remove, e.g. SOLUSDT."
+            }
+          },
+          "required": [
+            "symbol"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_trades",
+        "title": "List trades",
+        "description": "List the signed-in user's journaled trades, optionally filtered by status or symbol.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "default": "all",
+              "description": "Filter by trade status.",
+              "type": "string",
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ]
+            },
+            "symbol": {
+              "description": "Optional exact pair filter, e.g. BTCUSDT.",
+              "type": "string"
+            },
+            "limit": {
+              "default": 25,
+              "description": "Maximum rows to return.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "log_trade",
+        "title": "Log a trade",
+        "description": "Record a new trade in the signed-in user's trade journal.",
+        "annotations": {
+          "readOnlyHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "minLength": 2,
+              "description": "Pair, e.g. BTCUSDT."
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "description": "Trade direction."
+            },
+            "entry_price": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Entry price."
+            },
+            "quantity": {
+              "default": 1,
+              "description": "Position size.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "stop_loss": {
+              "description": "Stop loss price.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "take_profit": {
+              "description": "Take profit price.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "notes": {
+              "description": "Trade rationale or notes.",
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "symbol",
+            "side",
+            "entry_price"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_saved_strategies",
+        "title": "List saved strategies",
+        "description": "List the signed-in user's saved scanner strategies with their conditions, timeframe and scan pool.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "default": 20,
+              "description": "Maximum strategies to return.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

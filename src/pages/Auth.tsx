@@ -36,24 +36,28 @@ const Auth = () => {
 
     const { error } = isLogin
       ? await signIn(email, password)
-      : await signUp(email, password, username);
+      : await signUp(email, password, username, redirectTo);
+
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       setLoading(false);
     } else {
-      // Check if user is admin and redirect accordingly
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: currentUser.id, _role: 'admin' });
-        if (isAdmin) {
-          window.sessionStorage.removeItem('postLoginRedirect');
-          toast({ title: 'Welcome Admin!' });
-          navigate('/admin', { replace: true });
-          setLoading(false);
-          return;
+      const storedRedirect = window.sessionStorage.getItem('postLoginRedirect');
+      // Only auto-route admins to the admin area when no explicit redirect is pending.
+      if (!storedRedirect && !redirectQuery && !redirectState) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: currentUser.id, _role: 'admin' });
+          if (isAdmin) {
+            toast({ title: 'Welcome Admin!' });
+            navigate('/admin', { replace: true });
+            setLoading(false);
+            return;
+          }
         }
       }
+
       const finalRedirect = window.sessionStorage.getItem('postLoginRedirect') || redirectTo;
       window.sessionStorage.removeItem('postLoginRedirect');
       toast({ title: isLogin ? 'Welcome back!' : 'Account created!' });
