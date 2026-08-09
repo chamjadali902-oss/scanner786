@@ -17,8 +17,13 @@ import { SaveStrategyDialog } from '@/components/scanner/SaveStrategyDialog';
 import { PublishStrategyDialog } from '@/components/scanner/PublishStrategyDialog';
 import { FavoritesList } from '@/components/scanner/FavoritesList';
 import { ManualAddFavorite } from '@/components/scanner/ManualAddFavorite';
+import { PlaybookPicker } from '@/components/scanner/PlaybookPicker';
+import { RegimeBanner } from '@/components/scanner/RegimeBanner';
+import { instantiatePlaybook, type Playbook } from '@/lib/playbooks';
+import type { MarketRegime } from '@/lib/market-regime';
 import { Button } from '@/components/ui/button';
 import { Play, RotateCcw, Search, Sparkles, Save, FolderOpen, Star, LogIn, Globe } from 'lucide-react';
+
 
 const Index = () => {
   const navigate = useNavigate();
@@ -35,6 +40,10 @@ const Index = () => {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showStrategies, setShowStrategies] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [activePlaybook, setActivePlaybook] = useState<string | null>(null);
+  const [activePlaybookName, setActivePlaybookName] = useState<string | undefined>(undefined);
+  const [regime, setRegime] = useState<MarketRegime | null>(null);
+
 
   const { user } = useAuth();
   const { status, results, error, progress, waitTime, scan, clearResults, isScanning } = useScanner();
@@ -56,10 +65,26 @@ const Index = () => {
   const handleScan = () => {
     const favSymbols = scanPool === 'favorites' ? getFavoriteSymbols() : undefined;
     const mtfTfs = mtfEnabled ? mtfTimeframes : undefined;
-    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs, optionalMinMatch);
+    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs, optionalMinMatch, activePlaybookName);
   };
 
-  const handleReset = () => { clearResults(); setConditions([]); };
+  const handleSelectPlaybook = (pb: Playbook) => {
+    setActivePlaybook(pb.id);
+    setActivePlaybookName(pb.name);
+    setScanPool(pb.pool);
+    setTimeframe(pb.timeframe);
+    setConditions(instantiatePlaybook(pb));
+    setOptionalMinMatch(pb.optionalMinMatch);
+    if (pb.mtfTimeframes && pb.mtfTimeframes.length > 1) {
+      setMtfEnabled(true);
+      setMtfTimeframes(pb.mtfTimeframes);
+    } else {
+      setMtfEnabled(false);
+    }
+  };
+
+  const handleReset = () => { clearResults(); setConditions([]); setActivePlaybook(null); setActivePlaybookName(undefined); };
+
 
   const handleLoadStrategy = (pool: ScanPool, tf: Timeframe, conds: ScanCondition[]) => {
     setScanPool(pool); setTimeframe(tf); setConditions(conds); setShowStrategies(false);
@@ -100,11 +125,20 @@ const Index = () => {
             <ScanPoolSelector value={scanPool} onChange={setScanPool} disabled={isScanning} hasFavorites={!!user && favorites.length > 0} />
           </div>
           <div className="p-3 sm:p-5 rounded-xl border border-border bg-card card-glow">
+            <PlaybookPicker
+              onSelect={handleSelectPlaybook}
+              activeId={activePlaybook ?? undefined}
+              favoredIds={regime?.favored ?? []}
+              disabled={isScanning}
+            />
+          </div>
+          <div className="p-3 sm:p-5 rounded-xl border border-border bg-card card-glow">
             <MultiTimeframeSelector primaryTimeframe={timeframe} onPrimaryChange={setTimeframe} mtfEnabled={mtfEnabled} onMtfToggle={setMtfEnabled} selectedTimeframes={mtfTimeframes} onTimeframesChange={setMtfTimeframes} disabled={isScanning} />
           </div>
           <div className="p-3 sm:p-5 rounded-xl border border-border bg-card card-glow">
             <LogicBuilder conditions={conditions} onChange={setConditions} disabled={isScanning} optionalMinMatch={optionalMinMatch} onOptionalMinMatchChange={setOptionalMinMatch} />
           </div>
+
 
           {/* Action Buttons - Desktop */}
           <div className="hidden sm:flex gap-2 flex-wrap">
@@ -155,13 +189,17 @@ const Index = () => {
         </div>
 
         {/* Right Panel */}
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 space-y-3">
+          <RegimeBanner onRegime={setRegime} />
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Sparkles className="w-4 h-4 text-primary" />
               <h2 className="text-sm sm:text-base font-bold">Scan Results</h2>
               {mtfEnabled && <span className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-mono">MTF</span>}
+              {activePlaybookName && <span className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-medium">{activePlaybookName}</span>}
+              {results.length > 0 && <span className="px-2 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">Sorted by Setup Score</span>}
             </div>
+
             <div className="flex items-center gap-2">
               {results.length > 0 && user && (
                 <Button

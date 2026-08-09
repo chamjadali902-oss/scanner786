@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { Loader2, AlertCircle, WifiOff, RefreshCw } from 'lucide-react';
 
 interface ScannerStatusProps {
-  status: 'idle' | 'scanning' | 'error' | 'rate-limited' | 'reconnecting';
+  status: 'idle' | 'scanning' | 'error' | 'rate-limited' | 'reconnecting' | 'scoring';
   progress?: { current: number; total: number };
   error?: string;
   waitTime?: number;
@@ -16,26 +16,33 @@ export function ScannerStatus({ status, progress, error, waitTime }: ScannerStat
       className={cn(
         'flex items-center gap-3 p-4 rounded-lg border',
         status === 'scanning' && 'border-primary/30 bg-primary/5',
+        status === 'scoring' && 'border-primary/30 bg-primary/5',
         status === 'error' && 'border-destructive/30 bg-destructive/5',
         status === 'rate-limited' && 'border-warning/30 bg-warning/5',
         status === 'reconnecting' && 'border-warning/30 bg-warning/5'
       )}
     >
-      {status === 'scanning' && (
+      {(status === 'scanning' || status === 'scoring') && (
         <>
           <Loader2 className="w-5 h-5 animate-spin text-primary" />
           <div className="flex-1">
-            <p className="font-medium text-sm">Scanning...</p>
+            <p className="font-medium text-sm">
+              {status === 'scoring' ? 'Grading setups...' : 'Scanning...'}
+            </p>
             {progress && (
               <div className="mt-1">
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                  <span>Analyzing {progress.current} of {progress.total} coins</span>
+                  <span>
+                    {status === 'scoring'
+                      ? `Scoring ${progress.total} matches (HTF + futures data)`
+                      : `Analyzing ${progress.current} of ${progress.total} coins`}
+                  </span>
                   <span>{Math.round((progress.current / progress.total) * 100)}%</span>
                 </div>
                 <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary transition-all duration-300 ease-out"
-                    style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                    style={{ width: status === 'scoring' ? '100%' : `${(progress.current / progress.total) * 100}%` }}
                   />
                 </div>
               </div>
@@ -43,6 +50,7 @@ export function ScannerStatus({ status, progress, error, waitTime }: ScannerStat
           </div>
         </>
       )}
+
 
       {status === 'error' && (
         <>

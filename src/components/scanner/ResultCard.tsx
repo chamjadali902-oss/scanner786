@@ -5,6 +5,8 @@ import { TrendingUp, TrendingDown, Clock, Activity, BarChart3, Star } from 'luci
 import { Button } from '@/components/ui/button';
 import { TradingViewModal } from './TradingViewModal';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
+import { SetupScorePanel } from './SetupScorePanel';
+
 
 interface ResultCardProps {
   result: ScanResult;
@@ -154,6 +156,13 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
           </div>
         </div>
 
+        {/* Setup Score + Trade Plan */}
+        {result.setup && (
+          <div className="mb-3">
+            <SetupScorePanel setup={result.setup} />
+          </div>
+        )}
+
         {/* Match Reasons */}
         <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
           <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -175,6 +184,7 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
             ))}
           </div>
         </div>
+
 
         {/* Indicator Values Preview */}
         {Object.keys(result.indicatorValues).length > 0 && (
