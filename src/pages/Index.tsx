@@ -100,11 +100,20 @@ const Index = () => {
             <ScanPoolSelector value={scanPool} onChange={setScanPool} disabled={isScanning} hasFavorites={!!user && favorites.length > 0} />
           </div>
           <div className="p-3 sm:p-5 rounded-xl border border-border bg-card card-glow">
+            <PlaybookPicker
+              onSelect={handleSelectPlaybook}
+              activeId={activePlaybook ?? undefined}
+              favoredIds={regime?.favored ?? []}
+              disabled={isScanning}
+            />
+          </div>
+          <div className="p-3 sm:p-5 rounded-xl border border-border bg-card card-glow">
             <MultiTimeframeSelector primaryTimeframe={timeframe} onPrimaryChange={setTimeframe} mtfEnabled={mtfEnabled} onMtfToggle={setMtfEnabled} selectedTimeframes={mtfTimeframes} onTimeframesChange={setMtfTimeframes} disabled={isScanning} />
           </div>
           <div className="p-3 sm:p-5 rounded-xl border border-border bg-card card-glow">
             <LogicBuilder conditions={conditions} onChange={setConditions} disabled={isScanning} optionalMinMatch={optionalMinMatch} onOptionalMinMatchChange={setOptionalMinMatch} />
           </div>
+
 
           {/* Action Buttons - Desktop */}
           <div className="hidden sm:flex gap-2 flex-wrap">
