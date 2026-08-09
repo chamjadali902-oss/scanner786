@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { Loader2, AlertCircle, WifiOff, RefreshCw } from 'lucide-react';
 
 interface ScannerStatusProps {
-  status: 'idle' | 'scanning' | 'error' | 'rate-limited' | 'reconnecting';
+  status: 'idle' | 'scanning' | 'error' | 'rate-limited' | 'reconnecting' | 'scoring';
   progress?: { current: number; total: number };
   error?: string;
   waitTime?: number;
