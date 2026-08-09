@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useMarketRegime } from '@/hooks/useMarketRegime';
 import { Activity, Gauge, Loader2, ShieldAlert } from 'lucide-react';
@@ -17,6 +18,10 @@ const regimeStyles: Record<string, string> = {
 export function RegimeBanner({ onRegime }: Props) {
   const { regime, loading } = useMarketRegime();
 
+  useEffect(() => {
+    if (regime) onRegime?.(regime);
+  }, [regime, onRegime]);
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card text-xs text-muted-foreground">
@@ -25,7 +30,7 @@ export function RegimeBanner({ onRegime }: Props) {
     );
   }
   if (!regime) return null;
-  onRegime?.(regime);
+
 
   return (
     <div className={cn('p-3 rounded-xl border', regimeStyles[regime.key] ?? 'border-border bg-card')}>
