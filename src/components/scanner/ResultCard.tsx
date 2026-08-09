@@ -5,6 +5,8 @@ import { TrendingUp, TrendingDown, Clock, Activity, BarChart3, Star } from 'luci
 import { Button } from '@/components/ui/button';
 import { TradingViewModal } from './TradingViewModal';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
+import { SetupScorePanel } from './SetupScorePanel';
+
 
 interface ResultCardProps {
   result: ScanResult;
