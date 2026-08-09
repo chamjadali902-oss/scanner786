@@ -68,7 +68,23 @@ const Index = () => {
     scan(scanPool, timeframe, conditions, favSymbols, mtfTfs, optionalMinMatch);
   };
 
-  const handleReset = () => { clearResults(); setConditions([]); };
+  const handleSelectPlaybook = (pb: Playbook) => {
+    setActivePlaybook(pb.id);
+    setActivePlaybookName(pb.name);
+    setScanPool(pb.pool);
+    setTimeframe(pb.timeframe);
+    setConditions(instantiatePlaybook(pb));
+    setOptionalMinMatch(pb.optionalMinMatch);
+    if (pb.mtfTimeframes && pb.mtfTimeframes.length > 1) {
+      setMtfEnabled(true);
+      setMtfTimeframes(pb.mtfTimeframes);
+    } else {
+      setMtfEnabled(false);
+    }
+  };
+
+  const handleReset = () => { clearResults(); setConditions([]); setActivePlaybook(null); setActivePlaybookName(undefined); };
+
 
   const handleLoadStrategy = (pool: ScanPool, tf: Timeframe, conds: ScanCondition[]) => {
     setScanPool(pool); setTimeframe(tf); setConditions(conds); setShowStrategies(false);
