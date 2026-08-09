@@ -17,8 +17,13 @@ import { SaveStrategyDialog } from '@/components/scanner/SaveStrategyDialog';
 import { PublishStrategyDialog } from '@/components/scanner/PublishStrategyDialog';
 import { FavoritesList } from '@/components/scanner/FavoritesList';
 import { ManualAddFavorite } from '@/components/scanner/ManualAddFavorite';
+import { PlaybookPicker } from '@/components/scanner/PlaybookPicker';
+import { RegimeBanner } from '@/components/scanner/RegimeBanner';
+import { instantiatePlaybook, type Playbook } from '@/lib/playbooks';
+import type { MarketRegime } from '@/lib/market-regime';
 import { Button } from '@/components/ui/button';
 import { Play, RotateCcw, Search, Sparkles, Save, FolderOpen, Star, LogIn, Globe } from 'lucide-react';
+
 
 const Index = () => {
   const navigate = useNavigate();
