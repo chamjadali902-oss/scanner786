@@ -65,7 +65,7 @@ const Index = () => {
   const handleScan = () => {
     const favSymbols = scanPool === 'favorites' ? getFavoriteSymbols() : undefined;
     const mtfTfs = mtfEnabled ? mtfTimeframes : undefined;
-    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs, optionalMinMatch);
+    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs, optionalMinMatch, activePlaybookName);
   };
 
   const handleSelectPlaybook = (pb: Playbook) => {
