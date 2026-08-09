@@ -189,13 +189,17 @@ const Index = () => {
         </div>
 
         {/* Right Panel */}
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 space-y-3">
+          <RegimeBanner onRegime={setRegime} />
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Sparkles className="w-4 h-4 text-primary" />
               <h2 className="text-sm sm:text-base font-bold">Scan Results</h2>
               {mtfEnabled && <span className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-mono">MTF</span>}
+              {activePlaybookName && <span className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-medium">{activePlaybookName}</span>}
+              {results.length > 0 && <span className="px-2 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">Sorted by Setup Score</span>}
             </div>
+
             <div className="flex items-center gap-2">
               {results.length > 0 && user && (
                 <Button
