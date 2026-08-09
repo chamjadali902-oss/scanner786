@@ -40,6 +40,10 @@ const Index = () => {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showStrategies, setShowStrategies] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [activePlaybook, setActivePlaybook] = useState<string | null>(null);
+  const [activePlaybookName, setActivePlaybookName] = useState<string | undefined>(undefined);
+  const [regime, setRegime] = useState<MarketRegime | null>(null);
+
 
   const { user } = useAuth();
   const { status, results, error, progress, waitTime, scan, clearResults, isScanning } = useScanner();
