@@ -177,6 +177,41 @@ export interface ScanCondition {
   fibLinkMaxAge?: number;
 }
 
+// ============ Setup Score engine types ============
+
+export type SetupGrade = 'A+' | 'A' | 'B' | 'C' | 'D';
+export type SetupDirection = 'long' | 'short';
+
+export interface ScoreFactor {
+  key: string;
+  label: string;
+  weight: number;   // max points this factor can contribute
+  points: number;   // points actually earned
+  note: string;     // human readable explanation
+}
+
+export interface TradePlan {
+  direction: SetupDirection;
+  entry: number;
+  stopLoss: number;
+  tp1: number;
+  tp2: number;
+  tp3: number;
+  riskPercent: number;   // distance to SL in %
+  riskReward: number;    // R:R to TP2
+  invalidation: string;
+}
+
+export interface SetupScore {
+  score: number;            // 0-100
+  grade: SetupGrade;
+  direction: SetupDirection;
+  factors: ScoreFactor[];
+  plan: TradePlan;
+  tags: string[];
+  playbook?: string;        // matched playbook name (if any)
+}
+
 export interface ScanResult {
   symbol: string;
   price: number;
@@ -186,7 +221,9 @@ export interface ScanResult {
   indicatorValues: Record<string, number | string>;
   timestamp: number;
   isBullish: boolean;
+  setup?: SetupScore;
 }
+
 
 export interface FeatureDefinition {
   id: string;
