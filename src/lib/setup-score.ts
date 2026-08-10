@@ -11,7 +11,7 @@
  *   Trade quality (R:R, location) ... 10
  */
 
-import { Candle, ScoreFactor, SetupDirection, SetupGrade, SetupScore, TradePlan } from '@/types/scanner';
+import { Candle, ScanCondition, ScoreFactor, SetupDirection, SetupGrade, SetupScore, TradePlan } from '@/types/scanner';
 import {
   calculateADX,
   calculateATR,
@@ -50,7 +50,45 @@ export interface ScoreInput {
   futures?: FuturesContext;
   livePrice?: number;
   playbook?: string;
+  /** Strategy/playbook ki forced direction. Diya jaye to score isi side ka banega. */
+  bias?: SetupDirection;
 }
+
+/** Bearish/bullish feature keywords se strategy ki direction guess karta hai. */
+export function inferDirectionBias(conditions: ScanCondition[]): SetupDirection | undefined {
+  const enabled = conditions.filter(c => c.enabled);
+  let bull = 0;
+  let bear = 0;
+
+  for (const c of enabled) {
+    const f = String(c.feature).toLowerCase();
+    const w = c.group === 'must' ? 2 : 1;
+    const bearish =
+      f.includes('bearish') || f.includes('short') || f.includes('downtrend') ||
+      f.includes('premium') || f.includes('upthrust') || f.includes('sweep_high') ||
+      f.includes('shooting_star') || f.includes('_m_') || f.endsWith('_m');
+    const bullish =
+      f.includes('bullish') || f.includes('long') || f.includes('uptrend') ||
+      f.includes('discount') || f.includes('spring') || f.includes('sweep_low') ||
+      f.includes('hammer');
+
+    if (bearish && !bullish) bear += w;
+    else if (bullish && !bearish) bull += w;
+
+    // RSI range se bhi hint: low band = long, high band = short
+    if (f === 'rsi' && c.mode === 'range' && typeof c.maxValue === 'number') {
+      if (c.maxValue <= 50) bull += 1;
+      if (typeof c.minValue === 'number' && c.minValue >= 55) bear += 1;
+    }
+    if (c.mode === 'cross' && c.pricePosition === 'below') bear += 1;
+    if (c.mode === 'cross' && c.pricePosition === 'above') bull += 1;
+  }
+
+  if (bull === 0 && bear === 0) return undefined;
+  if (bull === bear) return undefined;
+  return bull > bear ? 'long' : 'short';
+}
+
 
 const last = <T>(a: T[]): T | undefined => a[a.length - 1];
 
