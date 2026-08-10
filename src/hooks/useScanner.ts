@@ -80,9 +80,12 @@ export function useScanner(options: UseScannerOptions = {}) {
     favoriteSymbols?: string[],
     mtfTimeframes?: Timeframe[],
     optionalMinMatch: number = 1,
-    playbookName?: string
+    playbookName?: string,
+    playbookDirection?: 'long' | 'short'
   ) => {
     const enabledConditions = conditions.filter(c => c.enabled);
+    const bias = playbookDirection ?? inferDirectionBias(conditions);
+
     
     if (enabledConditions.length === 0) {
       setState(prev => ({ ...prev, status: 'error', error: 'Please enable at least one condition' }));
