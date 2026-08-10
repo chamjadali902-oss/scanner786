@@ -208,7 +208,7 @@ export function useScanner(options: UseScannerOptions = {}) {
         const scoreSymbols = results.map(r => r.symbol);
 
         const [htfMap, fundingMap] = await Promise.all([
-          batchFetchKlines(scoreSymbols.slice(0, 60), htf, 300).catch(() => new Map<string, Candle[]>()),
+          batchFetchKlines(scoreSymbols.slice(0, 150), htf, 300).catch(() => new Map<string, Candle[]>()),
           fetchAllFundingRates().catch(() => new Map<string, number>()),
         ]);
 
