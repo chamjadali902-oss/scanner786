@@ -336,10 +336,13 @@ export function buildTradePlan(candles: Candle[], direction: SetupDirection, liv
 }
 
 export function computeSetupScore(input: ScoreInput): SetupScore | null {
-  const { candles, htfCandles, futures, livePrice, playbook } = input;
+  const { candles, htfCandles, futures, livePrice, playbook, bias } = input;
   if (!candles || candles.length < 60) return null;
 
-  const direction = resolveDirection(candles, htfCandles);
+  const structural = resolveDirection(candles, htfCandles);
+  // Strategy/playbook ki direction hamesha jeetegi — short strategy ka result long nahi hoga.
+  const direction: SetupDirection = bias ?? structural;
+  const biasConflict = !!bias && bias !== structural;
   const tags: string[] = [];
 
   const plan = buildTradePlan(candles, direction, livePrice);
@@ -352,18 +355,31 @@ export function computeSetupScore(input: ScoreInput): SetupScore | null {
     qualityFactor(plan, candles, direction),
   ];
 
+  if (biasConflict) {
+    factors.push({
+      key: 'conflict',
+      label: 'Structure conflict',
+      weight: 0,
+      points: -8,
+      note: `Chart structure ${structural === 'long' ? 'bullish' : 'bearish'} hai lekin setup ${direction} side ka hai — counter-trend entry`,
+    });
+    tags.push('Counter-trend');
+  }
+
   const score = Math.round(factors.reduce((sum, f) => sum + f.points, 0));
 
   return {
     score: Math.max(0, Math.min(100, score)),
-    grade: gradeFor(score),
+    grade: gradeFor(Math.max(0, Math.min(100, score))),
     direction,
     factors,
     plan,
     tags: tags.slice(0, 6),
     playbook,
+    biasConflict,
   };
 }
+
 
 /** Primary timeframe se ek sensible higher timeframe nikaalta hai. */
 export function higherTimeframeFor(tf: string): string {
