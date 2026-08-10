@@ -210,6 +210,7 @@ export interface SetupScore {
   plan: TradePlan;
   tags: string[];
   playbook?: string;        // matched playbook name (if any)
+  biasConflict?: boolean;   // true jab strategy ki direction aur chart structure ulta ho
 }
 
 export interface ScanResult {

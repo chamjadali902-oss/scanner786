@@ -55,6 +55,13 @@ export function SetupScorePanel({ setup, compact }: Props) {
         </span>
       </div>
 
+      {setup.biasConflict && (
+        <p className="text-[10px] rounded-md border border-warning/40 bg-warning/10 text-warning px-2 py-1">
+          Counter-trend: chart structure is setup ke opposite hai — size chhoti rakhein.
+        </p>
+      )}
+
+
       {/* Trade plan */}
       <div className="rounded-lg border border-border bg-muted/20 p-2">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">

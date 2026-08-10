@@ -42,6 +42,7 @@ const Index = () => {
   const [showFavorites, setShowFavorites] = useState(false);
   const [activePlaybook, setActivePlaybook] = useState<string | null>(null);
   const [activePlaybookName, setActivePlaybookName] = useState<string | undefined>(undefined);
+  const [activePlaybookDirection, setActivePlaybookDirection] = useState<'long' | 'short' | undefined>(undefined);
   const [regime, setRegime] = useState<MarketRegime | null>(null);
 
 
@@ -65,12 +66,13 @@ const Index = () => {
   const handleScan = () => {
     const favSymbols = scanPool === 'favorites' ? getFavoriteSymbols() : undefined;
     const mtfTfs = mtfEnabled ? mtfTimeframes : undefined;
-    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs, optionalMinMatch, activePlaybookName);
+    scan(scanPool, timeframe, conditions, favSymbols, mtfTfs, optionalMinMatch, activePlaybookName, activePlaybookDirection);
   };
 
   const handleSelectPlaybook = (pb: Playbook) => {
     setActivePlaybook(pb.id);
     setActivePlaybookName(pb.name);
+    setActivePlaybookDirection(pb.direction);
     setScanPool(pb.pool);
     setTimeframe(pb.timeframe);
     setConditions(instantiatePlaybook(pb));

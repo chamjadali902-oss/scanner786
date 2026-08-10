@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { ScanPool, Timeframe, ScanCondition, ScanResult, TickerData, Candle } from '@/types/scanner';
 import { fetchTicker24h, getTopCoins, batchFetchKlines, isRateLimited, getRateLimitWaitTime } from '@/lib/binance';
 import { calculateAllIndicators, evaluateConditions, determineBullishness } from '@/lib/scanner';
-import { computeSetupScore, higherTimeframeFor } from '@/lib/setup-score';
+import { computeSetupScore, higherTimeframeFor, inferDirectionBias } from '@/lib/setup-score';
 import { fetchAllFundingRates, fetchSymbolFuturesContext } from '@/lib/futures-data';
 import { addAlert } from '@/lib/alerts';
 
@@ -26,6 +26,13 @@ type TFEntry = {
   price: number;
   candles: Candle[];
 };
+
+function sortBySetup(a: ScanResult, b: ScanResult) {
+  const ac = a.setup?.biasConflict ? 1 : 0;
+  const bc = b.setup?.biasConflict ? 1 : 0;
+  if (ac !== bc) return ac - bc; // clean setups pehle
+  return (b.setup?.score ?? 0) - (a.setup?.score ?? 0);
+}
 
 export function useScanner(options: UseScannerOptions = {}) {
   const [state, setState] = useState<ScannerState>({
@@ -80,9 +87,12 @@ export function useScanner(options: UseScannerOptions = {}) {
     favoriteSymbols?: string[],
     mtfTimeframes?: Timeframe[],
     optionalMinMatch: number = 1,
-    playbookName?: string
+    playbookName?: string,
+    playbookDirection?: 'long' | 'short'
   ) => {
     const enabledConditions = conditions.filter(c => c.enabled);
+    const bias = playbookDirection ?? inferDirectionBias(conditions);
+
     
     if (enabledConditions.length === 0) {
       setState(prev => ({ ...prev, status: 'error', error: 'Please enable at least one condition' }));
@@ -198,7 +208,7 @@ export function useScanner(options: UseScannerOptions = {}) {
         const scoreSymbols = results.map(r => r.symbol);
 
         const [htfMap, fundingMap] = await Promise.all([
-          batchFetchKlines(scoreSymbols.slice(0, 60), htf, 300).catch(() => new Map<string, Candle[]>()),
+          batchFetchKlines(scoreSymbols.slice(0, 150), htf, 300).catch(() => new Map<string, Candle[]>()),
           fetchAllFundingRates().catch(() => new Map<string, number>()),
         ]);
 
@@ -211,6 +221,7 @@ export function useScanner(options: UseScannerOptions = {}) {
             futures: { fundingRate: fundingMap.get(r.symbol) },
             livePrice: r.price,
             playbook: playbookName,
+            bias,
           });
           if (setup) {
             r.setup = setup;
@@ -218,7 +229,7 @@ export function useScanner(options: UseScannerOptions = {}) {
           }
         }
 
-        results.sort((a, b) => (b.setup?.score ?? 0) - (a.setup?.score ?? 0));
+        results.sort(sortBySetup);
 
         // Top 10 ko futures positioning data se enrich karke re-score
         const top = results.slice(0, 10);
@@ -233,6 +244,7 @@ export function useScanner(options: UseScannerOptions = {}) {
               futures: fut,
               livePrice: r.price,
               playbook: playbookName,
+              bias,
             });
             if (setup) r.setup = setup;
           } catch {
@@ -240,7 +252,7 @@ export function useScanner(options: UseScannerOptions = {}) {
           }
         }));
 
-        results.sort((a, b) => (b.setup?.score ?? 0) - (a.setup?.score ?? 0));
+        results.sort(sortBySetup);
       }
 
       // Send alerts for matches
