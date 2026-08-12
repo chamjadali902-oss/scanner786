@@ -151,7 +151,7 @@ export function getTopCoins(tickers: TickerData[], pool: ScanPool, limit = 100):
 
 // Map any timeframe to a native Binance interval + aggregation factor.
 // Examples: 9m -> {base:'1m', factor:9}, 45m -> {base:'15m',factor:3}, 3h -> {base:'1h',factor:3}
-function resolveInterval(tf: Timeframe): { base: Timeframe; factor: number } {
+export function resolveInterval(tf: Timeframe): { base: Timeframe; factor: number } {
   const NATIVE: Timeframe[] = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M'];
   if (NATIVE.includes(tf)) return { base: tf, factor: 1 };
   const m = /^(\d+)(m|h|d|w|M)$/.exec(tf);
