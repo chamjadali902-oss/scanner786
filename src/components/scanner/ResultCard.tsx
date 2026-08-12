@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { TradingViewModal } from './TradingViewModal';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { SetupScorePanel } from './SetupScorePanel';
+import { FlowStatsPanel } from './FlowStatsPanel';
 
 
 interface ResultCardProps {
