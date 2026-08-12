@@ -164,6 +164,17 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
           </div>
         )}
 
+        {/* Order Flow + Statistical Edge (separate panel) */}
+        <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+          <FlowStatsPanel
+            symbol={result.symbol}
+            timeframe={timeframe}
+            direction={result.setup?.direction ?? (result.isBullish ? 'long' : 'short')}
+            rawScore={result.setup?.score}
+          />
+        </div>
+
+
         {/* Match Reasons */}
         <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
           <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
