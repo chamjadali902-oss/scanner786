@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { TradingViewModal } from './TradingViewModal';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { SetupScorePanel } from './SetupScorePanel';
+import { FlowStatsPanel } from './FlowStatsPanel';
 
 
 interface ResultCardProps {
@@ -162,6 +163,17 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
             <SetupScorePanel setup={result.setup} />
           </div>
         )}
+
+        {/* Order Flow + Statistical Edge (separate panel) */}
+        <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+          <FlowStatsPanel
+            symbol={result.symbol}
+            timeframe={timeframe}
+            direction={result.setup?.direction ?? (result.isBullish ? 'long' : 'short')}
+            rawScore={result.setup?.score}
+          />
+        </div>
+
 
         {/* Match Reasons */}
         <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
