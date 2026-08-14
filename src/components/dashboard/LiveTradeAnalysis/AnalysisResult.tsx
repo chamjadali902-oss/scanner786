@@ -27,8 +27,13 @@ ${analysis.trapWarning ? `Trap Warning: ${analysis.trapWarning}` : ''}
 ${analysis.targetAnalysis ? `Target: ${analysis.targetAchievable ? 'Achievable' : 'Unlikely'} - ${analysis.targetAnalysis}` : ''}
 ${analysis.priceRange ? `Short Term Range: $${analysis.priceRange.shortTerm?.min} - $${analysis.priceRange.shortTerm?.max}, Long Term Range: $${analysis.priceRange.longTerm?.min} - $${analysis.priceRange.longTerm?.max}` : ''}
 Key Levels: Support $${analysis.keyLevels?.support}, Resistance $${analysis.keyLevels?.resistance}
+${analysis.invalidationLevel != null ? `Invalidation: $${analysis.invalidationLevel}` : ''}
+${analysis.positioningRead ? `Positioning: ${analysis.positioningRead}` : ''}
+${analysis.flowRead ? `Order Flow: ${analysis.flowRead}` : ''}
+${analysis.liveData ? `Live: price $${analysis.liveData.price}, 24h ${analysis.liveData.change24hPct}%, funding ${analysis.liveData.fundingRate}, OI24h ${analysis.liveData.oiChange24h}%, taker delta ${analysis.liveData.takerDeltaPct}%` : ''}
 ${analysis.conflictingSignals?.length ? `Conflicts: ${analysis.conflictingSignals.join('; ')}` : ''}
 Reasons: ${analysis.reasons?.join('; ')}`;
+
 
   return (
     <div className="space-y-2">
@@ -234,7 +239,14 @@ Reasons: ${analysis.reasons?.join('; ')}`;
             <span className="font-mono text-bullish">${analysis.tpSuggestion.toFixed(4)}</span>
           </div>
         )}
+        {analysis.invalidationLevel != null && (
+          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-warning/10 border border-warning/30">
+            <span className="text-warning">Invalidation:</span>
+            <span className="font-mono text-warning">${analysis.invalidationLevel}</span>
+          </div>
+        )}
       </div>
+
 
       {/* Reasons */}
       <div className="space-y-0.5">
