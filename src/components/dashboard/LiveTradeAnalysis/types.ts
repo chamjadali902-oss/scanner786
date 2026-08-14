@@ -33,7 +33,22 @@ export interface Analysis {
   };
   timeframeSummary: { tf: string; signal: string; strength: string }[];
   conflictingSignals: string[];
+  // Modern flow / positioning fields
+  invalidationLevel?: number | null;
+  positioningRead?: string | null;
+  flowRead?: string | null;
+  liveData?: {
+    price: number | null;
+    change24hPct: number | null;
+    fundingRate: number | null;
+    oiChange24h: number | null;
+    longShortRatio: number | null;
+    takerDeltaPct: number | null;
+    pnl: number;
+    pnlPct: number;
+  } | null;
 }
+
 
 export const DECISION_COLOR: Record<string, string> = {
   HOLD: 'text-primary bg-primary/10 border-primary/30',

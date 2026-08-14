@@ -27,8 +27,13 @@ ${analysis.trapWarning ? `Trap Warning: ${analysis.trapWarning}` : ''}
 ${analysis.targetAnalysis ? `Target: ${analysis.targetAchievable ? 'Achievable' : 'Unlikely'} - ${analysis.targetAnalysis}` : ''}
 ${analysis.priceRange ? `Short Term Range: $${analysis.priceRange.shortTerm?.min} - $${analysis.priceRange.shortTerm?.max}, Long Term Range: $${analysis.priceRange.longTerm?.min} - $${analysis.priceRange.longTerm?.max}` : ''}
 Key Levels: Support $${analysis.keyLevels?.support}, Resistance $${analysis.keyLevels?.resistance}
+${analysis.invalidationLevel != null ? `Invalidation: $${analysis.invalidationLevel}` : ''}
+${analysis.positioningRead ? `Positioning: ${analysis.positioningRead}` : ''}
+${analysis.flowRead ? `Order Flow: ${analysis.flowRead}` : ''}
+${analysis.liveData ? `Live: price $${analysis.liveData.price}, 24h ${analysis.liveData.change24hPct}%, funding ${analysis.liveData.fundingRate}, OI24h ${analysis.liveData.oiChange24h}%, taker delta ${analysis.liveData.takerDeltaPct}%` : ''}
 ${analysis.conflictingSignals?.length ? `Conflicts: ${analysis.conflictingSignals.join('; ')}` : ''}
 Reasons: ${analysis.reasons?.join('; ')}`;
+
 
   return (
     <div className="space-y-2">
@@ -69,10 +74,68 @@ Reasons: ${analysis.reasons?.join('; ')}`;
         </div>
       )}
 
+      {/* Live market snapshot */}
+      {analysis.liveData && (
+        <div className="rounded-lg border border-border bg-muted/10 p-2">
+          <p className="text-[8px] font-semibold text-muted-foreground uppercase mb-1">Live Market Data</p>
+          <div className="grid grid-cols-3 gap-1.5 text-[9px] font-mono">
+            <div>
+              <span className="text-muted-foreground">Price </span>
+              {analysis.liveData.price != null ? `$${analysis.liveData.price}` : 'N/A'}
+            </div>
+            <div>
+              <span className="text-muted-foreground">24h </span>
+              <span className={cn((analysis.liveData.change24hPct ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
+                {analysis.liveData.change24hPct != null ? `${analysis.liveData.change24hPct.toFixed(2)}%` : 'N/A'}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">P&L </span>
+              <span className={cn(analysis.liveData.pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
+                {analysis.liveData.pnlPct.toFixed(2)}%
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Funding </span>
+              {analysis.liveData.fundingRate != null ? `${(analysis.liveData.fundingRate * 100).toFixed(4)}%` : 'N/A'}
+            </div>
+            <div>
+              <span className="text-muted-foreground">OI 24h </span>
+              {analysis.liveData.oiChange24h != null ? `${analysis.liveData.oiChange24h.toFixed(2)}%` : 'N/A'}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Delta </span>
+              <span className={cn((analysis.liveData.takerDeltaPct ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
+                {analysis.liveData.takerDeltaPct != null ? `${analysis.liveData.takerDeltaPct.toFixed(1)}%` : 'N/A'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Recommendation */}
       <div className="text-[10px] text-foreground leading-relaxed bg-muted/20 rounded p-2">
         {analysis.recommendation}
       </div>
+
+      {/* Positioning + flow reads */}
+      {(analysis.positioningRead || analysis.flowRead) && (
+        <div className="space-y-1.5">
+          {analysis.positioningRead && (
+            <div className="rounded p-2 border border-border bg-muted/10">
+              <p className="text-[8px] font-semibold text-muted-foreground uppercase mb-0.5">Positioning</p>
+              <p className="text-[9px] text-foreground">{analysis.positioningRead}</p>
+            </div>
+          )}
+          {analysis.flowRead && (
+            <div className="rounded p-2 border border-border bg-muted/10">
+              <p className="text-[8px] font-semibold text-muted-foreground uppercase mb-0.5">Order Flow</p>
+              <p className="text-[9px] text-foreground">{analysis.flowRead}</p>
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* Target Analysis */}
       {analysis.targetAnalysis && (
@@ -176,7 +239,14 @@ Reasons: ${analysis.reasons?.join('; ')}`;
             <span className="font-mono text-bullish">${analysis.tpSuggestion.toFixed(4)}</span>
           </div>
         )}
+        {analysis.invalidationLevel != null && (
+          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-warning/10 border border-warning/30">
+            <span className="text-warning">Invalidation:</span>
+            <span className="font-mono text-warning">${analysis.invalidationLevel}</span>
+          </div>
+        )}
       </div>
+
 
       {/* Reasons */}
       <div className="space-y-0.5">
