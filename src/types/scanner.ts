@@ -163,6 +163,16 @@ export interface ScanCondition {
   impulseRetestTolerance?: number;   // % tolerance for retest detection (default 0)
   impulseRequireBreak?: boolean;     // require impulse close to break base high/low (default true)
 
+  // Breakout quality (fake vs real) settings
+  breakoutLookback?: number;         // range window (default 60)
+  breakoutMaxAge?: number;           // breakout kitni candles purana (default 6)
+  breakoutVolumeMultiplier?: number; // real ke liye volume vs avg (default 1.5)
+  breakoutTolerance?: number;        // level noise tolerance % (default 0.05)
+  breakoutMinBodyRatio?: number;     // real breakout body ratio (default 0.5)
+  breakoutRequireHold?: boolean;     // real ke liye follow-through hold (default true)
+  breakoutConfirmCandles?: number;   // fake confirm window (default 3)
+  breakoutMinScore?: number;         // minimum confidence score (default 55)
+
   // Advanced Fibonacci linking & pullback settings
   // Source of swing high/low used to compute Fib levels
   fibSource?: 'lookback' | 'pattern' | 'smc'; // default: 'lookback'
@@ -238,7 +248,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern' | 'impulse-move';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern' | 'impulse-move' | 'breakout';
 }
 
 // All available features
