@@ -344,8 +344,32 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   (values as any).impulse_bullish_result = impulseBull;
   (values as any).impulse_bearish_result = impulseBear;
 
+  // ==== BREAKOUT QUALITY (fake trap vs real breakout) ====
+  const boOpts: BreakoutOptions = {
+    lookback: condition?.breakoutLookback ?? 60,
+    maxAge: condition?.breakoutMaxAge ?? 6,
+    volumeMultiplier: condition?.breakoutVolumeMultiplier ?? 1.5,
+    tolerancePct: condition?.breakoutTolerance ?? 0.05,
+    minBodyRatio: condition?.breakoutMinBodyRatio ?? 0.5,
+    requireRetestHold: condition?.breakoutRequireHold ?? true,
+    confirmCandles: condition?.breakoutConfirmCandles ?? 3,
+  };
+  const fakeUp = detectFakeBreakout(candles, 'up', boOpts);
+  const fakeDown = detectFakeBreakout(candles, 'down', boOpts);
+  const realUp = detectRealBreakout(candles, 'up', boOpts);
+  const realDown = detectRealBreakout(candles, 'down', boOpts);
+  values.fake_breakout_up = fakeUp.detected;
+  values.fake_breakout_down = fakeDown.detected;
+  values.real_breakout_up = realUp.detected;
+  values.real_breakout_down = realDown.detected;
+  (values as any).fake_breakout_up_result = fakeUp;
+  (values as any).fake_breakout_down_result = fakeDown;
+  (values as any).real_breakout_up_result = realUp;
+  (values as any).real_breakout_down_result = realDown;
+
   return values;
 }
+
 
 // Helper function to detect EMA crossover
 function detectCrossover(
