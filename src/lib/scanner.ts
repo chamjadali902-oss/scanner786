@@ -1150,6 +1150,27 @@ function evaluateCondition(
       };
     }
 
+    case 'breakout': {
+      const r = (values as any)[`${condition.feature}_result`] as BreakoutResult | undefined;
+      if (!r || !r.detected) return { matched: false, reason: '' };
+      const minScore = condition.breakoutMinScore ?? (condition.feature.startsWith('fake_') ? 50 : 55);
+      if (r.score < minScore) return { matched: false, reason: '' };
+      const fmt = (v: number) => (v >= 1 ? v.toFixed(4) : v.toFixed(6));
+      const isFake = r.kind === 'fake';
+      const reverseDir = r.side === 'up' ? 'SHORT' : 'LONG';
+      const realDir = r.side === 'up' ? 'LONG' : 'SHORT';
+      const head = isFake
+        ? `⚠️ Fake ${r.side === 'up' ? 'breakout' : 'breakdown'} → reverse ${reverseDir}`
+        : `✅ Real ${r.side === 'up' ? 'breakout' : 'breakdown'} → ${realDir}`;
+      const state = r.inProgress ? 'live now' : `${r.candlesSince}c ago`;
+      return {
+        matched: true,
+        reason: `${head} | level ${fmt(r.level)} | ${state} | score ${r.score} | vol ${r.volumeRatio.toFixed(2)}x | wick ${(r.wickRatio * 100).toFixed(0)}%`,
+      };
+    }
+
+
+
     case 'smart-bullish': {
       const patternFound = values.smart_bullish_pattern_found;
       if (!patternFound) return { matched: false, reason: '' };
