@@ -4,6 +4,7 @@ import * as patterns from './patterns';
 import * as smc from './smc';
 import * as chartPatterns from './chart-patterns';
 import { detectBullishImpulse, detectBearishImpulse, ImpulseMoveResult } from './impulse-move';
+import { detectFakeBreakout, detectRealBreakout, BreakoutResult, BreakoutOptions } from './breakout';
 
 interface IndicatorValues {
   [key: string]: number | boolean | string | number[];
