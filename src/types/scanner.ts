@@ -163,6 +163,16 @@ export interface ScanCondition {
   impulseRetestTolerance?: number;   // % tolerance for retest detection (default 0)
   impulseRequireBreak?: boolean;     // require impulse close to break base high/low (default true)
 
+  // Breakout quality (fake vs real) settings
+  breakoutLookback?: number;         // range window (default 60)
+  breakoutMaxAge?: number;           // breakout kitni candles purana (default 6)
+  breakoutVolumeMultiplier?: number; // real ke liye volume vs avg (default 1.5)
+  breakoutTolerance?: number;        // level noise tolerance % (default 0.05)
+  breakoutMinBodyRatio?: number;     // real breakout body ratio (default 0.5)
+  breakoutRequireHold?: boolean;     // real ke liye follow-through hold (default true)
+  breakoutConfirmCandles?: number;   // fake confirm window (default 3)
+  breakoutMinScore?: number;         // minimum confidence score (default 55)
+
   // Advanced Fibonacci linking & pullback settings
   // Source of swing high/low used to compute Fib levels
   fibSource?: 'lookback' | 'pattern' | 'smc'; // default: 'lookback'
@@ -238,7 +248,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern' | 'impulse-move';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern' | 'impulse-move' | 'breakout';
 }
 
 // All available features
@@ -319,6 +329,12 @@ export const FEATURES: FeatureDefinition[] = [
   // Impulse Move (untested) — buy/sell setups
   { id: 'impulse_bullish', name: 'Impulse Move (Bullish)', category: 'pattern', description: 'Red candle ke baad 2+ green candles ne break kiya, abhi tk retest nahi hua', defaultMode: 'value', settingsType: 'impulse-move' },
   { id: 'impulse_bearish', name: 'Impulse Move (Bearish)', category: 'pattern', description: 'Green candle ke baad 2+ red candles ne break kiya, abhi tk retest nahi hua', defaultMode: 'value', settingsType: 'impulse-move' },
+
+  // Breakout quality — fake (trap) vs real (validated)
+  { id: 'fake_breakout_up', name: 'Fake Breakout (Upside Trap)', category: 'chart', description: 'Resistance break hua ya ho raha hai par fake hai (weak volume / rejection wick / range me wapas) — reverse SHORT setup', defaultMode: 'value', settingsType: 'breakout' },
+  { id: 'fake_breakout_down', name: 'Fake Breakdown (Downside Trap)', category: 'chart', description: 'Support break hua ya ho raha hai par fake hai — reverse LONG setup', defaultMode: 'value', settingsType: 'breakout' },
+  { id: 'real_breakout_up', name: 'Real Breakout (Bullish)', category: 'chart', description: 'Validated resistance break — strong body close + volume expansion + follow-through hold', defaultMode: 'value', settingsType: 'breakout' },
+  { id: 'real_breakout_down', name: 'Real Breakdown (Bearish)', category: 'chart', description: 'Validated support break — strong body close + volume expansion + follow-through hold', defaultMode: 'value', settingsType: 'breakout' },
 ];
 
 export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
