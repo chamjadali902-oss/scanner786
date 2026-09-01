@@ -25,6 +25,7 @@ import {
   SmartBullishSettings,
   ChartPatternSettings,
   ImpulseMoveSettings,
+  BreakoutSettings,
 } from './settings';
 
 interface LogicBuilderProps {
@@ -158,6 +159,19 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         impulseMaxAge: 10,
         impulseRetestTolerance: 0,
         impulseRequireBreak: true,
+      };
+    case 'breakout':
+      return {
+        ...defaults,
+        mode: 'value',
+        breakoutLookback: 60,
+        breakoutMaxAge: 6,
+        breakoutVolumeMultiplier: 1.5,
+        breakoutTolerance: 0.05,
+        breakoutMinBodyRatio: 0.5,
+        breakoutRequireHold: true,
+        breakoutConfirmCandles: 3,
+        breakoutMinScore: 55,
       };
     default:
       return {
