@@ -223,6 +223,8 @@ function FeatureSettings({
       return <ChartPatternSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     case 'impulse-move':
       return <ImpulseMoveSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
+    case 'breakout':
+      return <BreakoutSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     default:
       return null;
   }
