@@ -7,6 +7,7 @@ import { TradingViewModal } from './TradingViewModal';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { SetupScorePanel } from './SetupScorePanel';
 import { FlowStatsPanel } from './FlowStatsPanel';
+import { LiquidationPanel } from './LiquidationPanel';
 
 
 interface ResultCardProps {
@@ -172,6 +173,11 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
             direction={result.setup?.direction ?? (result.isBullish ? 'long' : 'short')}
             rawScore={result.setup?.score}
           />
+        </div>
+
+        {/* Liquidation / positioning engine */}
+        <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+          <LiquidationPanel symbol={result.symbol} timeframe={timeframe} livePrice={currentPrice} />
         </div>
 
 
