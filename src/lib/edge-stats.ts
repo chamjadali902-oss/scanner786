@@ -203,10 +203,10 @@ export function computeEdgeStats(
   );
 
   let verdict: string;
-  if (sample < 5) verdict = 'Sample bohot chhota — is coin par ye setup historically test nahi hua, size chhoti rakhein.';
-  else if (expectancyR >= 0.4 && winRateLow >= 40) verdict = `Statistically strong: ${sample} occurrences me expectancy +${expectancyR.toFixed(2)}R.`;
-  else if (expectancyR > 0) verdict = `Mild positive edge: ${sample} occurrences, expectancy +${expectancyR.toFixed(2)}R — selective rahein.`;
-  else verdict = `Historically negative: ${sample} occurrences me expectancy ${expectancyR.toFixed(2)}R — ye setup is coin par kaam nahi kar raha.`;
+  if (sample < 5) verdict = 'Sample too small — this setup has little history on this coin, keep size small.';
+  else if (expectancyR >= 0.4 && winRateLow >= 40) verdict = `Statistically strong: ${sample} occurrences with expectancy +${expectancyR.toFixed(2)}R.`;
+  else if (expectancyR > 0) verdict = `Mild positive edge: ${sample} occurrences, expectancy +${expectancyR.toFixed(2)}R — stay selective.`;
+  else verdict = `Historically negative: ${sample} occurrences with expectancy ${expectancyR.toFixed(2)}R — this setup is not working on this coin.`;
 
   return {
     sample,

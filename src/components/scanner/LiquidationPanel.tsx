@@ -105,7 +105,7 @@ export function LiquidationPanel({ symbol, timeframe, livePrice }: LiquidationPa
           {loading && (
             <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Funding, open interest aur leverage clusters fetch ho rahe hain…
+              Fetching funding, open interest and leverage clusters…
             </p>
           )}
           {error && <p className="text-[11px] text-bearish">{error}</p>}
@@ -141,7 +141,7 @@ export function LiquidationPanel({ symbol, timeframe, livePrice }: LiquidationPa
                 {data.clusters.length === 0 ? (
                   <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                     <TriangleAlert className="w-3 h-3" />
-                    Is symbol ke liye clusters calculate nahi ho sake.
+                    Clusters could not be calculated for this symbol.
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -153,7 +153,7 @@ export function LiquidationPanel({ symbol, timeframe, livePrice }: LiquidationPa
                         <p className="mb-1 text-[9px] uppercase tracking-wide text-muted-foreground">{group.title}</p>
                         <div className="space-y-1">
                           {group.rows.length === 0 && (
-                            <p className="text-[10px] text-muted-foreground">Koi significant cluster nahi.</p>
+                            <p className="text-[10px] text-muted-foreground">No significant clusters.</p>
                           )}
                           {group.rows.map((c, i) => (
                             <div key={`${c.side}-${i}`} className="flex items-center gap-2">
