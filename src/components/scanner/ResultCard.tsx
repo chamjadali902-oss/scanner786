@@ -245,6 +245,95 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
         </div>
       </div>
 
+      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <DialogContent className="h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 left-0 top-0 grid-rows-[auto_1fr] overflow-hidden rounded-none p-4 sm:p-6 sm:rounded-none">
+          <DialogHeader>
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
+              {result.symbol.replace('USDT', '')}/USDT
+              <span className="font-mono text-sm text-muted-foreground">${formatPrice(currentPrice)}</span>
+              <span
+                className={cn(
+                  'rounded-lg px-2 py-0.5 text-xs font-semibold',
+                  result.priceChange24h >= 0 ? 'bg-bullish/10 text-bullish' : 'bg-bearish/10 text-bearish'
+                )}
+              >
+                {result.priceChange24h >= 0 ? '+' : ''}{result.priceChange24h.toFixed(2)}%
+              </span>
+              <span className="text-xs font-normal text-muted-foreground">
+                {timeframe} · Vol {formatVolume(result.volume24h)}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 overflow-y-auto pr-1">
+            {result.setup && <SetupScorePanel setup={result.setup} />}
+
+            <FlowStatsPanel
+              symbol={result.symbol}
+              timeframe={timeframe}
+              direction={result.setup?.direction ?? (result.isBullish ? 'long' : 'short')}
+              rawScore={result.setup?.score}
+            />
+
+            <LiquidationPanel symbol={result.symbol} timeframe={timeframe} livePrice={currentPrice} />
+
+            <div>
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Match Reasons
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {result.matchReasons.map((reason, idx) => (
+                  <span
+                    key={idx}
+                    className={cn(
+                      'rounded-md border px-2 py-1 text-xs font-medium',
+                      result.isBullish
+                        ? 'bg-bullish/10 text-bullish border-bullish/20'
+                        : 'bg-bearish/10 text-bearish border-bearish/20'
+                    )}
+                  >
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {Object.keys(result.indicatorValues).length > 0 && (
+              <div>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Indicator Values
+                </p>
+                <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/30 p-3 sm:grid-cols-4 lg:grid-cols-6">
+                  {Object.entries(result.indicatorValues)
+                    .filter(([key]) => !key.endsWith('_result'))
+                    .map(([key, value]) => (
+                      <div key={key} className="text-center">
+                        <p className="text-[10px] uppercase text-muted-foreground">{key.replace(/_/g, ' ')}</p>
+                        <p className="font-mono text-xs font-medium">
+                          {typeof value === 'number' ? value.toFixed(2) : String(value)}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2 pb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => { setIsFullscreen(false); setIsModalOpen(true); }}
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                View Chart
+              </Button>
+              <AIAnalysisPanel result={result} timeframe={timeframe} />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <TradingViewModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -253,4 +342,5 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
       />
     </>
   );
+
 }
