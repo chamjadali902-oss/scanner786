@@ -110,6 +110,15 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsFullscreen(true); }}
+              className="p-1 rounded-lg hover:bg-muted/50 transition-all active:scale-90"
+              title="Fullscreen details"
+              aria-label="Open fullscreen details"
+            >
+              <Maximize2 className="w-4 h-4 text-muted-foreground" />
+            </button>
+
             {onToggleFavorite && (
               <button
                 onClick={(e) => { e.stopPropagation(); onToggleFavorite(result.symbol); }}
