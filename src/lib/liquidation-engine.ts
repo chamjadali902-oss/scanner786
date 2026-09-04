@@ -203,12 +203,12 @@ export async function fetchPositioning(symbol: string, candles?: Candle[], liveP
   if (fundingRate != null && oi != null) {
     if (up && oi > 1 && fundingRate > 0.0004) {
       signals.push({ key: 'crowded_longs', label: 'Crowded longs', bias: 'short', strength: 7,
-        note: `Price up + OI +${oi.toFixed(2)}% + funding ${(fundingRate * 100).toFixed(4)}% — late longs leverage par, long-squeeze fuel banta ja raha hai.` });
+        note: `Price up + OI +${oi.toFixed(2)}% + funding ${(fundingRate * 100).toFixed(4)}% — late leveraged longs stacking, long-squeeze fuel building.` });
       biasScore -= 6;
     }
     if (up && oi < -1) {
       signals.push({ key: 'short_covering', label: 'Short covering rally', bias: 'neutral', strength: 5,
-        note: `Price up par OI ${oi.toFixed(2)}% gir gaya — ye short covering hai, naya buying nahi. Continuation weak.` });
+        note: `Price up par OI ${oi.toFixed(2)}% dropped — this is short covering, not fresh buying. Continuation weak.` });
       biasScore -= 2;
     }
     if (!up && oi > 1 && fundingRate < -0.0002) {
@@ -218,12 +218,12 @@ export async function fetchPositioning(symbol: string, candles?: Candle[], liveP
     }
     if (!up && oi < -1) {
       signals.push({ key: 'long_flush', label: 'Long flush complete', bias: 'long', strength: 4,
-        note: `Price down + OI ${oi.toFixed(2)}% — leveraged longs flush ho chuke, downside fuel kam.` });
+        note: `Price down + OI ${oi.toFixed(2)}% — leveraged longs already flushed, downside fuel limited.` });
       biasScore += 3;
     }
     if (up && oi > 1 && Math.abs(fundingRate) < 0.0002) {
       signals.push({ key: 'healthy_trend', label: 'Healthy expansion', bias: 'long', strength: 5,
-        note: `OI +${oi.toFixed(2)}% ke sath funding neutral — spot-led move, trend healthy.` });
+        note: `OI +${oi.toFixed(2)}% with neutral funding — spot-led move, trend healthy.` });
       biasScore += 4;
     }
   }
@@ -236,14 +236,14 @@ export async function fetchPositioning(symbol: string, candles?: Candle[], liveP
 
   // Taker aggression vs price divergence
   if (takerBuySellRatio != null) {
-    if (takerBuySellRatio > 1.15 && !up) { signals.push({ key: 'taker_div_bull', label: 'Taker buy divergence', bias: 'long', strength: 5, note: `Taker buy/sell ${takerBuySellRatio.toFixed(2)} par price down — sellers absorbed ho rahe.` }); biasScore += 3; }
-    if (takerBuySellRatio < 0.87 && up) { signals.push({ key: 'taker_div_bear', label: 'Taker sell divergence', bias: 'short', strength: 5, note: `Taker buy/sell ${takerBuySellRatio.toFixed(2)} par price up — rally distribution me ho rahi.` }); biasScore -= 3; }
+    if (takerBuySellRatio > 1.15 && !up) { signals.push({ key: 'taker_div_bull', label: 'Taker buy divergence', bias: 'long', strength: 5, note: `Taker buy/sell ${takerBuySellRatio.toFixed(2)} while price is down — sellers being absorbed.` }); biasScore += 3; }
+    if (takerBuySellRatio < 0.87 && up) { signals.push({ key: 'taker_div_bear', label: 'Taker sell divergence', bias: 'short', strength: 5, note: `Taker buy/sell ${takerBuySellRatio.toFixed(2)} while price is up — rally being distributed into.` }); biasScore -= 3; }
   }
 
   // Top trader positioning (smart money proxy)
   if (topTraderLongShort != null) {
-    if (topTraderLongShort > 2) { signals.push({ key: 'top_long', label: 'Top traders long', bias: 'long', strength: 4, note: `Top trader position ratio ${topTraderLongShort.toFixed(2)} — bade accounts long side par.` }); biasScore += 2; }
-    if (topTraderLongShort < 0.6) { signals.push({ key: 'top_short', label: 'Top traders short', bias: 'short', strength: 4, note: `Top trader position ratio ${topTraderLongShort.toFixed(2)} — bade accounts short side par.` }); biasScore -= 2; }
+    if (topTraderLongShort > 2) { signals.push({ key: 'top_long', label: 'Top traders long', bias: 'long', strength: 4, note: `Top trader position ratio ${topTraderLongShort.toFixed(2)} — large accounts positioned long.` }); biasScore += 2; }
+    if (topTraderLongShort < 0.6) { signals.push({ key: 'top_short', label: 'Top traders short', bias: 'short', strength: 4, note: `Top trader position ratio ${topTraderLongShort.toFixed(2)} — large accounts positioned short.` }); biasScore -= 2; }
   }
 
   const clusters = candles ? buildLeverageClusters(candles, price) : [];
@@ -253,13 +253,13 @@ export async function fetchPositioning(symbol: string, candles?: Candle[], liveP
     : null;
 
   if (magnet) {
-    const dir = magnet.side === 'long' ? 'neeche' : 'upar';
+    const dir = magnet.side === 'long' ? 'below' : 'above';
     signals.push({
       key: 'liq_magnet',
       label: `Liquidation magnet ${magnet.distancePct >= 0 ? '+' : ''}${magnet.distancePct.toFixed(2)}%`,
       bias: magnet.side === 'long' ? 'short' : 'long',
       strength: Math.round(magnet.intensity / 12),
-      note: `${magnet.price.toPrecision(6)} par heavy ${magnet.leverage}x ${magnet.side} liquidation cluster (${dir}, intensity ${magnet.intensity}) — price wahan magnet ki tarah kheenchta hai.`,
+      note: `${magnet.price.toPrecision(6)} holds a heavy ${magnet.leverage}x ${magnet.side} liquidation cluster (${dir}, intensity ${magnet.intensity}) — price tends to get pulled toward it.`,
     });
     biasScore += magnet.side === 'long' ? -2 : 2;
   }
@@ -272,12 +272,12 @@ export async function fetchPositioning(symbol: string, candles?: Candle[], liveP
   else if (signals.some(s => s.key === 'healthy_trend')) verdict = 'healthy_trend';
 
   const verdictNote: Record<PositioningVerdict, string> = {
-    crowded_longs: 'Longs crowded aur leveraged — upar chase karna mehnga, dips par liquidity grab expect karein.',
-    crowded_shorts: 'Shorts crowded — upar ki taraf squeeze ka fuel maujood hai.',
-    long_squeeze_risk: 'Funding overheated — long positions ke liye squeeze risk elevated.',
-    short_squeeze_fuel: 'Short side stress me — squeeze / reversal probability zyada.',
-    healthy_trend: 'Positioning healthy — trend continuation ke sath jaana theek hai.',
-    neutral: 'Positioning balanced — koi clear crowded side nahi.',
+    crowded_longs: 'Longs are crowded and leveraged — chasing higher is expensive, expect liquidity grabs on dips.',
+    crowded_shorts: 'Shorts are crowded — fuel available for an upside squeeze.',
+    long_squeeze_risk: 'Funding is overheated — squeeze risk elevated for long positions.',
+    short_squeeze_fuel: 'Short side under stress — squeeze / reversal probability elevated.',
+    healthy_trend: 'Positioning is healthy — trend continuation is acceptable.',
+    neutral: 'Positioning is balanced — no clearly crowded side.',
   };
 
   return {

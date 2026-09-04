@@ -174,7 +174,7 @@ function smcFactor(candles: Candle[], direction: SetupDirection, tags: string[])
     label: 'SMC / ICT confluence',
     weight,
     points,
-    note: hits.length ? hits.join(', ') : 'Koi liquidity/structure confluence nahi mila',
+    note: hits.length ? hits.join(', ') : 'No liquidity / structure confluence found',
   };
 }
 
@@ -194,7 +194,7 @@ function htfFactor(candles: Candle[], htfCandles: Candle[] | undefined, directio
   let points = 0;
   const notes: string[] = [];
 
-  if (bullish ? price > ema20 : price < ema20) { points += 6; notes.push('HTF price EMA20 ke sahi side'); }
+  if (bullish ? price > ema20 : price < ema20) { points += 6; notes.push('HTF price on the correct side of EMA20'); }
   if (bullish ? ema20 > ema50 : ema20 < ema50) { points += 7; notes.push('HTF EMA20/50 aligned'); }
   if (ema200 && (bullish ? price > ema200 : price < ema200)) { points += 5; notes.push('HTF macro trend aligned'); }
   if (bullish ? detectUptrend(htfCandles) : detectDowntrend(htfCandles)) { points += 4; notes.push('HTF HH/HL structure'); }
@@ -205,7 +205,7 @@ function htfFactor(candles: Candle[], htfCandles: Candle[] | undefined, directio
     label: 'HTF trend alignment',
     weight,
     points: Math.min(points, weight),
-    note: notes.length ? notes.join(', ') : 'HTF trend setup ke khilaf hai',
+    note: notes.length ? notes.join(', ') : 'HTF trend is against the setup',
   };
 }
 
@@ -261,7 +261,7 @@ function futuresFactor(futures: FuturesContext | undefined, direction: SetupDire
 
   if (futures.openInterestChange !== undefined) {
     const oi = futures.openInterestChange;
-    if (oi > 5) { points += 5; notes.push(`OI +${oi.toFixed(1)}% — naya positioning`); }
+    if (oi > 5) { points += 5; notes.push(`OI +${oi.toFixed(1)}% — fresh positioning`); }
     else if (oi < -5) { points += 3; notes.push(`OI ${oi.toFixed(1)}% — positions flush hui`); }
     else { points += 2; notes.push('OI stable'); }
   }
@@ -330,8 +330,8 @@ export function buildTradePlan(candles: Candle[], direction: SetupDirection, liv
     riskReward: Math.abs(tp2 - price) / risk,
     invalidation:
       direction === 'long'
-        ? `Candle close ${stopLoss.toPrecision(6)} ke neeche = setup invalid`
-        : `Candle close ${stopLoss.toPrecision(6)} ke upar = setup invalid`,
+        ? `Candle close ${stopLoss.toPrecision(6)} = setup invalid`
+        : `Candle close ${stopLoss.toPrecision(6)} = setup invalid`,
   };
 }
 
@@ -361,7 +361,7 @@ export function computeSetupScore(input: ScoreInput): SetupScore | null {
       label: 'Structure conflict',
       weight: 0,
       points: -8,
-      note: `Chart structure ${structural === 'long' ? 'bullish' : 'bearish'} hai lekin setup ${direction} side ka hai — counter-trend entry`,
+      note: `Chart structure ${structural === 'long' ? 'bullish' : 'bearish'} but the setup is on the ${direction} side — counter-trend entry`,
     });
     tags.push('Counter-trend');
   }

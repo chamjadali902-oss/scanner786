@@ -155,10 +155,10 @@ export function analyzeFlow(bars: FlowBar[], direction: 'long' | 'short'): Order
 
     if (priceHigh2 > priceHigh1 && cvdHigh2 < cvdHigh1) {
       divergence = 'bearish';
-      notes.push('Price naya high bana raha hai lekin CVD lower high — buying weak (bearish divergence)');
+      notes.push('Price printing a higher high while CVD makes a lower high — buying is weak (bearish divergence)');
     } else if (priceLow2 < priceLow1 && cvdLow2 > cvdLow1) {
       divergence = 'bullish';
-      notes.push('Price naya low bana raha hai lekin CVD higher low — selling exhausted (bullish divergence)');
+      notes.push('Price printing a lower low while CVD makes a higher low — selling is exhausted (bullish divergence)');
     }
   }
 
@@ -178,8 +178,8 @@ export function analyzeFlow(bars: FlowBar[], direction: 'long' | 'short'): Order
     if (lowerWick > upperWick * 1.5) absorption = 'at_lows';
     else if (upperWick > lowerWick * 1.5) absorption = 'at_highs';
   }
-  if (absorption === 'at_lows') notes.push('Lows par heavy volume absorb hua — sellers ko buyers utha rahe hain');
-  if (absorption === 'at_highs') notes.push('Highs par heavy volume absorb hua — sellers supply de rahe hain');
+  if (absorption === 'at_lows') notes.push('Heavy volume absorbed at the lows — buyers taking seller supply');
+  if (absorption === 'at_highs') notes.push('Heavy volume absorbed at the highs — sellers distributing supply');
 
   // Efficiency: price move per unit delta
   const segMove = seg.length ? Math.abs(seg[seg.length - 1].close - seg[0].close) / seg[0].close * 100 : 0;
@@ -190,17 +190,17 @@ export function analyzeFlow(bars: FlowBar[], direction: 'long' | 'short'): Order
   const long = direction === 'long';
   let adjust = 0;
 
-  if (long ? cvdSlope > 0.05 : cvdSlope < -0.05) { adjust += 4; notes.push(`CVD ${long ? 'rising' : 'falling'} — flow setup ke sath`); }
-  else if (long ? cvdSlope < -0.05 : cvdSlope > 0.05) { adjust -= 4; notes.push(`CVD ${long ? 'falling' : 'rising'} — flow setup ke khilaf`); }
-  else notes.push('CVD flat — koi clear flow nahi');
+  if (long ? cvdSlope > 0.05 : cvdSlope < -0.05) { adjust += 4; notes.push(`CVD ${long ? 'rising' : 'falling'} — flow aligned with the setup`); }
+  else if (long ? cvdSlope < -0.05 : cvdSlope > 0.05) { adjust -= 4; notes.push(`CVD ${long ? 'falling' : 'rising'} — flow against the setup`); }
+  else notes.push('CVD flat — no clear flow bias');
 
-  if (long ? buyPressure >= 55 : buyPressure <= 45) { adjust += 2; notes.push(`Last candle me ${long ? 'buy' : 'sell'} pressure ${buyPressure.toFixed(0)}%`); }
+  if (long ? buyPressure >= 55 : buyPressure <= 45) { adjust += 2; notes.push(`Last candle ${long ? 'buy' : 'sell'} pressure ${buyPressure.toFixed(0)}%`); }
   else adjust -= 1;
 
   if (Math.abs(deltaZScore) >= 2) {
     const sameSide = long ? deltaZScore > 0 : deltaZScore < 0;
     adjust += sameSide ? 3 : -3;
-    notes.push(`Delta spike (z=${deltaZScore.toFixed(1)}) ${sameSide ? 'setup ke sath' : 'setup ke khilaf'}`);
+    notes.push(`Delta spike (z=${deltaZScore.toFixed(1)}) ${sameSide ? 'aligned with the setup' : 'against the setup'}`);
   }
 
   if (divergence) adjust += (long ? divergence === 'bullish' : divergence === 'bearish') ? 4 : -4;

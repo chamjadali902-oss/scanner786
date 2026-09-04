@@ -211,7 +211,7 @@ export function FlowStatsPanel({ symbol, timeframe, direction, rawScore }: FlowS
               ) : (
                 <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <TriangleAlert className="w-3 h-3" />
-                  Order flow data is symbol ke liye available nahi.
+                  Order flow data is not available for this symbol.
                 </p>
               )}
             </>

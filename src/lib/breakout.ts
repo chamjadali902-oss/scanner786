@@ -161,22 +161,22 @@ export function detectFakeBreakout(candles: Candle[], side: BreakoutSide, o: Bre
   if (core.closedBackInside || core.retestFailed) {
     score += 35;
     notes.push(core.closedBackInside
-      ? `Price level ${core.level.toPrecision(6)} ke ${side === 'up' ? 'neeche' : 'upar'} wapas close — trap confirm`
-      : 'Break ke baad range me wapas reclaim — failed breakout');
+      ? `Price closed back ${side === 'up' ? 'below' : 'above'} level ${core.level.toPrecision(6)} — trap confirmed`
+      : 'Range reclaimed after the break — failed breakout');
   } else if (!core.closedBeyond) {
     score += 25;
-    notes.push('Sirf wick ne level toda, body close beyond nahi hui');
+    notes.push('Only the wick broke the level, no body close beyond it');
   }
 
   // 2) Volume weak = participation nahi
   if (core.volumeRatio < 1) {
     score += 20;
-    notes.push(`Breakout volume weak (${core.volumeRatio.toFixed(2)}x avg) — koi real demand nahi`);
+    notes.push(`Breakout volume weak (${core.volumeRatio.toFixed(2)}x avg) — no real demand behind it`);
   } else if (core.volumeRatio < volMult) {
     score += 10;
     notes.push(`Volume expansion missing (${core.volumeRatio.toFixed(2)}x avg)`);
   } else {
-    notes.push(`Volume ${core.volumeRatio.toFixed(2)}x — sweep par aggressive fills (liquidity grab)`);
+    notes.push(`Volume ${core.volumeRatio.toFixed(2)}x — aggressive fills into the sweep (liquidity grab)`);
     score += 6;
   }
 
@@ -185,12 +185,12 @@ export function detectFakeBreakout(candles: Candle[], side: BreakoutSide, o: Bre
   else if (core.wickRatio > 0.3) { score += 12; notes.push(`Decent rejection wick ${(core.wickRatio * 100).toFixed(0)}%`); }
 
   // 4) Follow-through fail
-  if (!core.followThroughHold) { score += 15; notes.push('Follow-through candles level hold nahi kar payi'); }
+  if (!core.followThroughHold) { score += 15; notes.push('Follow-through candles failed to hold the level'); }
 
   // 5) Extension shallow = momentum nahi
   if (core.maxExtensionPct < 0.6) { score += 10; notes.push(`Extension sirf ${core.maxExtensionPct.toFixed(2)}% — momentum absent`); }
 
-  if (core.inProgress) notes.push('Breakout abhi live ho raha hai — trap risk high, confirmation candle dekhein');
+  if (core.inProgress) notes.push('Breakout is live right now — trap risk high, wait for a confirmation candle');
 
   score = Math.max(0, Math.min(100, score));
   const detected = score >= 45 && (core.closedBackInside || core.retestFailed || !core.closedBeyond || core.wickRatio > 0.45);
@@ -229,16 +229,16 @@ export function detectRealBreakout(candles: Candle[], side: BreakoutSide, o: Bre
   const notes: string[] = [];
   let score = 0;
 
-  if (core.closedBeyond) { score += 25; notes.push(`Body close level ${core.level.toPrecision(6)} ke ${side === 'up' ? 'upar' : 'neeche'} — structural break`); }
+  if (core.closedBeyond) { score += 25; notes.push(`Body closed ${side === 'up' ? 'above' : 'below'} level ${core.level.toPrecision(6)} — structural break`); }
   if (core.bodyRatio >= minBody) { score += 15; notes.push(`Strong body (${(core.bodyRatio * 100).toFixed(0)}% of range)`); }
   if (core.volumeRatio >= volMult) { score += 25; notes.push(`Volume expansion ${core.volumeRatio.toFixed(2)}x avg — real participation`); }
   else if (core.volumeRatio >= 1.1) { score += 12; notes.push(`Volume ${core.volumeRatio.toFixed(2)}x avg`); }
-  if (core.followThroughHold) { score += 20; notes.push('Follow-through candles ne level ko support/resistance bana kar hold kiya'); }
-  if (!core.closedBackInside && !core.retestFailed) { score += 10; notes.push('Ab tak koi failure reclaim nahi — breakout intact'); }
+  if (core.followThroughHold) { score += 20; notes.push('Follow-through candles held the level as support / resistance'); }
+  if (!core.closedBackInside && !core.retestFailed) { score += 10; notes.push('No failure reclaim so far — breakout intact'); }
   if (core.wickRatio < 0.3) { score += 5; notes.push('Rejection wick minimal'); }
   if (core.maxExtensionPct >= 1) { score += 5; notes.push(`Extension ${core.maxExtensionPct.toFixed(2)}% — momentum active`); }
 
-  if (core.inProgress) notes.push('Breakout abhi live hai — close confirm hone par validity badhegi');
+  if (core.inProgress) notes.push('Breakout is live — validity improves once the candle closes');
 
   score = Math.max(0, Math.min(100, score));
   const detected =
