@@ -1,1 +1,4 @@
 project_id = "cijmscjovgmvjcpayfoq"
+
+[functions.market-feed]
+verify_jwt = false
