@@ -12,6 +12,10 @@ import Backtest from "./pages/Backtest";
 import Marketplace from "./pages/Marketplace";
 import SmartSignals from "./pages/SmartSignals";
 import TradeJournal from "./pages/TradeJournal";
+import MarketOverview from "./pages/MarketOverview";
+import CoinDetail from "./pages/CoinDetail";
+import News from "./pages/News";
+import MarketHeatmap from "./pages/Heatmap";
 import AutoTrader from "./pages/AutoTrader";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -50,6 +54,10 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
+          <Route path="/overview" element={<MarketOverview />} />
+          <Route path="/coin/:symbol" element={<CoinDetail />} />
+          <Route path="/news" element={<News />} />
+          <Route path="/heatmap" element={<MarketHeatmap />} />
           <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
           <Route path="/admin" element={<AdminLayout />}>
 

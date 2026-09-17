@@ -1,4 +1,4 @@
-import { LineChart, Brain, BarChart3, Beaker, Globe, LogIn, LogOut, User, Activity, Zap, Menu, Sparkles, BookOpen, Target } from 'lucide-react';
+import { LineChart, Brain, BarChart3, Beaker, Globe, LogIn, LogOut, User, Activity, Zap, Menu, Sparkles, BookOpen, Target, LayoutDashboard, Grid3X3, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -9,6 +9,9 @@ import { AlertsPanel } from './scanner/AlertsPanel';
 
 const NAV_ITEMS = [
   { title: 'Scanner', url: '/scanner', icon: LineChart },
+  { title: 'Overview', url: '/overview', icon: LayoutDashboard, public: true },
+  { title: 'Heatmap', url: '/heatmap', icon: Grid3X3, public: true },
+  { title: 'News', url: '/news', icon: Newspaper, public: true },
   { title: 'Smart Signals', url: '/signals', icon: Sparkles },
   { title: 'Auto Trader', url: '/auto-trader', icon: Target },
   { title: 'AI Chat', url: '/chat', icon: Brain },
@@ -60,7 +63,7 @@ export function AppHeader() {
                   {/* Nav links */}
                   <nav className="flex-1 p-3 space-y-1">
                     {NAV_ITEMS.map(item => {
-                      const authRequired = item.url !== '/scanner' && item.url !== '/';
+                      const authRequired = !item.public && item.url !== '/scanner' && item.url !== '/';
                       if (authRequired && !user) return null;
                       return (
                         <button
@@ -123,7 +126,7 @@ export function AppHeader() {
           {/* Center: Desktop nav */}
           <nav className="hidden sm:flex items-center gap-1">
             {NAV_ITEMS.map(item => {
-              const authRequired = item.url !== '/scanner' && item.url !== '/';
+              const authRequired = !item.public && item.url !== '/scanner' && item.url !== '/';
               if (authRequired && !user) return null;
               return (
                 <button
