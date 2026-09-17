@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { RegimeBanner } from '@/components/scanner/RegimeBanner';
 import { fetchTicker24h } from '@/lib/binance';
 import { TickerData } from '@/types/scanner';
-import { TrendingUp, TrendingDown, Activity, Flame, Loader2, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, Flame, Loader2, ArrowRight, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useAllTickersStream } from '@/hooks/useTickerStream';
 
 interface GlobalData {
   totalMcap: number;
