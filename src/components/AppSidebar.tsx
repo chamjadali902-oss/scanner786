@@ -1,4 +1,4 @@
-import { LineChart, Brain, BarChart3, Beaker, Globe, LogIn, LogOut, User, Activity, Zap, Menu, Sparkles, BookOpen, Target } from 'lucide-react';
+import { LineChart, Brain, BarChart3, Beaker, Globe, LogIn, LogOut, User, Activity, Zap, Menu, Sparkles, BookOpen, Target, LayoutDashboard, Grid3X3, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -9,6 +9,9 @@ import { AlertsPanel } from './scanner/AlertsPanel';
 
 const NAV_ITEMS = [
   { title: 'Scanner', url: '/scanner', icon: LineChart },
+  { title: 'Overview', url: '/overview', icon: LayoutDashboard, public: true },
+  { title: 'Heatmap', url: '/heatmap', icon: Grid3X3, public: true },
+  { title: 'News', url: '/news', icon: Newspaper, public: true },
   { title: 'Smart Signals', url: '/signals', icon: Sparkles },
   { title: 'Auto Trader', url: '/auto-trader', icon: Target },
   { title: 'AI Chat', url: '/chat', icon: Brain },
