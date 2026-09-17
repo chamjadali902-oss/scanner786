@@ -63,7 +63,7 @@ export function AppHeader() {
                   {/* Nav links */}
                   <nav className="flex-1 p-3 space-y-1">
                     {NAV_ITEMS.map(item => {
-                      const authRequired = item.url !== '/scanner' && item.url !== '/';
+                      const authRequired = !item.public && item.url !== '/scanner' && item.url !== '/';
                       if (authRequired && !user) return null;
                       return (
                         <button
@@ -126,7 +126,7 @@ export function AppHeader() {
           {/* Center: Desktop nav */}
           <nav className="hidden sm:flex items-center gap-1">
             {NAV_ITEMS.map(item => {
-              const authRequired = item.url !== '/scanner' && item.url !== '/';
+              const authRequired = !item.public && item.url !== '/scanner' && item.url !== '/';
               if (authRequired && !user) return null;
               return (
                 <button
