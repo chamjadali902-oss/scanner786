@@ -42,11 +42,12 @@ export default function MarketOverview() {
   const [fearGreed, setFearGreed] = useState<FearGreed | null>(null);
   const [tickers, setTickers] = useState<TickerData[]>([]);
   const [loading, setLoading] = useState(true);
+  const { tickers: liveMap, connected, updatedAt } = useAllTickersStream();
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
+    async function load(first = false) {
+      if (first) setLoading(true);
       const [cg, fg, tk] = await Promise.allSettled([
         fetch('https://api.coingecko.com/api/v3/global').then(r => r.json()),
         fetch('https://api.alternative.me/fng/?limit=1').then(r => r.json()),
