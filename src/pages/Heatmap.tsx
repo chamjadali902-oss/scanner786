@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { fetchTicker24h } from '@/lib/binance';
 import { TickerData } from '@/types/scanner';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAllTickersStream } from '@/hooks/useTickerStream';
 
 interface FundingItem {
   symbol: string;
