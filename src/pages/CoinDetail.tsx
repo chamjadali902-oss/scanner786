@@ -153,9 +153,16 @@ export default function CoinDetail() {
               )}
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setIsChartOpen(true)} className="gap-1.5">
-            <BarChart3 className="w-4 h-4" /> View Chart
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className={cn('flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold',
+              connected ? 'border-bullish/40 bg-bullish/10 text-bullish' : 'border-border bg-muted text-muted-foreground')}>
+              <Radio className={cn('w-3 h-3', connected && 'animate-pulse')} />
+              {connected ? 'Live price' : 'Connecting'}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setIsChartOpen(true)} className="gap-1.5">
+              <BarChart3 className="w-4 h-4" /> View Chart
+            </Button>
+          </div>
         </div>
 
         {/* 24h stats */}
