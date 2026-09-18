@@ -92,6 +92,10 @@ export function FlowStatsPanel({ symbol, timeframe, direction, rawScore, default
         <span className="flex items-center gap-1.5">
           <BarChart2 className="w-3.5 h-3.5" />
           Flow &amp; Stats
+          <span className={cn('rounded border px-1 py-0.5 text-[9px] font-medium uppercase',
+            direction === 'long' ? 'border-bullish/30 bg-bullish/10 text-bullish' : 'border-bearish/30 bg-bearish/10 text-bearish')}>
+            {direction}
+          </span>
           {flow && (
             <span className={cn('rounded border px-1 py-0.5 text-[9px] font-medium', verdictStyles[flow.verdict])}>
               {verdictLabel[flow.verdict]}
@@ -106,7 +110,7 @@ export function FlowStatsPanel({ symbol, timeframe, direction, rawScore, default
           {loading && (
             <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Historical occurrences aur order flow calculate ho raha hai…
+              Calculating historical occurrences and order flow…
             </p>
           )}
           {error && <p className="text-[11px] text-bearish">{error}</p>}
