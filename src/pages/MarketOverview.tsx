@@ -113,9 +113,17 @@ export default function MarketOverview() {
   return (
     <AppLayout>
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Market Overview</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Complete market intelligence in one place. No other website needed.</p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Market Overview</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Complete market intelligence in one place. No other website needed.</p>
+          </div>
+          <span className={cn('flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold',
+            connected ? 'border-bullish/40 bg-bullish/10 text-bullish' : 'border-border bg-muted text-muted-foreground')}>
+            <Radio className={cn('w-3 h-3', connected && 'animate-pulse')} />
+            {connected ? 'Live' : 'Connecting'}
+            {updatedAt && <span className="font-mono font-normal">{new Date(updatedAt).toLocaleTimeString()}</span>}
+          </span>
         </div>
 
         {/* Global stats */}
