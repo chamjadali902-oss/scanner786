@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Loader2, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Timeframe } from '@/types/scanner';
@@ -9,6 +9,7 @@ import { LiquidationPanel } from '@/components/scanner/LiquidationPanel';
 import { FlowStatsPanel } from '@/components/scanner/FlowStatsPanel';
 import { TradingViewModal } from '@/components/scanner/TradingViewModal';
 import { BarChart3 } from 'lucide-react';
+import { useSymbolTickerStream } from '@/hooks/useTickerStream';
 
 interface HistPoint { time: number; value: number }
 
