@@ -43,9 +43,10 @@ export default function MarketHeatmap() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'market' | 'funding'>('market');
   const [count, setCount] = useState(60);
+  const { tickers: liveMap, connected, updatedAt } = useAllTickersStream();
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     const [tk, fd] = await Promise.allSettled([
       fetchTicker24h(),
       fetch('https://fapi.binance.com/fapi/v1/premiumIndex').then(r => r.json()),
@@ -61,24 +62,35 @@ export default function MarketHeatmap() {
         })));
     }
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load(true);
+    // Funding/OI style data refreshes every 30s; prices come from the live stream.
+    const t = setInterval(() => load(false), 30000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const merged = useMemo(() => {
+    const base = new Map<string, TickerData>(tickers.map(t => [t.symbol, t]));
+    liveMap.forEach((v, k) => base.set(k, v));
+    return Array.from(base.values());
+  }, [tickers, liveMap]);
 
   const marketTiles = useMemo(() => {
-    return tickers
+    return merged
       .filter(t => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) > 1e6)
       .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
       .slice(0, count);
-  }, [tickers, count]);
+  }, [merged, count]);
 
   const fundingTiles = useMemo(() => {
-    const volMap = new Map(tickers.map(t => [t.symbol, parseFloat(t.quoteVolume)]));
+    const volMap = new Map(merged.map(t => [t.symbol, parseFloat(t.quoteVolume)]));
     return funding
       .filter(f => (volMap.get(f.symbol) ?? 0) > 1e6)
       .sort((a, b) => (volMap.get(b.symbol) ?? 0) - (volMap.get(a.symbol) ?? 0))
       .slice(0, count);
-  }, [funding, tickers, count]);
+  }, [funding, merged, count]);
 
   const maxVol = useMemo(() => {
     const list = tab === 'market' ? marketTiles.map(t => parseFloat(t.quoteVolume)) : [];
