@@ -224,10 +224,17 @@ export default function CoinDetail() {
         )}
 
         {/* Futures history mini charts */}
-        <div className="grid sm:grid-cols-3 gap-3">
-          <MiniChart data={oiHist} label="Open Interest (48h)" format={v => `$${(v / 1e6).toFixed(1)}M`} />
-          <MiniChart data={lsHist} label="Top Trader Long/Short Ratio" format={v => v.toFixed(2)} />
-          <MiniChart data={fundingHist} label="Funding Rate History (%)" format={v => `${v >= 0 ? '+' : ''}${v.toFixed(4)}%`} />
+        <div className="space-y-1">
+          <div className="grid sm:grid-cols-3 gap-3">
+            <MiniChart data={oiHist} label="Open Interest (48h)" format={v => `$${(v / 1e6).toFixed(1)}M`} />
+            <MiniChart data={lsHist} label="Top Trader Long/Short Ratio" format={v => v.toFixed(2)} />
+            <MiniChart data={fundingHist} label="Funding Rate History (%)" format={v => `${v >= 0 ? '+' : ''}${v.toFixed(4)}%`} />
+          </div>
+          {oiUpdatedAt && (
+            <p className="text-[10px] text-muted-foreground">
+              Open interest &amp; funding auto-refresh every 60s · last update {new Date(oiUpdatedAt).toLocaleTimeString()}
+            </p>
+          )}
         </div>
 
         {/* Liquidation & positioning */}
@@ -237,7 +244,7 @@ export default function CoinDetail() {
 
         {/* Order flow + statistical edge */}
         <div className="rounded-xl border bg-card p-3 sm:p-4">
-          <FlowStatsPanel symbol={symbol} timeframe={timeframe} direction={direction} />
+          <FlowStatsPanel key={direction} symbol={symbol} timeframe={timeframe} direction={direction} defaultOpen />
         </div>
       </div>
 
