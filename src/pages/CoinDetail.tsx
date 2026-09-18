@@ -210,6 +210,11 @@ export default function CoinDetail() {
               Short view
             </button>
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            {direction === 'long'
+              ? 'Long view: stats, order flow and edge are calculated for long entries.'
+              : 'Short view: stats, order flow and edge are calculated for short entries.'}
+          </p>
         </div>
 
         {loading && (
