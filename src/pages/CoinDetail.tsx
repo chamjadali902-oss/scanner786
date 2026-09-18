@@ -28,11 +28,13 @@ export default function CoinDetail() {
   const [lsHist, setLsHist] = useState<HistPoint[]>([]);
   const [fundingHist, setFundingHist] = useState<HistPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [oiUpdatedAt, setOiUpdatedAt] = useState<number | null>(null);
+  const { ticker: liveTicker, connected } = useSymbolTickerStream(symbol);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
+    async function load(first = false) {
+      if (first) setLoading(true);
       const [tk, oi, ls, fr] = await Promise.allSettled([
         fetch(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${symbol}`).then(r => r.json()),
         fetch(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=1h&limit=48`).then(r => r.json()),
@@ -58,11 +60,26 @@ export default function CoinDetail() {
       if (fr.status === 'fulfilled' && Array.isArray(fr.value)) {
         setFundingHist(fr.value.map((p: { fundingTime: number; fundingRate: string }) => ({ time: p.fundingTime, value: parseFloat(p.fundingRate) * 100 })));
       }
+      setOiUpdatedAt(Date.now());
       setLoading(false);
     }
-    load();
-    return () => { cancelled = true; };
+    load(true);
+    // Open interest / funding / L-S ratio refresh every 60s; price comes from the live stream.
+    const t = setInterval(() => load(false), 60000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [symbol]);
+
+  // Live price/24h stats from the websocket stream override the REST snapshot.
+  useEffect(() => {
+    if (!liveTicker) return;
+    setTicker({
+      price: parseFloat(liveTicker.lastPrice),
+      change: parseFloat(liveTicker.priceChangePercent),
+      high: parseFloat(liveTicker.highPrice),
+      low: parseFloat(liveTicker.lowPrice),
+      volume: parseFloat(liveTicker.quoteVolume),
+    });
+  }, [liveTicker]);
 
   const fmtPrice = (p: number) => {
     if (p < 0.0001) return p.toExponential(4);
