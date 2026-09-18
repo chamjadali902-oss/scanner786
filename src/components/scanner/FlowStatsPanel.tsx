@@ -45,15 +45,14 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'go
   );
 }
 
-export function FlowStatsPanel({ symbol, timeframe, direction, rawScore }: FlowStatsPanelProps) {
-  const [open, setOpen] = useState(false);
+export function FlowStatsPanel({ symbol, timeframe, direction, rawScore, defaultOpen = false }: FlowStatsPanelProps) {
+  const [open, setOpen] = useState(defaultOpen);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<EdgeStats | null>(null);
   const [flow, setFlow] = useState<OrderFlowSignal | null>(null);
 
-  const load = async () => {
-    if (loading) return;
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -68,13 +67,15 @@ export function FlowStatsPanel({ symbol, timeframe, direction, rawScore }: FlowS
     } finally {
       setLoading(false);
     }
-  };
+  }, [symbol, timeframe, direction]);
 
-  const toggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next && !stats && !loading) load();
-  };
+  // Recalculate whenever symbol / timeframe / direction changes while the panel is open.
+  useEffect(() => {
+    if (!open) return;
+    load();
+  }, [open, load]);
+
+  const toggle = () => setOpen(o => !o);
 
   const calibrated =
     stats && rawScore !== undefined ? calibrateScore(rawScore, stats, flow?.scoreAdjust ?? 0) : null;
