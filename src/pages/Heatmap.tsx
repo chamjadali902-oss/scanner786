@@ -105,9 +105,17 @@ export default function MarketHeatmap() {
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Market Heatmap</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Volume-weighted market tiles + funding rate crowding. Click any coin for full details.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading} className="gap-1.5">
-            <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className={cn('flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold',
+              connected ? 'border-bullish/40 bg-bullish/10 text-bullish' : 'border-border bg-muted text-muted-foreground')}>
+              <Radio className={cn('w-3 h-3', connected && 'animate-pulse')} />
+              {connected ? 'Live' : 'Connecting'}
+              {updatedAt && <span className="font-mono font-normal">{new Date(updatedAt).toLocaleTimeString()}</span>}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => load()} disabled={loading} className="gap-1.5">
+              <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} /> Refresh
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
