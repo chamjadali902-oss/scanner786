@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Loader2, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Timeframe } from '@/types/scanner';
@@ -9,6 +9,7 @@ import { LiquidationPanel } from '@/components/scanner/LiquidationPanel';
 import { FlowStatsPanel } from '@/components/scanner/FlowStatsPanel';
 import { TradingViewModal } from '@/components/scanner/TradingViewModal';
 import { BarChart3 } from 'lucide-react';
+import { useSymbolTickerStream } from '@/hooks/useTickerStream';
 
 interface HistPoint { time: number; value: number }
 
@@ -27,11 +28,13 @@ export default function CoinDetail() {
   const [lsHist, setLsHist] = useState<HistPoint[]>([]);
   const [fundingHist, setFundingHist] = useState<HistPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [oiUpdatedAt, setOiUpdatedAt] = useState<number | null>(null);
+  const { ticker: liveTicker, connected } = useSymbolTickerStream(symbol);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
+    async function load(first = false) {
+      if (first) setLoading(true);
       const [tk, oi, ls, fr] = await Promise.allSettled([
         fetch(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${symbol}`).then(r => r.json()),
         fetch(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=1h&limit=48`).then(r => r.json()),
@@ -57,11 +60,26 @@ export default function CoinDetail() {
       if (fr.status === 'fulfilled' && Array.isArray(fr.value)) {
         setFundingHist(fr.value.map((p: { fundingTime: number; fundingRate: string }) => ({ time: p.fundingTime, value: parseFloat(p.fundingRate) * 100 })));
       }
+      setOiUpdatedAt(Date.now());
       setLoading(false);
     }
-    load();
-    return () => { cancelled = true; };
+    load(true);
+    // Open interest / funding / L-S ratio refresh every 60s; price comes from the live stream.
+    const t = setInterval(() => load(false), 60000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [symbol]);
+
+  // Live price/24h stats from the websocket stream override the REST snapshot.
+  useEffect(() => {
+    if (!liveTicker) return;
+    setTicker({
+      price: parseFloat(liveTicker.lastPrice),
+      change: parseFloat(liveTicker.priceChangePercent),
+      high: parseFloat(liveTicker.highPrice),
+      low: parseFloat(liveTicker.lowPrice),
+      volume: parseFloat(liveTicker.quoteVolume),
+    });
+  }, [liveTicker]);
 
   const fmtPrice = (p: number) => {
     if (p < 0.0001) return p.toExponential(4);
@@ -135,9 +153,16 @@ export default function CoinDetail() {
               )}
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setIsChartOpen(true)} className="gap-1.5">
-            <BarChart3 className="w-4 h-4" /> View Chart
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className={cn('flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold',
+              connected ? 'border-bullish/40 bg-bullish/10 text-bullish' : 'border-border bg-muted text-muted-foreground')}>
+              <Radio className={cn('w-3 h-3', connected && 'animate-pulse')} />
+              {connected ? 'Live price' : 'Connecting'}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setIsChartOpen(true)} className="gap-1.5">
+              <BarChart3 className="w-4 h-4" /> View Chart
+            </Button>
+          </div>
         </div>
 
         {/* 24h stats */}
@@ -185,6 +210,11 @@ export default function CoinDetail() {
               Short view
             </button>
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            {direction === 'long'
+              ? 'Long view: stats, order flow and edge are calculated for long entries.'
+              : 'Short view: stats, order flow and edge are calculated for short entries.'}
+          </p>
         </div>
 
         {loading && (
@@ -194,10 +224,17 @@ export default function CoinDetail() {
         )}
 
         {/* Futures history mini charts */}
-        <div className="grid sm:grid-cols-3 gap-3">
-          <MiniChart data={oiHist} label="Open Interest (48h)" format={v => `$${(v / 1e6).toFixed(1)}M`} />
-          <MiniChart data={lsHist} label="Top Trader Long/Short Ratio" format={v => v.toFixed(2)} />
-          <MiniChart data={fundingHist} label="Funding Rate History (%)" format={v => `${v >= 0 ? '+' : ''}${v.toFixed(4)}%`} />
+        <div className="space-y-1">
+          <div className="grid sm:grid-cols-3 gap-3">
+            <MiniChart data={oiHist} label="Open Interest (48h)" format={v => `$${(v / 1e6).toFixed(1)}M`} />
+            <MiniChart data={lsHist} label="Top Trader Long/Short Ratio" format={v => v.toFixed(2)} />
+            <MiniChart data={fundingHist} label="Funding Rate History (%)" format={v => `${v >= 0 ? '+' : ''}${v.toFixed(4)}%`} />
+          </div>
+          {oiUpdatedAt && (
+            <p className="text-[10px] text-muted-foreground">
+              Open interest &amp; funding auto-refresh every 60s · last update {new Date(oiUpdatedAt).toLocaleTimeString()}
+            </p>
+          )}
         </div>
 
         {/* Liquidation & positioning */}
@@ -207,7 +244,7 @@ export default function CoinDetail() {
 
         {/* Order flow + statistical edge */}
         <div className="rounded-xl border bg-card p-3 sm:p-4">
-          <FlowStatsPanel symbol={symbol} timeframe={timeframe} direction={direction} />
+          <FlowStatsPanel key={direction} symbol={symbol} timeframe={timeframe} direction={direction} defaultOpen />
         </div>
       </div>
 

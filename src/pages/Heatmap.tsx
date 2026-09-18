@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { fetchTicker24h } from '@/lib/binance';
 import { TickerData } from '@/types/scanner';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAllTickersStream } from '@/hooks/useTickerStream';
 
 interface FundingItem {
   symbol: string;
@@ -42,9 +43,10 @@ export default function MarketHeatmap() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'market' | 'funding'>('market');
   const [count, setCount] = useState(60);
+  const { tickers: liveMap, connected, updatedAt } = useAllTickersStream();
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     const [tk, fd] = await Promise.allSettled([
       fetchTicker24h(),
       fetch('https://fapi.binance.com/fapi/v1/premiumIndex').then(r => r.json()),
@@ -60,24 +62,35 @@ export default function MarketHeatmap() {
         })));
     }
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load(true);
+    // Funding/OI style data refreshes every 30s; prices come from the live stream.
+    const t = setInterval(() => load(false), 30000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const merged = useMemo(() => {
+    const base = new Map<string, TickerData>(tickers.map(t => [t.symbol, t]));
+    liveMap.forEach((v, k) => base.set(k, v));
+    return Array.from(base.values());
+  }, [tickers, liveMap]);
 
   const marketTiles = useMemo(() => {
-    return tickers
+    return merged
       .filter(t => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) > 1e6)
       .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
       .slice(0, count);
-  }, [tickers, count]);
+  }, [merged, count]);
 
   const fundingTiles = useMemo(() => {
-    const volMap = new Map(tickers.map(t => [t.symbol, parseFloat(t.quoteVolume)]));
+    const volMap = new Map(merged.map(t => [t.symbol, parseFloat(t.quoteVolume)]));
     return funding
       .filter(f => (volMap.get(f.symbol) ?? 0) > 1e6)
       .sort((a, b) => (volMap.get(b.symbol) ?? 0) - (volMap.get(a.symbol) ?? 0))
       .slice(0, count);
-  }, [funding, tickers, count]);
+  }, [funding, merged, count]);
 
   const maxVol = useMemo(() => {
     const list = tab === 'market' ? marketTiles.map(t => parseFloat(t.quoteVolume)) : [];
@@ -92,9 +105,17 @@ export default function MarketHeatmap() {
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Market Heatmap</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Volume-weighted market tiles + funding rate crowding. Click any coin for full details.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading} className="gap-1.5">
-            <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className={cn('flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold',
+              connected ? 'border-bullish/40 bg-bullish/10 text-bullish' : 'border-border bg-muted text-muted-foreground')}>
+              <Radio className={cn('w-3 h-3', connected && 'animate-pulse')} />
+              {connected ? 'Live' : 'Connecting'}
+              {updatedAt && <span className="font-mono font-normal">{new Date(updatedAt).toLocaleTimeString()}</span>}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => load()} disabled={loading} className="gap-1.5">
+              <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} /> Refresh
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

@@ -42,11 +42,12 @@ export default function MarketOverview() {
   const [fearGreed, setFearGreed] = useState<FearGreed | null>(null);
   const [tickers, setTickers] = useState<TickerData[]>([]);
   const [loading, setLoading] = useState(true);
+  const { tickers: liveMap, connected, updatedAt } = useAllTickersStream();
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
+    async function load(first = false) {
+      if (first) setLoading(true);
       const [cg, fg, tk] = await Promise.allSettled([
         fetch('https://api.coingecko.com/api/v3/global').then(r => r.json()),
         fetch('https://api.alternative.me/fng/?limit=1').then(r => r.json()),
@@ -69,12 +70,19 @@ export default function MarketOverview() {
       if (tk.status === 'fulfilled') setTickers(tk.value);
       setLoading(false);
     }
-    load();
-    const t = setInterval(load, 60000);
+    load(true);
+    const t = setInterval(() => load(false), 60000);
     return () => { cancelled = true; clearInterval(t); };
   }, []);
 
-  const usdt = tickers.filter(t => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) > 5e6);
+  // Merge REST snapshot with the live websocket stream so prices/changes update in real time.
+  const merged = useMemo(() => {
+    const base = new Map(tickers.map(t => [t.symbol, t]));
+    liveMap.forEach((v, k) => { if (base.has(k) || liveMap.size > 0) base.set(k, v); });
+    return Array.from(base.values());
+  }, [tickers, liveMap]);
+
+  const usdt = merged.filter(t => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) > 5e6);
   const gainers = [...usdt].sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent)).slice(0, 10);
   const losers = [...usdt].sort((a, b) => parseFloat(a.priceChangePercent) - parseFloat(b.priceChangePercent)).slice(0, 10);
   const byVolume = [...usdt].sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume)).slice(0, 10);
@@ -105,9 +113,17 @@ export default function MarketOverview() {
   return (
     <AppLayout>
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Market Overview</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Complete market intelligence in one place. No other website needed.</p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Market Overview</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Complete market intelligence in one place. No other website needed.</p>
+          </div>
+          <span className={cn('flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold',
+            connected ? 'border-bullish/40 bg-bullish/10 text-bullish' : 'border-border bg-muted text-muted-foreground')}>
+            <Radio className={cn('w-3 h-3', connected && 'animate-pulse')} />
+            {connected ? 'Live' : 'Connecting'}
+            {updatedAt && <span className="font-mono font-normal">{new Date(updatedAt).toLocaleTimeString()}</span>}
+          </span>
         </div>
 
         {/* Global stats */}

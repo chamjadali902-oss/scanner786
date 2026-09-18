@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Activity, BarChart2, ChevronDown, Loader2, ShieldCheck, TriangleAlert } from 'lucide-react';
@@ -12,6 +12,7 @@ interface FlowStatsPanelProps {
   timeframe: Timeframe;
   direction: SetupDirection;
   rawScore?: number;
+  defaultOpen?: boolean;
 }
 
 const verdictStyles: Record<string, string> = {
@@ -45,15 +46,14 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'go
   );
 }
 
-export function FlowStatsPanel({ symbol, timeframe, direction, rawScore }: FlowStatsPanelProps) {
-  const [open, setOpen] = useState(false);
+export function FlowStatsPanel({ symbol, timeframe, direction, rawScore, defaultOpen = false }: FlowStatsPanelProps) {
+  const [open, setOpen] = useState(defaultOpen);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<EdgeStats | null>(null);
   const [flow, setFlow] = useState<OrderFlowSignal | null>(null);
 
-  const load = async () => {
-    if (loading) return;
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -68,13 +68,15 @@ export function FlowStatsPanel({ symbol, timeframe, direction, rawScore }: FlowS
     } finally {
       setLoading(false);
     }
-  };
+  }, [symbol, timeframe, direction]);
 
-  const toggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next && !stats && !loading) load();
-  };
+  // Recalculate whenever symbol / timeframe / direction changes while the panel is open.
+  useEffect(() => {
+    if (!open) return;
+    load();
+  }, [open, load]);
+
+  const toggle = () => setOpen(o => !o);
 
   const calibrated =
     stats && rawScore !== undefined ? calibrateScore(rawScore, stats, flow?.scoreAdjust ?? 0) : null;
@@ -90,6 +92,10 @@ export function FlowStatsPanel({ symbol, timeframe, direction, rawScore }: FlowS
         <span className="flex items-center gap-1.5">
           <BarChart2 className="w-3.5 h-3.5" />
           Flow &amp; Stats
+          <span className={cn('rounded border px-1 py-0.5 text-[9px] font-medium uppercase',
+            direction === 'long' ? 'border-bullish/30 bg-bullish/10 text-bullish' : 'border-bearish/30 bg-bearish/10 text-bearish')}>
+            {direction}
+          </span>
           {flow && (
             <span className={cn('rounded border px-1 py-0.5 text-[9px] font-medium', verdictStyles[flow.verdict])}>
               {verdictLabel[flow.verdict]}
@@ -104,7 +110,7 @@ export function FlowStatsPanel({ symbol, timeframe, direction, rawScore }: FlowS
           {loading && (
             <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Historical occurrences aur order flow calculate ho raha hai…
+              Calculating historical occurrences and order flow…
             </p>
           )}
           {error && <p className="text-[11px] text-bearish">{error}</p>}
