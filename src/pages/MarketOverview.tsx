@@ -70,12 +70,19 @@ export default function MarketOverview() {
       if (tk.status === 'fulfilled') setTickers(tk.value);
       setLoading(false);
     }
-    load();
-    const t = setInterval(load, 60000);
+    load(true);
+    const t = setInterval(() => load(false), 60000);
     return () => { cancelled = true; clearInterval(t); };
   }, []);
 
-  const usdt = tickers.filter(t => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) > 5e6);
+  // Merge REST snapshot with the live websocket stream so prices/changes update in real time.
+  const merged = useMemo(() => {
+    const base = new Map(tickers.map(t => [t.symbol, t]));
+    liveMap.forEach((v, k) => { if (base.has(k) || liveMap.size > 0) base.set(k, v); });
+    return Array.from(base.values());
+  }, [tickers, liveMap]);
+
+  const usdt = merged.filter(t => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) > 5e6);
   const gainers = [...usdt].sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent)).slice(0, 10);
   const losers = [...usdt].sort((a, b) => parseFloat(a.priceChangePercent) - parseFloat(b.priceChangePercent)).slice(0, 10);
   const byVolume = [...usdt].sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume)).slice(0, 10);
