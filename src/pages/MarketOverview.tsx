@@ -7,6 +7,7 @@ import { TrendingUp, TrendingDown, Activity, Flame, Loader2, ArrowRight, Radio }
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAllTickersStream } from '@/hooks/useTickerStream';
+import { MarketIntelAI } from '@/components/MarketIntelAI';
 
 interface GlobalData {
   totalMcap: number;
@@ -157,6 +158,9 @@ export default function MarketOverview() {
 
         {/* Market regime */}
         <RegimeBanner />
+
+        {/* AI brief over all live data */}
+        <MarketIntelAI />
 
         {loading && (
           <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-sm">
