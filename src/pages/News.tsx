@@ -4,6 +4,7 @@ import { ExternalLink, Loader2, Newspaper, CalendarDays, RefreshCw } from 'lucid
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { MarketIntelAI } from '@/components/MarketIntelAI';
 
 interface NewsItem {
   id: string;
@@ -89,6 +90,9 @@ export default function News() {
             <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} /> Refresh
           </Button>
         </div>
+
+        {/* AI reads the news, events and live market data together */}
+        <MarketIntelAI />
 
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground text-sm">
