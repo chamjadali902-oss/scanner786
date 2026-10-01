@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { fetchTicker24h } from '@/lib/binance';
 import { TickerData } from '@/types/scanner';
-import { Loader2, RefreshCw, Radio } from 'lucide-react';
+import { Loader2, RefreshCw, Radio, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAllTickersStream } from '@/hooks/useTickerStream';
 
 interface FundingItem {
@@ -43,6 +44,7 @@ export default function MarketHeatmap() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'market' | 'funding'>('market');
   const [count, setCount] = useState(60);
+  const [search, setSearch] = useState('');
   const { tickers: liveMap, connected, updatedAt } = useAllTickersStream();
 
   const load = useCallback(async (showSpinner = true) => {
@@ -144,6 +146,27 @@ export default function MarketHeatmap() {
               </button>
             ))}
           </div>
+          <form
+            className="flex gap-1.5 ml-auto w-full sm:w-auto"
+            onSubmit={e => {
+              e.preventDefault();
+              const q = search.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+              if (!q) return;
+              navigate(`/coin/${q.endsWith('USDT') ? q : q + 'USDT'}`);
+            }}
+          >
+            <Input
+              list="heatmap-coins"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search any coin (e.g. PEPE)"
+              className="h-8 text-xs sm:w-56"
+            />
+            <datalist id="heatmap-coins">
+              {merged.filter(t => t.symbol.endsWith('USDT')).map(t => <option key={t.symbol} value={t.symbol.replace('USDT', '')} />)}
+            </datalist>
+            <Button type="submit" size="sm" className="h-8 gap-1.5"><Search className="w-3.5 h-3.5" /> Open</Button>
+          </form>
         </div>
 
         {tab === 'funding' && (

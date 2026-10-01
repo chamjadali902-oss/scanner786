@@ -10,6 +10,7 @@ import { FlowStatsPanel } from '@/components/scanner/FlowStatsPanel';
 import { TradingViewModal } from '@/components/scanner/TradingViewModal';
 import { BarChart3 } from 'lucide-react';
 import { useSymbolTickerStream } from '@/hooks/useTickerStream';
+import { CoinAIAnalysis } from '@/components/CoinAIAnalysis';
 
 interface HistPoint { time: number; value: number }
 
@@ -236,6 +237,8 @@ export default function CoinDetail() {
             </p>
           )}
         </div>
+
+        <CoinAIAnalysis symbol={symbol} timeframe={timeframe} />
 
         {/* Liquidation & positioning */}
         <div className="rounded-xl border bg-card p-3 sm:p-4">
