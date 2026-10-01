@@ -21,6 +21,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Disclaimer from "./pages/Disclaimer";
 import OAuthConsent from "./pages/OAuthConsent";
+import ConnectAI from "./pages/ConnectAI";
 import NotFound from "./pages/NotFound";
 
 import AdminLayout from "./components/admin/AdminLayout";
@@ -59,6 +60,7 @@ const App = () => (
           <Route path="/news" element={<News />} />
           <Route path="/heatmap" element={<MarketHeatmap />} />
           <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+          <Route path="/connect-ai" element={<ConnectAI />} />
           <Route path="/admin" element={<AdminLayout />}>
 
             <Route index element={<AdminDashboard />} />

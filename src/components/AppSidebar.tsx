@@ -1,4 +1,4 @@
-import { LineChart, Brain, BarChart3, Beaker, Globe, LogIn, LogOut, User, Activity, Zap, Menu, Sparkles, BookOpen, Target, LayoutDashboard, Grid3X3, Newspaper } from 'lucide-react';
+import { LineChart, Brain, BarChart3, Beaker, Globe, LogIn, LogOut, User, Activity, Zap, Menu, Sparkles, BookOpen, Target, LayoutDashboard, Grid3X3, Newspaper, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { title: 'Smart Signals', url: '/signals', icon: Sparkles },
   { title: 'Auto Trader', url: '/auto-trader', icon: Target },
   { title: 'AI Chat', url: '/chat', icon: Brain },
+  { title: 'Connect AI', url: '/connect-ai', icon: Plug, public: true },
   { title: 'Journal', url: '/journal', icon: BookOpen },
   { title: 'Dashboard', url: '/dashboard', icon: BarChart3 },
   { title: 'Backtest', url: '/backtest', icon: Beaker },
