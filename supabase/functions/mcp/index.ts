@@ -10,27 +10,44 @@ import { defineTool } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z } from "npm:zod@^4.4.3";
 
 // src/lib/mcp/market.ts
-var SPOT = "https://api.binance.com";
-var FUTURES = "https://fapi.binance.com";
+var SPOT_HOSTS = [
+  "https://data-api.binance.vision",
+  "https://api.binance.com",
+  "https://api1.binance.com",
+  "https://api4.binance.com"
+];
+var FUTURES_HOSTS = ["https://fapi.binance.com"];
 function normalizeSymbol(input) {
   const s = input.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
   return /USDT$|USDC$|BTC$|ETH$/.test(s) ? s : `${s}USDT`;
 }
-function base(market) {
-  return market === "futures" ? FUTURES : SPOT;
+async function tryHosts(hosts, pathQuery) {
+  let lastErr = "";
+  for (const h of hosts) {
+    try {
+      const res = await fetch(`${h}${pathQuery}`);
+      if (res.ok) return res.json();
+      lastErr = `[${res.status}] ${(await res.text()).slice(0, 200)}`;
+      if (res.status === 400) break;
+    } catch (e) {
+      lastErr = e.message;
+    }
+  }
+  throw new Error(`Binance request failed ${lastErr}`);
 }
-function path(market, endpoint) {
-  return market === "futures" ? `/fapi/v1${endpoint}` : `/api/v3${endpoint}`;
-}
-async function getJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Binance request failed [${res.status}]: ${await res.text()}`);
-  return res.json();
+async function getMarket(market, endpoint, query) {
+  if (market === "futures") {
+    try {
+      return await tryHosts(FUTURES_HOSTS, `/fapi/v1${endpoint}?${query}`);
+    } catch {
+    }
+  }
+  return tryHosts(SPOT_HOSTS, `/api/v3${endpoint}?${query}`);
 }
 async function fetchTicker(symbol, market) {
   const [price, stats] = await Promise.all([
-    getJson(`${base(market)}${path(market, "/ticker/price")}?symbol=${symbol}`),
-    getJson(`${base(market)}${path(market, "/ticker/24hr")}?symbol=${symbol}`)
+    getMarket(market, "/ticker/price", `symbol=${symbol}`),
+    getMarket(market, "/ticker/24hr", `symbol=${symbol}`)
   ]);
   return {
     price: Number(price.price),
@@ -42,9 +59,7 @@ async function fetchTicker(symbol, market) {
   };
 }
 async function fetchCandles(symbol, interval, limit, market) {
-  const raw = await getJson(
-    `${base(market)}${path(market, "/klines")}?symbol=${symbol}&interval=${interval}&limit=${limit}`
-  );
+  const raw = await getMarket(market, "/klines", `symbol=${symbol}&interval=${interval}&limit=${limit}`);
   return raw.map((k) => ({
     openTime: k[0],
     open: Number(k[1]),
