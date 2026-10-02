@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "pro-new",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "pro new"
     },
     "tools": [
@@ -52,6 +52,121 @@
           "required": [
             "symbol"
           ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_futures_data",
+        "title": "Get futures positioning",
+        "description": "Live perpetual futures positioning for a coin: mark price, funding rate and APR, open interest with 1h/4h/24h change, top-trader long/short ratio, taker buy/sell ratio and derived positioning signals.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "minLength": 2,
+              "description": "Coin or pair, e.g. BTC, PEPEUSDT."
+            }
+          },
+          "required": [
+            "symbol"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_news_and_events",
+        "title": "Get crypto news and economic events",
+        "description": "Latest crypto news headlines (with source and time) and this week's economic calendar (FOMC, CPI, etc. with impact level). Optionally filter news by a keyword such as a coin name.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "keyword": {
+              "description": "Optional filter, e.g. BTC, ETF, Solana.",
+              "type": "string"
+            },
+            "newsLimit": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "highImpactOnly": {
+              "default": true,
+              "description": "Only high-impact economic events.",
+              "type": "boolean"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "run_scanner",
+        "title": "Run market scanner",
+        "description": "Scan the top Binance USDT pairs by 24h volume on a timeframe and return coins matching setups: RSI oversold/overbought/bounce, volume spike, 20-candle breakout/breakdown, liquidity sweep reclaim/reject, trend. All listed setups must match. Results include price, RSI, EMAs, volume ratio and tags.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "timeframe": {
+              "default": "1h",
+              "description": "Binance interval: 5m, 15m, 1h, 4h, 1d.",
+              "type": "string"
+            },
+            "setups": {
+              "default": [
+                "any"
+              ],
+              "description": "Setups that must all match. 'any' returns all scanned coins ranked.",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "any",
+                  "rsi_oversold",
+                  "rsi_overbought",
+                  "rsi_bounce",
+                  "volume_spike",
+                  "breakout_up",
+                  "breakdown",
+                  "bullish_sweep_reclaim",
+                  "bearish_sweep_reject",
+                  "uptrend",
+                  "downtrend"
+                ]
+              }
+            },
+            "topN": {
+              "default": 60,
+              "description": "How many top-volume coins to scan.",
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 150
+            },
+            "maxResults": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
         },
         "outputSchema": null
       },

@@ -367,19 +367,266 @@ var list_saved_strategies_default = defineTool7({
   }
 });
 
+// src/lib/mcp/tools/get-futures-data.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z7 } from "npm:zod@^4.4.3";
+
+// src/lib/mcp/futures.ts
+async function getJson(url) {
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+var num = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+var pct = (a, b) => a && b ? (b - a) / a * 100 : null;
+async function fromBinance(symbol) {
+  const F = "https://fapi.binance.com";
+  const [prem, oiH, ls, taker] = await Promise.all([
+    getJson(`${F}/fapi/v1/premiumIndex?symbol=${symbol}`),
+    getJson(`${F}/futures/data/openInterestHist?symbol=${symbol}&period=1h&limit=25`),
+    getJson(`${F}/futures/data/topLongShortAccountRatio?symbol=${symbol}&period=1h&limit=1`),
+    getJson(`${F}/futures/data/takerlongshortRatio?symbol=${symbol}&period=1h&limit=4`)
+  ]);
+  if (!prem || !prem.markPrice) return null;
+  const oi = Array.isArray(oiH) ? oiH.map((x) => num(x.sumOpenInterestValue)) : [];
+  const last = oi[oi.length - 1] ?? null;
+  return {
+    source: "binance-futures",
+    markPrice: num(prem.markPrice),
+    indexPrice: num(prem.indexPrice),
+    fundingRatePct: num(prem.lastFundingRate) !== null ? num(prem.lastFundingRate) * 100 : null,
+    nextFundingTime: prem.nextFundingTime ? new Date(prem.nextFundingTime).toISOString() : null,
+    openInterestUsd: last,
+    oiChange1hPct: pct(oi[oi.length - 2] ?? null, last),
+    oiChange4hPct: pct(oi[oi.length - 5] ?? null, last),
+    oiChange24hPct: pct(oi[0] ?? null, last),
+    topTraderLongShortRatio: Array.isArray(ls) && ls[0] ? num(ls[0].longShortRatio) : null,
+    takerBuySellRatio1h: Array.isArray(taker) && taker.length ? num(taker[taker.length - 1].buySellRatio) : null
+  };
+}
+async function fromOkx(symbol) {
+  const base = symbol.replace(/USDT$|USDC$/, "");
+  const inst = `${base}-USDT-SWAP`;
+  const O = "https://www.okx.com/api/v5";
+  const [tick, fund, oiH, ls, taker] = await Promise.all([
+    getJson(`${O}/market/ticker?instId=${inst}`),
+    getJson(`${O}/public/funding-rate?instId=${inst}`),
+    getJson(`${O}/rubik/stat/contracts/open-interest-volume?ccy=${base}&period=1H`),
+    getJson(`${O}/rubik/stat/contracts/long-short-account-ratio?ccy=${base}&period=1H`),
+    getJson(`${O}/rubik/stat/taker-volume?ccy=${base}&instType=CONTRACTS&period=1H`)
+  ]);
+  const t = tick?.data?.[0];
+  if (!t) return null;
+  const oi = Array.isArray(oiH?.data) ? oiH.data.map((r) => num(r[1])) : [];
+  const now = oi[0] ?? null;
+  const tk = taker?.data?.[0];
+  const f = fund?.data?.[0];
+  return {
+    source: "okx-perpetual (Binance futures unavailable from server region)",
+    markPrice: num(t.last),
+    indexPrice: null,
+    fundingRatePct: f ? num(f.fundingRate) * 100 : null,
+    nextFundingTime: f?.fundingTime ? new Date(Number(f.fundingTime)).toISOString() : null,
+    openInterestUsd: now,
+    oiChange1hPct: pct(oi[1] ?? null, now),
+    oiChange4hPct: pct(oi[4] ?? null, now),
+    oiChange24hPct: pct(oi[24] ?? null, now),
+    topTraderLongShortRatio: ls?.data?.[0] ? num(ls.data[0][1]) : null,
+    takerBuySellRatio1h: tk && num(tk[1]) ? num(tk[2]) / num(tk[1]) : null
+  };
+}
+async function fetchFuturesContext(symbol) {
+  const data = await fromBinance(symbol) ?? await fromOkx(symbol);
+  if (!data) throw new Error(`No futures market found for ${symbol} on Binance or OKX`);
+  const signals = [];
+  const fr = data.fundingRatePct ?? 0;
+  const oi = data.oiChange24hPct ?? 0;
+  if (fr > 0.05) signals.push("Funding extreme positive: crowded longs, squeeze-down risk");
+  if (fr < -0.03) signals.push("Funding negative: crowded shorts, short-squeeze potential");
+  if (oi > 10 && fr > 0.02) signals.push("OI rising with positive funding: leveraged long build-up");
+  if (oi < -10) signals.push("OI dropping sharply: positions being closed or liquidated");
+  if ((data.takerBuySellRatio1h ?? 1) > 1.2) signals.push("Aggressive taker buying last hour");
+  if ((data.takerBuySellRatio1h ?? 1) < 0.83) signals.push("Aggressive taker selling last hour");
+  return { symbol, ...data, fundingAprPct: data.fundingRatePct !== null ? data.fundingRatePct * 3 * 365 : null, signals };
+}
+
+// src/lib/mcp/tools/get-futures-data.ts
+var get_futures_data_default = defineTool8({
+  name: "get_futures_data",
+  title: "Get futures positioning",
+  description: "Live perpetual futures positioning for a coin: mark price, funding rate and APR, open interest with 1h/4h/24h change, top-trader long/short ratio, taker buy/sell ratio and derived positioning signals.",
+  inputSchema: {
+    symbol: z7.string().min(2).describe("Coin or pair, e.g. BTC, PEPEUSDT.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
+  handler: async ({ symbol }) => {
+    const pair = normalizeSymbol(symbol);
+    try {
+      const data = await fetchFuturesContext(pair);
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: data };
+    } catch (e) {
+      return { content: [{ type: "text", text: e.message }], isError: true };
+    }
+  }
+});
+
+// src/lib/mcp/tools/get-news-events.ts
+import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z8 } from "npm:zod@^4.4.3";
+var get_news_events_default = defineTool9({
+  name: "get_news_and_events",
+  title: "Get crypto news and economic events",
+  description: "Latest crypto news headlines (with source and time) and this week's economic calendar (FOMC, CPI, etc. with impact level). Optionally filter news by a keyword such as a coin name.",
+  inputSchema: {
+    keyword: z8.string().optional().describe("Optional filter, e.g. BTC, ETF, Solana."),
+    newsLimit: z8.number().int().min(1).max(50).default(20),
+    highImpactOnly: z8.boolean().default(true).describe("Only high-impact economic events.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
+  handler: async ({ keyword, newsLimit, highImpactOnly }) => {
+    const base = "https://cijmscjovgmvjcpayfoq.supabase.co";
+    const key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpam1zY2pvdmdtdmpjcGF5Zm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODM5NDEsImV4cCI6MjA4NzE1OTk0MX0.i7hcBGJ5NVGHSHPceU4PHrYxicwHyPDSjIQzfGURDls";
+    try {
+      const res = await fetch(`${base}/functions/v1/market-feed`, {
+        headers: { apikey: key, Authorization: `Bearer ${key}` }
+      });
+      if (!res.ok) throw new Error(`feed status ${res.status}`);
+      const data = await res.json();
+      const kw = keyword?.toLowerCase();
+      const news = (data.news ?? []).filter((n) => !kw || `${n.title} ${n.body} ${n.categories}`.toLowerCase().includes(kw)).slice(0, newsLimit).map((n) => ({
+        title: n.title,
+        summary: String(n.body ?? "").slice(0, 280),
+        source: n.source,
+        publishedAt: n.published_on ? new Date(n.published_on * 1e3).toISOString() : null,
+        url: n.url
+      }));
+      const events = (data.events ?? []).filter((e) => !highImpactOnly || /high/i.test(e.impact)).slice(0, 40);
+      const out = { news, events, fetchedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      return { content: [{ type: "text", text: JSON.stringify(out, null, 2) }], structuredContent: out };
+    } catch (e) {
+      return { content: [{ type: "text", text: `Could not load news: ${e.message}` }], isError: true };
+    }
+  }
+});
+
+// src/lib/mcp/tools/run-scanner.ts
+import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z9 } from "npm:zod@^4.4.3";
+var SPOT = ["https://data-api.binance.vision", "https://api.binance.com"];
+async function tickers() {
+  for (const h of SPOT) {
+    try {
+      const r = await fetch(`${h}/api/v3/ticker/24hr`);
+      if (r.ok) return r.json();
+    } catch {
+    }
+  }
+  throw new Error("Could not load Binance tickers");
+}
+function analyse(c) {
+  const closes = c.map((x) => x.close);
+  const price = closes[closes.length - 1];
+  const e20 = ema(closes, 20), e50 = ema(closes, 50), e200 = ema(closes, 200);
+  const r = rsi(closes, 14);
+  const prevR = rsi(closes.slice(0, -1), 14);
+  const vols = c.slice(-21, -1).map((x) => x.volume);
+  const avgVol = vols.reduce((a, b) => a + b, 0) / (vols.length || 1);
+  const volRatio = avgVol ? c[c.length - 1].volume / avgVol : 0;
+  const prev = c.slice(-21, -1);
+  const hh = Math.max(...prev.map((x) => x.high));
+  const ll = Math.min(...prev.map((x) => x.low));
+  const last = c[c.length - 1];
+  const trend = e20 && e50 ? price > e20 && e20 > e50 ? "up" : price < e20 && e20 < e50 ? "down" : "range" : "range";
+  const tags = [];
+  if (r !== null && r < 30) tags.push("rsi_oversold");
+  if (r !== null && r > 70) tags.push("rsi_overbought");
+  if (r !== null && prevR !== null && prevR < 30 && r >= 30) tags.push("rsi_bounce");
+  if (volRatio >= 2) tags.push("volume_spike");
+  if (last.close > hh) tags.push("breakout_up");
+  if (last.close < ll) tags.push("breakdown");
+  if (last.low < ll && last.close > ll) tags.push("bullish_sweep_reclaim");
+  if (last.high > hh && last.close < hh) tags.push("bearish_sweep_reject");
+  if (trend === "up") tags.push("uptrend");
+  if (trend === "down") tags.push("downtrend");
+  if (e200 && price > e200) tags.push("above_ema200");
+  return { price, rsi14: r, ema20: e20, ema50: e50, ema200: e200, volumeRatio: volRatio, range20High: hh, range20Low: ll, trend, tags };
+}
+var SETUPS = [
+  "any",
+  "rsi_oversold",
+  "rsi_overbought",
+  "rsi_bounce",
+  "volume_spike",
+  "breakout_up",
+  "breakdown",
+  "bullish_sweep_reclaim",
+  "bearish_sweep_reject",
+  "uptrend",
+  "downtrend"
+];
+var run_scanner_default = defineTool10({
+  name: "run_scanner",
+  title: "Run market scanner",
+  description: "Scan the top Binance USDT pairs by 24h volume on a timeframe and return coins matching setups: RSI oversold/overbought/bounce, volume spike, 20-candle breakout/breakdown, liquidity sweep reclaim/reject, trend. All listed setups must match. Results include price, RSI, EMAs, volume ratio and tags.",
+  inputSchema: {
+    timeframe: z9.string().default("1h").describe("Binance interval: 5m, 15m, 1h, 4h, 1d."),
+    setups: z9.array(z9.enum(SETUPS)).default(["any"]).describe("Setups that must all match. 'any' returns all scanned coins ranked."),
+    topN: z9.number().int().min(10).max(150).default(60).describe("How many top-volume coins to scan."),
+    maxResults: z9.number().int().min(1).max(50).default(20)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
+  handler: async ({ timeframe, setups, topN, maxResults }) => {
+    try {
+      const all = await tickers();
+      const pool = all.filter((t) => t.symbol.endsWith("USDT") && !/(UP|DOWN|BULL|BEAR)USDT$|^(USDC|FDUSD|TUSD|BUSD|DAI)USDT$/.test(t.symbol)).sort((a, b) => Number(b.quoteVolume) - Number(a.quoteVolume)).slice(0, topN);
+      const want = setups.filter((s) => s !== "any");
+      const results = [];
+      for (let i = 0; i < pool.length; i += 15) {
+        const batch = await Promise.all(pool.slice(i, i + 15).map(async (t) => {
+          try {
+            const c = await fetchCandles(t.symbol, timeframe, 250, "spot");
+            if (c.length < 60) return null;
+            const a = analyse(c);
+            if (!want.every((s) => a.tags.includes(s))) return null;
+            return { symbol: t.symbol, change24hPct: Number(t.priceChangePercent), quoteVolume24h: Number(t.quoteVolume), ...a };
+          } catch {
+            return null;
+          }
+        }));
+        results.push(...batch.filter(Boolean));
+      }
+      results.sort((a, b) => b.tags.length - a.tags.length || b.volumeRatio - a.volumeRatio);
+      const out = { timeframe, setups, scanned: pool.length, matched: results.length, results: results.slice(0, maxResults), scannedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      return { content: [{ type: "text", text: JSON.stringify(out, null, 2) }], structuredContent: out };
+    } catch (e) {
+      return { content: [{ type: "text", text: `Scan failed: ${e.message}` }], isError: true };
+    }
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "cijmscjovgmvjcpayfoq";
 var mcp_default = defineMcp({
   name: "pro-new",
   title: "pro new",
-  version: "0.1.0",
-  instructions: "Trading tools for this app. Use get_market_snapshot for live Binance price, EMA/RSI and swing levels on any pair and timeframe. Use list_favorite_coins, add_favorite_coin and remove_favorite_coin to manage the user's watchlist, list_trades and log_trade for their trade journal, and list_saved_strategies to inspect their scanner strategies. All user data tools act as the signed-in user.",
+  version: "0.2.0",
+  instructions: "Trading tools for this app. For a full analysis of any coin combine get_market_snapshot (price, EMA, RSI, swings, candles; spot or futures), get_futures_data (funding, OI change, long/short, taker flow) and get_news_and_events (news + macro calendar). Use run_scanner to find coins matching setups on any timeframe. Use list_favorite_coins, add_favorite_coin, remove_favorite_coin for the watchlist, list_trades and log_trade for the journal, list_saved_strategies for scanner strategies. Never guess numbers; always fetch live data first. User data tools act as the signed-in user.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
   tools: [
     get_market_snapshot_default,
+    get_futures_data_default,
+    get_news_events_default,
+    run_scanner_default,
     list_favorite_coins_default,
     add_favorite_coin_default,
     remove_favorite_coin_default,
