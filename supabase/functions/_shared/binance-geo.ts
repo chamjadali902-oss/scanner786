@@ -102,12 +102,7 @@ async function patchedFetch(input: RequestInfo | URL, init?: RequestInit): Promi
     try {
       const r = await origFetch(input, init);
       if (r.ok) return r;
-      // 400 = symbol not listed under this name (e.g. 1000PEPEUSDT); try the 1000x contract
-      if (r.status === 400 && !/symbol=1000/.test(u.search) && u.searchParams.get("symbol")) {
-        const alt = new URL(u.href); alt.searchParams.set("symbol", "1000" + u.searchParams.get("symbol"));
-        const r2 = await origFetch(alt.href, init).catch(() => null);
-        if (r2 && r2.ok) return r2;
-      }
+      // 400 = not listed under this name (e.g. 1000PEPEUSDT): use fallback sources
     } catch { /* blocked */ }
     const fb = await futuresFallback(u).catch(() => null);
     if (fb) return fb;
