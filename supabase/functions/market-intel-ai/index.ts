@@ -1,3 +1,4 @@
+import "../_shared/binance-geo.ts";
 // Market Intelligence AI: gathers ALL live market data (global stats, sentiment,
 // movers, futures positioning, news, economic events) and returns one structured
 // AI brief so the trader does not need any other website.
