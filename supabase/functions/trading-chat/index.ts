@@ -2,6 +2,7 @@ import "../_shared/binance-geo.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callAIWithFallback } from "../_shared/ai-fallback.ts";
+import { runChatScan } from "./scanner.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -875,6 +876,27 @@ Hashtags on a single line: #COIN #Crypto #Trading #SmartMoney and #BTC or #ETH i
 - Match the user's language naturally. If the user wrote in Roman Urdu, write the prose sections in clean Roman Urdu while keeping section headers in English and all numeric levels unchanged.
 - Never repeat the exact same post twice. Refresh the opening hook, the scenario reasoning, and the final read each time.
 
+## MODERN EDGE HIERARCHY (how to reason, in this order)
+1. Positioning and liquidity first: funding (and its APR), open interest change, long/short ratio, taker buy/sell delta. Identify who is trapped and where the liquidity magnets sit.
+2. Order flow: is volume and taker delta confirming the move or diverging from it.
+3. Higher timeframe structure: trend, BOS/CHoCH, key swing levels from the HTF block.
+4. Setup quality: sweep and reclaim (spring/upthrust), fake breakout vs real breakout, untested impulse bases, order blocks and FVGs at those levels.
+5. Indicators (RSI, MACD, EMA, Supertrend, Bollinger) are confirmation only, never the main argument.
+
+## FUNDING / OI DIVERGENCE READS
+- Price up + OI up + hot positive funding = crowded longs, flush risk.
+- Price up + OI down = short covering rally, weak continuation.
+- Price down + OI up + negative funding = crowded shorts, squeeze risk.
+- Price down + OI down = long flush, often near exhaustion.
+- Price and OI up with neutral funding = healthy expansion.
+
+## BREAKOUT RULES
+- A fake breakout (wick or close above the range then back inside) is a reverse SHORT idea; a fake breakdown is a reverse LONG idea. Invalidation sits beyond the sweep extreme.
+- A real breakout needs a strong body close beyond the level with volume at least 1.5x average. Best entry is the retest of the broken level.
+
+## SCANNER MODE
+When a LIVE SCANNER RESULTS block is present, you are acting as the app scanner. Show the results table first, then the best 3 setups ranked by clean confluence (setup tag + positioning agreement + trend alignment). For each give Direction, Trigger, Invalidation, and one line on positioning. If nothing matched, say so and suggest one or two looser conditions from the available list. Never list coins that are not in the block.
+
 ## HARD RULES
 1. LIVE DATA is the single source of truth. Ignore stale numbers from earlier messages.
 2. Never invent prices, levels, or indicator values.
@@ -901,72 +923,6 @@ function getHTFs(tf: string): string[] {
     '8h': ['1d', '1w'], '12h': ['1d', '1w'], '1d': ['1w'], '3d': ['1w'], '1w': [], '1M': [],
   };
   return map[tf] || [];
-}
-
-// ─── Live market scanner (chat-triggered) ───
-function emaS(v: number[], p: number) {
-  if (v.length < p) return null;
-  const k = 2 / (p + 1); let a = v.slice(0, p).reduce((x, y) => x + y, 0) / p;
-  for (let i = p; i < v.length; i++) a = v[i] * k + a * (1 - k);
-  return a;
-}
-function rsiS(v: number[], p = 14) {
-  if (v.length < p + 1) return null;
-  let g = 0, l = 0;
-  for (let i = 1; i <= p; i++) { const d = v[i] - v[i - 1]; if (d >= 0) g += d; else l -= d; }
-  g /= p; l /= p;
-  for (let i = p + 1; i < v.length; i++) { const d = v[i] - v[i - 1]; g = (g * (p - 1) + Math.max(d, 0)) / p; l = (l * (p - 1) + Math.max(-d, 0)) / p; }
-  return l === 0 ? 100 : 100 - 100 / (1 + g / l);
-}
-async function runChatScan(tf: string, text: string): Promise<string> {
-  const want: string[] = [];
-  const t = text.toLowerCase();
-  if (/oversold/.test(t)) want.push('rsi_oversold');
-  if (/overbought/.test(t)) want.push('rsi_overbought');
-  if (/volume/.test(t)) want.push('volume_spike');
-  if (/breakout/.test(t)) want.push('breakout_up');
-  if (/breakdown/.test(t)) want.push('breakdown');
-  if (/sweep|spring|reclaim/.test(t)) want.push('bullish_sweep_reclaim');
-  if (/uptrend|bullish/.test(t)) want.push('uptrend');
-  if (/downtrend|bearish/.test(t)) want.push('downtrend');
-  try {
-    const r = await fetch(`${SPOT_API}/ticker/24hr`);
-    if (!r.ok) throw new Error(`tickers ${r.status}`);
-    const all: any[] = await r.json();
-    const pool = all.filter(x => x.symbol.endsWith('USDT') && !/(UP|DOWN|BULL|BEAR)USDT$|^(USDC|FDUSD|TUSD|BUSD|DAI|EUR)USDT$/.test(x.symbol))
-      .sort((a, b) => +b.quoteVolume - +a.quoteVolume).slice(0, 80);
-    const rows: any[] = [];
-    for (let i = 0; i < pool.length; i += 20) {
-      const batch = await Promise.all(pool.slice(i, i + 20).map(async (tk) => {
-        const k = await fetchKlines(tk.symbol, tf, 'spot');
-        if (!k || k.length < 60) return null;
-        const c = k.map(x => +x[4]), h = k.map(x => +x[2]), lo = k.map(x => +x[3]), v = k.map(x => +x[5]);
-        const price = c[c.length - 1], r14 = rsiS(c), e20 = emaS(c, 20), e50 = emaS(c, 50), e200 = emaS(c, 200);
-        const avgV = v.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
-        const vr = avgV ? v[v.length - 1] / avgV : 0;
-        const hh = Math.max(...h.slice(-21, -1)), ll = Math.min(...lo.slice(-21, -1));
-        const tags: string[] = [];
-        if (r14 !== null && r14 < 30) tags.push('rsi_oversold');
-        if (r14 !== null && r14 > 70) tags.push('rsi_overbought');
-        if (vr >= 2) tags.push('volume_spike');
-        if (price > hh) tags.push('breakout_up');
-        if (price < ll) tags.push('breakdown');
-        if (lo[lo.length - 1] < ll && price > ll) tags.push('bullish_sweep_reclaim');
-        if (h[h.length - 1] > hh && price < hh) tags.push('bearish_sweep_reject');
-        if (e20 && e50 && price > e20 && e20 > e50) tags.push('uptrend');
-        if (e20 && e50 && price < e20 && e20 < e50) tags.push('downtrend');
-        if (e200 && price > e200) tags.push('above_ema200');
-        if (!want.every(w => tags.includes(w))) return null;
-        return { s: tk.symbol, price, chg: +tk.priceChangePercent, r14, vr, tags };
-      }));
-      rows.push(...batch.filter(Boolean));
-    }
-    rows.sort((a, b) => b.tags.length - a.tags.length || b.vr - a.vr);
-    const lines = rows.slice(0, 20).map(x => `${x.s} | price ${x.price} | 24h ${x.chg.toFixed(2)}% | RSI ${x.r14?.toFixed(1)} | vol x${x.vr.toFixed(2)} | ${x.tags.join(', ') || 'none'}`);
-    return `LIVE SCANNER RESULTS (${new Date().toISOString()}, timeframe ${tf}, top 80 USDT pairs by volume, filters: ${want.join(' + ') || 'none, ranked by signals'}). Matched ${rows.length}.\n${lines.join('\n') || 'No coins matched these filters right now.'}\nPresent these results as a clean table, explain the best 3 setups, and do not invent coins outside this list.`;
-  } catch (e) {
-    return `[SCANNER NOTE: live scan failed (${(e as Error).message}). Tell the user the scan could not run; do not invent results.]`;
-  }
 }
 
 serve(async (req) => {
@@ -1002,7 +958,7 @@ serve(async (req) => {
     }
 
     const lastUser = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
-    if (/\b(scan|scanner|screen|find coins?|which coins?)\b/i.test(lastUser)) {
+    if (/\b(scan|scanner|screen|find coins?|which coins?|setups?|coins? do|coins? batao|dhoondo|talash)\b/i.test(lastUser)) {
       const tf = parseOne(lastUser).tf || '1h';
       const scan = await runChatScan(tf, lastUser);
       liveData += `\n\n${scan}\n`;
