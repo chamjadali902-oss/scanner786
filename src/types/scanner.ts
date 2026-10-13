@@ -22,6 +22,7 @@ export interface Candle {
   closeTime: number;
   quoteVolume: number;
   trades: number;
+  takerBuyVolume?: number;
 }
 
 export interface TickerData {
@@ -173,6 +174,13 @@ export interface ScanCondition {
   breakoutConfirmCandles?: number;   // fake confirm window (default 3)
   breakoutMinScore?: number;         // minimum confidence score (default 55)
 
+  // Range delta accumulation/distribution
+  deltaRangeLookback?: number;
+  deltaRangeMaxWidth?: number;
+  deltaRangeMinDominance?: number;
+  deltaRangeMinR2?: number;
+  deltaRangeMinScore?: number;
+
   // Advanced Fibonacci linking & pullback settings
   // Source of swing high/low used to compute Fib levels
   fibSource?: 'lookback' | 'pattern' | 'smc'; // default: 'lookback'
@@ -248,7 +256,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern' | 'impulse-move' | 'breakout';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern' | 'impulse-move' | 'breakout' | 'delta-range';
 }
 
 // All available features
@@ -335,6 +343,9 @@ export const FEATURES: FeatureDefinition[] = [
   { id: 'fake_breakout_down', name: 'Fake Breakdown (Downside Trap)', category: 'chart', description: 'Support break hua ya ho raha hai par fake hai — reverse LONG setup', defaultMode: 'value', settingsType: 'breakout' },
   { id: 'real_breakout_up', name: 'Real Breakout (Bullish)', category: 'chart', description: 'Validated resistance break — strong body close + volume expansion + follow-through hold', defaultMode: 'value', settingsType: 'breakout' },
   { id: 'real_breakout_down', name: 'Real Breakdown (Bearish)', category: 'chart', description: 'Validated support break — strong body close + volume expansion + follow-through hold', defaultMode: 'value', settingsType: 'breakout' },
+  // Pre-breakout order flow
+  { id: 'delta_accumulation_range', name: 'Range Buying Delta (Pre-Breakout)', category: 'chart', description: 'Price stuck in a range while per-candle buying delta keeps rising, no breakout yet. Early LONG before the break', defaultMode: 'value', settingsType: 'delta-range' },
+  { id: 'delta_distribution_range', name: 'Range Selling Delta (Pre-Breakdown)', category: 'chart', description: 'Price stuck in a range while per-candle selling delta keeps rising, no breakdown yet. Early SHORT before the break', defaultMode: 'value', settingsType: 'delta-range' },
 ];
 
 export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [

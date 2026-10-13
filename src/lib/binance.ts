@@ -188,13 +188,14 @@ function aggregateCandles(candles: Candle[], factor: number): Candle[] {
     const slice = candles.slice(i, i + factor);
     const first = slice[0];
     const last = slice[slice.length - 1];
-    let high = -Infinity, low = Infinity, vol = 0, qvol = 0, trades = 0;
+    let high = -Infinity, low = Infinity, vol = 0, qvol = 0, trades = 0, tbv = 0, hasTbv = true;
     for (const c of slice) {
       if (c.high > high) high = c.high;
       if (c.low < low) low = c.low;
       vol += c.volume;
       qvol += c.quoteVolume;
       trades += c.trades;
+      if (c.takerBuyVolume === undefined) hasTbv = false; else tbv += c.takerBuyVolume;
     }
     out.push({
       openTime: first.openTime,
@@ -206,6 +207,7 @@ function aggregateCandles(candles: Candle[], factor: number): Candle[] {
       closeTime: last.closeTime,
       quoteVolume: qvol,
       trades,
+      takerBuyVolume: hasTbv ? tbv : undefined,
     });
   }
   return out;
@@ -233,6 +235,7 @@ export async function fetchKlines(
     closeTime: k[6],
     quoteVolume: parseFloat(k[7]),
     trades: k[8],
+    takerBuyVolume: parseFloat(k[9]),
   }));
 
   return aggregateCandles(baseCandles, factor);

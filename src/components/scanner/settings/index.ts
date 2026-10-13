@@ -14,3 +14,4 @@ export { SmartBullishSettings } from './SmartBullishSettings';
 export { ChartPatternSettings } from './ChartPatternSettings';
 export { ImpulseMoveSettings } from './ImpulseMoveSettings';
 export { BreakoutSettings } from './BreakoutSettings';
+export { DeltaRangeSettings } from './DeltaRangeSettings';
