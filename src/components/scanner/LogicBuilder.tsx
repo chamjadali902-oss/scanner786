@@ -25,6 +25,7 @@ import {
   SmartBullishSettings,
   ChartPatternSettings,
   ImpulseMoveSettings,
+  DeltaRangeSettings,
   BreakoutSettings,
 } from './settings';
 
@@ -160,6 +161,16 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         impulseRetestTolerance: 0,
         impulseRequireBreak: true,
       };
+    case 'delta-range':
+      return {
+        ...defaults,
+        mode: 'value',
+        deltaRangeLookback: 30,
+        deltaRangeMaxWidth: 8,
+        deltaRangeMinDominance: 55,
+        deltaRangeMinR2: 0.5,
+        deltaRangeMinScore: 50,
+      };
     case 'breakout':
       return {
         ...defaults,
@@ -223,6 +234,8 @@ function FeatureSettings({
       return <ChartPatternSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     case 'impulse-move':
       return <ImpulseMoveSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
+    case 'delta-range':
+      return <DeltaRangeSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     case 'breakout':
       return <BreakoutSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     default:

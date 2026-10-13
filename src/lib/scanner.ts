@@ -1,3 +1,4 @@
+import { detectDeltaRange, type DeltaRangeResult } from './delta-range';
 import { Candle, ScanCondition, ScanResult, FEATURES } from '@/types/scanner';
 import * as indicators from './indicators';
 import * as patterns from './patterns';
@@ -343,6 +344,20 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   values.impulse_bearish = impulseBear.detected;
   (values as any).impulse_bullish_result = impulseBull;
   (values as any).impulse_bearish_result = impulseBear;
+
+  // ==== RANGE DELTA (pre-breakout accumulation / distribution) ====
+  const drOpts = {
+    lookback: condition?.deltaRangeLookback ?? 30,
+    maxWidthPct: condition?.deltaRangeMaxWidth ?? 8,
+    minDominance: condition?.deltaRangeMinDominance ?? 55,
+    minCvdR2: condition?.deltaRangeMinR2 ?? 0.5,
+  };
+  const drAcc = detectDeltaRange(candles, 'accumulation', drOpts);
+  const drDis = detectDeltaRange(candles, 'distribution', drOpts);
+  values.delta_accumulation_range = drAcc.detected;
+  values.delta_distribution_range = drDis.detected;
+  (values as any).delta_accumulation_range_result = drAcc;
+  (values as any).delta_distribution_range_result = drDis;
 
   // ==== BREAKOUT QUALITY (fake trap vs real breakout) ====
   const boOpts: BreakoutOptions = {
@@ -1147,6 +1162,18 @@ function evaluateCondition(
       return {
         matched: true,
         reason: `${arrow} Impulse | ${r.impulseCandles} candle break | ${lvlLabel}: ${fmt(lvl)} | ${r.candlesSinceImpulse}c since impulse`,
+      };
+    }
+
+    case 'delta-range': {
+      const r = (values as any)[`${condition.feature}_result`] as DeltaRangeResult | undefined;
+      if (!r || !r.detected) return { matched: false, reason: '' };
+      if (r.score < (condition.deltaRangeMinScore ?? 50)) return { matched: false, reason: '' };
+      const fmt = (v: number) => (v >= 1 ? v.toFixed(4) : v.toFixed(6));
+      const acc = r.side === 'accumulation';
+      return {
+        matched: true,
+        reason: `${acc ? 'Buying delta rising in range, pre-breakout LONG' : 'Selling delta rising in range, pre-breakdown SHORT'} | range ${fmt(r.rangeLow)}-${fmt(r.rangeHigh)} (${r.widthPct.toFixed(1)}%) | ${acc ? 'buy' : 'sell'} candles ${r.dominancePct.toFixed(0)}% | net delta ${r.cvdChangeRatio.toFixed(1)}x avg vol | CVD R² ${r.cvdR2.toFixed(2)} | price at ${r.positionPct.toFixed(0)}% of range | score ${r.score}`,
       };
     }
 
