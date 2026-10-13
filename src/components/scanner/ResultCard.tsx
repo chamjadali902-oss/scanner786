@@ -9,6 +9,7 @@ import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { SetupScorePanel } from './SetupScorePanel';
 import { FlowStatsPanel } from './FlowStatsPanel';
 import { LiquidationPanel } from './LiquidationPanel';
+import { DeltaBarsChart } from './DeltaBarsChart';
 
 
 interface ResultCardProps {
@@ -193,6 +194,8 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
         </div>
 
 
+        <DeltaBarsChart values={result.indicatorValues} />
+
         {/* Match Reasons */}
         <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
           <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -219,7 +222,7 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
         {/* Indicator Values Preview */}
         {Object.keys(result.indicatorValues).length > 0 && (
           <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3 sm:mb-4 p-2 rounded-lg bg-muted/30">
-            {Object.entries(result.indicatorValues).slice(0, 6).map(([key, value]) => (
+            {Object.entries(result.indicatorValues).filter(([k, v]) => !k.endsWith('_result') && typeof v !== 'object').slice(0, 6).map(([key, value]) => (
               <div key={key} className="text-center">
                 <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase">{key.replace('_', ' ')}</p>
                 <p className="font-mono text-[10px] sm:text-xs font-medium">
@@ -276,6 +279,8 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
             />
 
             <LiquidationPanel symbol={result.symbol} timeframe={timeframe} livePrice={currentPrice} />
+
+            <DeltaBarsChart values={result.indicatorValues} large />
 
             <div>
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
