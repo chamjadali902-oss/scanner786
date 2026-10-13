@@ -25,11 +25,12 @@ export interface DeltaRangeResult {
   priceDriftPct: number;   // close move over range
   positionPct: number;     // where price sits in range, 0 = low, 100 = high
   score: number;
+  bars: { buy: number; sell: number; delta: number; cvd: number; close: number }[];
 }
 
 const EMPTY: DeltaRangeResult = {
   detected: false, side: null, rangeHigh: 0, rangeLow: 0, widthPct: 0, cvdChange: 0,
-  cvdChangeRatio: 0, dominancePct: 0, cvdR2: 0, priceDriftPct: 0, positionPct: 0, score: 0,
+  cvdChangeRatio: 0, dominancePct: 0, cvdR2: 0, priceDriftPct: 0, positionPct: 0, score: 0, bars: [],
 };
 
 function regression(y: number[]) {
@@ -98,5 +99,6 @@ export function detectDeltaRange(
   return {
     detected, side: detected ? side : null, rangeHigh, rangeLow, widthPct, cvdChange, cvdChangeRatio,
     dominancePct, cvdR2: r2, priceDriftPct, positionPct, score,
+    bars: win.map((c, i) => ({ buy: c.takerBuyVolume as number, sell: c.volume - (c.takerBuyVolume as number), delta: deltas[i], cvd: cvd[i], close: c.close })),
   };
 }
