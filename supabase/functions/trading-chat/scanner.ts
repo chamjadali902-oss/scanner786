@@ -5,7 +5,7 @@
 const SPOT = "https://api.binance.com/api/v3";
 const FUT = "https://fapi.binance.com";
 
-type C = { o: number; h: number; l: number; c: number; v: number };
+type C = { o: number; h: number; l: number; c: number; v: number; tb: number };
 
 function emaArr(v: number[], p: number): number[] {
   const out: number[] = new Array(v.length).fill(NaN);
@@ -131,10 +131,31 @@ function analyse(cs: C[]) {
     if (bc.c < bc.o && after.length >= 2 && after.slice(0, 2).every(x => x.c > x.o && x.c > bc.h) && after.every(x => x.l > bc.h)) { tags.push("impulse_bullish"); notes.push(`bullish impulse from base ${bc.l}-${bc.h}, untested`); break; }
     if (bc.c > bc.o && after.length >= 2 && after.slice(0, 2).every(x => x.c < x.o && x.c < bc.l) && after.every(x => x.h < bc.l)) { tags.push("impulse_bearish"); notes.push(`bearish impulse from base ${bc.l}-${bc.h}, untested`); break; }
   }
+  // Range delta (pre-breakout): 30-bar tight range, CVD trending one way, price flat
+  {
+    const win = cs.slice(-30), body = win.slice(0, -1);
+    const rh = Math.max(...body.map(x => x.h)), rl = Math.min(...body.map(x => x.l));
+    const width = ((rh - rl) / rl) * 100;
+    const d = win.map(x => 2 * x.tb - x.v);
+    const cvd: number[] = []; let run = 0; for (const x of d) { run += x; cvd.push(run); }
+    const N = cvd.length, mx = (N - 1) / 2, my = cvd.reduce((a, b) => a + b, 0) / N;
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < N; i++) { sxy += (i - mx) * (cvd[i] - my); sxx += (i - mx) ** 2; syy += (cvd[i] - my) ** 2; }
+    const slope = sxy / sxx, r2 = syy ? (sxy * sxy) / (sxx * syy) : 0;
+    const av = win.reduce((s2, x) => s2 + x.v, 0) / N || 1, ratio = run / av;
+    const drift = ((last.c - win[0].c) / win[0].c) * 100;
+    const ok = last.c <= rh && last.c >= rl && width <= 8 && r2 >= 0.5 && Math.abs(drift) <= width * 0.6;
+    const pos = ((last.c - rl) / (rh - rl || 1)) * 100;
+    const buyDom = (d.filter(x => x > 0).length / N) * 100;
+    if (ok && slope > 0 && ratio > 1 && buyDom >= 55) { tags.push("delta_accumulation_range"); notes.push(`range buying delta ${rl}-${rh} (${width.toFixed(1)}%), buy candles ${buyDom.toFixed(0)}%, net delta ${ratio.toFixed(1)}x avg vol, CVD R2 ${r2.toFixed(2)}, price at ${pos.toFixed(0)}% of range, pre-breakout LONG`); }
+    if (ok && slope < 0 && ratio < -1 && 100 - buyDom >= 55) { tags.push("delta_distribution_range"); notes.push(`range selling delta ${rl}-${rh} (${width.toFixed(1)}%), sell candles ${(100 - buyDom).toFixed(0)}%, net delta ${ratio.toFixed(1)}x avg vol, CVD R2 ${r2.toFixed(2)}, price at ${pos.toFixed(0)}% of range, pre-breakdown SHORT`); }
+  }
   return { price: last.c, rsi: R, vr, tags: [...new Set(tags)], notes };
 }
 
 const KEYWORDS: [RegExp, string][] = [
+  [/(buying|buy|accumulation).*delta|delta.*(buying|accumulation)|range buying/, "delta_accumulation_range"],
+  [/(selling|sell|distribution).*delta|delta.*(selling|distribution)|range selling/, "delta_distribution_range"],
   [/oversold/, "rsi_oversold"], [/overbought/, "rsi_overbought"], [/rsi bounce/, "rsi_bounce"],
   [/bullish div/, "bullish_divergence"], [/bearish div/, "bearish_divergence"],
   [/macd.*(bull|up|above)|bullish macd/, "macd_bull_cross"], [/macd.*(bear|down|below)|bearish macd/, "macd_bear_cross"],
@@ -207,7 +228,7 @@ export async function runChatScan(tf: string, text: string): Promise<string> {
           if (!kr.ok) return null;
           const k: any[] = await kr.json();
           if (k.length < 120) return null;
-          const cs: C[] = k.map(x => ({ o: +x[1], h: +x[2], l: +x[3], c: +x[4], v: +x[5] }));
+          const cs: C[] = k.map(x => ({ o: +x[1], h: +x[2], l: +x[3], c: +x[4], v: +x[5], tb: +x[9] }));
           const a = analyse(cs);
           if (!want.every(w => a.tags.includes(w))) return null;
           return { s: tk.symbol, chg: +tk.priceChangePercent, ...a } as ScanRow;
