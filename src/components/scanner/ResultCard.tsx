@@ -366,6 +366,14 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
         timeframe={timeframe}
       />
     </>
-  );
 
+      <TriggerAlertDialog
+        open={isTriggerOpen}
+        onOpenChange={setIsTriggerOpen}
+        result={result}
+        timeframe={timeframe}
+        currentPrice={currentPrice}
+      />
+    </>
+  );
 }
