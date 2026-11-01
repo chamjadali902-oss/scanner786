@@ -22,6 +22,15 @@ const POLL_MS = 20_000;
 const REFRESH_MS = 90_000;
 const SPOT_HOSTS = ['https://data-api.binance.vision', 'https://api.binance.com'];
 
+/**
+ * price_alerts is not yet in the generated Database types (schema change pending);
+ * cast until the types are regenerated after the table exists.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function alertTable(): any {
+  return (supabase.from as unknown as (table: string) => any)('price_alerts');
+}
+
 let timer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let active: PriceAlertRow[] = [];

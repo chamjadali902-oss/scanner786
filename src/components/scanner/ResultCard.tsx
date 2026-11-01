@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { ScanResult, Timeframe } from '@/types/scanner';
-import { TrendingUp, TrendingDown, Clock, Activity, BarChart3, Star, Maximize2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Activity, BarChart3, Star, Maximize2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TradingViewModal } from './TradingViewModal';
@@ -10,6 +10,7 @@ import { SetupScorePanel } from './SetupScorePanel';
 import { FlowStatsPanel } from './FlowStatsPanel';
 import { LiquidationPanel } from './LiquidationPanel';
 import { DeltaBarsChart } from './DeltaBarsChart';
+import { TriggerAlertDialog } from './TriggerAlertDialog';
 
 
 interface ResultCardProps {
@@ -24,6 +25,7 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
   const [priceFlash, setPriceFlash] = useState<'up' | 'down' | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isTriggerOpen, setIsTriggerOpen] = useState(false);
 
 
   // Real-time price updates via Binance WebSocket
@@ -111,6 +113,15 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsTriggerOpen(true); }}
+              className="p-1 rounded-lg hover:bg-muted/50 transition-all active:scale-90"
+              title="Set entry trigger alert"
+              aria-label="Set entry trigger alert"
+            >
+              <Bell className="w-4 h-4 text-muted-foreground" />
+            </button>
+
             <button
               onClick={(e) => { e.stopPropagation(); setIsFullscreen(true); }}
               className="p-1 rounded-lg hover:bg-muted/50 transition-all active:scale-90"
@@ -328,6 +339,15 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
                 variant="outline"
                 size="sm"
                 className="w-full"
+                onClick={() => setIsTriggerOpen(true)}
+              >
+                <Bell className="mr-2 h-4 w-4" />
+                Set Entry Trigger Alert
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
                 onClick={() => { setIsFullscreen(false); setIsModalOpen(true); }}
               >
                 <BarChart3 className="mr-2 h-4 w-4" />
@@ -345,7 +365,13 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
         symbol={result.symbol}
         timeframe={timeframe}
       />
+      <TriggerAlertDialog
+        open={isTriggerOpen}
+        onOpenChange={setIsTriggerOpen}
+        result={result}
+        timeframe={timeframe}
+        currentPrice={currentPrice}
+      />
     </>
   );
-
 }
