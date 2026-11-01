@@ -114,6 +114,15 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
 
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
+              onClick={(e) => { e.stopPropagation(); setIsTriggerOpen(true); }}
+              className="p-1 rounded-lg hover:bg-muted/50 transition-all active:scale-90"
+              title="Set entry trigger alert"
+              aria-label="Set entry trigger alert"
+            >
+              <Bell className="w-4 h-4 text-muted-foreground" />
+            </button>
+
+            <button
               onClick={(e) => { e.stopPropagation(); setIsFullscreen(true); }}
               className="p-1 rounded-lg hover:bg-muted/50 transition-all active:scale-90"
               title="Fullscreen details"
@@ -326,6 +335,15 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
             )}
 
             <div className="space-y-2 pb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setIsTriggerOpen(true)}
+              >
+                <Bell className="mr-2 h-4 w-4" />
+                Set Entry Trigger Alert
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
