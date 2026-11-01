@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { ScanResult, Timeframe } from '@/types/scanner';
-import { TrendingUp, TrendingDown, Clock, Activity, BarChart3, Star, Maximize2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Activity, BarChart3, Star, Maximize2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TradingViewModal } from './TradingViewModal';
@@ -10,6 +10,7 @@ import { SetupScorePanel } from './SetupScorePanel';
 import { FlowStatsPanel } from './FlowStatsPanel';
 import { LiquidationPanel } from './LiquidationPanel';
 import { DeltaBarsChart } from './DeltaBarsChart';
+import { TriggerAlertDialog } from './TriggerAlertDialog';
 
 
 interface ResultCardProps {
@@ -24,6 +25,7 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
   const [priceFlash, setPriceFlash] = useState<'up' | 'down' | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isTriggerOpen, setIsTriggerOpen] = useState(false);
 
 
   // Real-time price updates via Binance WebSocket
