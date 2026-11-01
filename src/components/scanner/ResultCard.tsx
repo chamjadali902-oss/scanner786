@@ -365,8 +365,6 @@ export function ResultCard({ result, timeframe, isFavorite, onToggleFavorite }: 
         symbol={result.symbol}
         timeframe={timeframe}
       />
-    </>
-
       <TriggerAlertDialog
         open={isTriggerOpen}
         onOpenChange={setIsTriggerOpen}
