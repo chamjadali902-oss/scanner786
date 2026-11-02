@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PriceAlertRow, refreshActiveAlerts, ensureNotificationPermission, alertTable } from '@/lib/trigger-monitor';
+import { PriceAlertRow, refreshActiveAlerts, ensureNotificationPermission } from '@/lib/trigger-monitor';
 
 export interface CreateAlertInput {
   symbol: string;
@@ -18,7 +18,7 @@ export function usePriceAlerts() {
 
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await alertTable()
+    const { data, error } = await supabase.from('price_alerts')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(50);
@@ -42,7 +42,7 @@ export function usePriceAlerts() {
         toast.error('Sign in to set entry trigger alerts');
         return false;
       }
-      const { error } = await alertTable().insert({
+      const { error } = await supabase.from('price_alerts').insert({
         user_id: user.id,
         symbol: input.symbol,
         timeframe: input.timeframe ?? null,
@@ -66,7 +66,7 @@ export function usePriceAlerts() {
 
   const removeAlert = useCallback(
     async (id: string) => {
-      await alertTable().delete().eq('id', id);
+      await supabase.from('price_alerts').delete().eq('id', id);
       setAlerts((prev) => prev.filter((a) => a.id !== id));
       refreshActiveAlerts();
     },
@@ -75,7 +75,7 @@ export function usePriceAlerts() {
 
   const setStatus = useCallback(
     async (id: string, status: 'active' | 'paused') => {
-      await alertTable().update({ status }).eq('id', id);
+      await supabase.from('price_alerts').update({ status }).eq('id', id);
       setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
       refreshActiveAlerts();
     },
@@ -83,7 +83,7 @@ export function usePriceAlerts() {
   );
 
   const clearTriggered = useCallback(async () => {
-    await alertTable().delete().eq('status', 'triggered');
+    await supabase.from('price_alerts').delete().eq('status', 'triggered');
     setAlerts((prev) => prev.filter((a) => a.status !== 'triggered'));
   }, []);
 
