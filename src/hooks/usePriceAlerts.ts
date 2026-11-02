@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PriceAlertRow, refreshActiveAlerts, ensureNotificationPermission, alertTable } from '@/lib/trigger-monitor';
 
@@ -36,13 +37,29 @@ export function usePriceAlerts() {
 
   const createAlert = useCallback(
     async (input: CreateAlertInput) => {
-      const { data: { user }, error: userErr } = await alertTable().auth
-        ? { data: { user: null }, error: null } : { data: { user: null }, error: null };
-      void user; void userErr;
-      const { data: auth } = await alertTable().supabase
-        ? { data: null } : { data: null };
-      void auth;
-      return insertAlert(input, fetchAlerts);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Sign in to set entry trigger alerts');
+        return false;
+      }
+      const { error } = await alertTable().insert({
+        user_id: user.id,
+        symbol: input.symbol,
+        timeframe: input.timeframe ?? null,
+        direction: input.direction,
+        trigger_price: input.triggerPrice,
+        note: input.note ?? null,
+        source: input.source ?? null,
+        status: 'active',
+      });
+      if (error) {
+        toast.error('Failed to create alert');
+        return false;
+      }
+      await ensureNotificationPermission();
+      toast.success(`${input.symbol.replace('USDT', '')} trigger set at ${input.triggerPrice}`);
+      fetchAlerts();
+      return true;
     },
     [fetchAlerts]
   );
@@ -71,31 +88,4 @@ export function usePriceAlerts() {
   }, []);
 
   return { alerts, loading, createAlert, removeAlert, setStatus, clearTriggered, refetch: fetchAlerts };
-}
-
-async function insertAlert(input: CreateAlertInput, refetch: () => Promise<void> | void) {
-  const { supabase } = await import('@/integrations/supabase/client');
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    toast.error('Sign in to set entry trigger alerts');
-    return false;
-  }
-  const { error } = await alertTable().insert({
-    user_id: user.id,
-    symbol: input.symbol,
-    timeframe: input.timeframe ?? null,
-    direction: input.direction,
-    trigger_price: input.triggerPrice,
-    note: input.note ?? null,
-    source: input.source ?? null,
-    status: 'active',
-  });
-  if (error) {
-    toast.error('Failed to create alert');
-    return false;
-  }
-  await ensureNotificationPermission();
-  toast.success(`${input.symbol.replace('USDT', '')} trigger set at ${input.triggerPrice}`);
-  refetch();
-  return true;
 }

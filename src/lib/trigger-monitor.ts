@@ -62,8 +62,7 @@ async function fetchPrices(symbols: string[]): Promise<Record<string, number>> {
 export async function refreshActiveAlerts(userId?: string) {
   if (userId) currentUserId = userId;
   if (!currentUserId) return;
-  const { data, error } = await supabase
-    .from('price_alerts')
+  const { data, error } = await alertTable()
     .select('*')
     .eq('status', 'active')
     .order('created_at', { ascending: false });
