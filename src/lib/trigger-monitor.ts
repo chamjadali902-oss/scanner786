@@ -88,8 +88,7 @@ async function checkTriggers() {
         `Price ${p} crossed ${side} your level ${a.trigger_price}${label}${a.timeframe ? ` (${a.timeframe})` : ''}. Entry trigger is live — check the chart before acting.`,
         a.symbol
       );
-      await supabase
-        .from('price_alerts')
+      await alertTable()
         .update({ status: 'triggered', triggered_at: new Date().toISOString() })
         .eq('id', a.id);
       active = active.filter((x) => x.id !== a.id);
