@@ -22,20 +22,17 @@ const POLL_MS = 20_000;
 const REFRESH_MS = 90_000;
 const SPOT_HOSTS = ['https://data-api.binance.vision', 'https://api.binance.com'];
 
-/**
- * price_alerts is not yet in the generated Database types (schema change pending);
- * cast until the types are regenerated after the table exists.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function alertTable(): any {
-  return (supabase.from as unknown as (table: string) => any)('price_alerts');
-}
-
 let timer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let active: PriceAlertRow[] = [];
 let checking = false;
 let currentUserId: string | null = null;
+
+/** Pure trigger rule: has price crossed the alert level in the given direction. */
+export function isTriggerHit(price: number, direction: 'above' | 'below', triggerPrice: number): boolean {
+  if (!isFinite(price) || !isFinite(triggerPrice)) return false;
+  return direction === 'above' ? price >= triggerPrice : price <= triggerPrice;
+}
 
 async function fetchPrices(symbols: string[]): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
@@ -79,8 +76,7 @@ async function checkTriggers() {
     for (const a of active) {
       const p = prices[a.symbol];
       if (p == null) continue;
-      const hit = a.direction === 'above' ? p >= a.trigger_price : p <= a.trigger_price;
-      if (!hit) continue;
+      if (!isTriggerHit(p, a.direction, Number(a.trigger_price))) continue;
       const side = a.direction === 'above' ? 'above' : 'below';
       const label = a.note ? ` — ${a.note}` : '';
       addAlert(
