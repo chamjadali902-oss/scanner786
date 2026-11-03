@@ -181,6 +181,11 @@ export interface ScanCondition {
   deltaRangeMinR2?: number;
   deltaRangeMinScore?: number;
 
+  // Window High/Low Break (N-candle window, 2-300)
+  windowBreakSize?: number;          // candles in the reference window (default 20)
+  windowBreakMaxAge?: number;        // break happened within last N candles (default 5)
+  windowBreakRequireClose?: boolean; // require close beyond level, not just wick (default false)
+
   // Advanced Fibonacci linking & pullback settings
   // Source of swing high/low used to compute Fib levels
   fibSource?: 'lookback' | 'pattern' | 'smc'; // default: 'lookback'
@@ -256,7 +261,7 @@ export interface FeatureDefinition {
   maxPeriod?: number;
   valueRange?: { min: number; max: number };
   // New: defines which settings panel to show
-  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern' | 'impulse-move' | 'breakout' | 'delta-range';
+  settingsType?: 'rsi' | 'ema' | 'macd' | 'bollinger' | 'stochastic' | 'oscillator' | 'price-cross' | 'pattern' | 'smc' | 'supertrend' | 'psar' | 'fibonacci' | 'smart-bullish' | 'chart-pattern' | 'impulse-move' | 'breakout' | 'delta-range' | 'window-break';
 }
 
 // All available features
@@ -346,6 +351,9 @@ export const FEATURES: FeatureDefinition[] = [
   // Pre-breakout order flow
   { id: 'delta_accumulation_range', name: 'Range Buying Delta (Pre-Breakout)', category: 'chart', description: 'Price stuck in a range while per-candle buying delta keeps rising, no breakout yet. Early LONG before the break', defaultMode: 'value', settingsType: 'delta-range' },
   { id: 'delta_distribution_range', name: 'Range Selling Delta (Pre-Breakdown)', category: 'chart', description: 'Price stuck in a range while per-candle selling delta keeps rising, no breakdown yet. Early SHORT before the break', defaultMode: 'value', settingsType: 'delta-range' },
+  // N-candle window high/low break
+  { id: 'window_high_break', name: 'Window High Break', category: 'chart', description: 'Price broke the HIGH of the selected candle window (2-300 candles). Bullish break of the window level', defaultMode: 'value', settingsType: 'window-break' },
+  { id: 'window_low_break', name: 'Window Low Break', category: 'chart', description: 'Price broke the LOW of the selected candle window (2-300 candles). Bearish break of the window level', defaultMode: 'value', settingsType: 'window-break' },
 ];
 
 export const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [

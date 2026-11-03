@@ -26,6 +26,7 @@ import {
   ChartPatternSettings,
   ImpulseMoveSettings,
   DeltaRangeSettings,
+  WindowBreakSettings,
   BreakoutSettings,
 } from './settings';
 
@@ -171,6 +172,14 @@ function getDefaultCondition(feature: FeatureDefinition): Partial<ScanCondition>
         deltaRangeMinR2: 0.5,
         deltaRangeMinScore: 50,
       };
+    case 'window-break':
+      return {
+        ...defaults,
+        mode: 'value',
+        windowBreakSize: 20,
+        windowBreakMaxAge: 5,
+        windowBreakRequireClose: false,
+      };
     case 'breakout':
       return {
         ...defaults,
@@ -236,6 +245,8 @@ function FeatureSettings({
       return <ImpulseMoveSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     case 'delta-range':
       return <DeltaRangeSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
+    case 'window-break':
+      return <WindowBreakSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     case 'breakout':
       return <BreakoutSettings condition={condition} feature={feature} onUpdate={onUpdate} disabled={disabled} />;
     default:
