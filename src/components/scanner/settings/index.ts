@@ -15,3 +15,4 @@ export { ChartPatternSettings } from './ChartPatternSettings';
 export { ImpulseMoveSettings } from './ImpulseMoveSettings';
 export { BreakoutSettings } from './BreakoutSettings';
 export { DeltaRangeSettings } from './DeltaRangeSettings';
+export { WindowBreakSettings } from './WindowBreakSettings';
