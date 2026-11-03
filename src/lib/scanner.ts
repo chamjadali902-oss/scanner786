@@ -6,6 +6,7 @@ import * as smc from './smc';
 import * as chartPatterns from './chart-patterns';
 import { detectBullishImpulse, detectBearishImpulse, ImpulseMoveResult } from './impulse-move';
 import { detectFakeBreakout, detectRealBreakout, BreakoutResult, BreakoutOptions } from './breakout';
+import { detectWindowBreak, WindowBreakResult } from './window-break';
 
 interface IndicatorValues {
   [key: string]: number | boolean | string | number[];
@@ -381,6 +382,19 @@ export function calculateAllIndicators(candles: Candle[], condition?: ScanCondit
   (values as any).fake_breakout_down_result = fakeDown;
   (values as any).real_breakout_up_result = realUp;
   (values as any).real_breakout_down_result = realDown;
+
+  // ==== WINDOW HIGH/LOW BREAK (N-candle window, 2-300) ====
+  const wbOpts = {
+    window: condition?.windowBreakSize ?? 20,
+    maxAge: condition?.windowBreakMaxAge ?? 5,
+    requireClose: condition?.windowBreakRequireClose ?? false,
+  };
+  const wbHigh = detectWindowBreak(candles, 'high', wbOpts);
+  const wbLow = detectWindowBreak(candles, 'low', wbOpts);
+  values.window_high_break = wbHigh.detected;
+  values.window_low_break = wbLow.detected;
+  (values as any).window_high_break_result = wbHigh;
+  (values as any).window_low_break_result = wbLow;
 
   return values;
 }
