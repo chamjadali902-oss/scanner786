@@ -1210,7 +1210,23 @@ function evaluateCondition(
       };
     }
 
-
+    case 'window-break': {
+      const r = (values as any)[`${condition.feature}_result`] as WindowBreakResult | undefined;
+      if (!r || !r.detected) return { matched: false, reason: '' };
+      const fmt = (v: number) => (v >= 1 ? v.toFixed(4) : v.toFixed(6));
+      const isHigh = r.side === 'high';
+      const dirLabel = isHigh ? 'Bullish' : 'Bearish';
+      const lvlName = isHigh ? 'HIGH' : 'LOW';
+      const sideWord = isHigh ? 'above' : 'below';
+      const hold = r.stillBeyond
+        ? `holding ${sideWord} ✓`
+        : `back inside ✗`;
+      const closeNote = r.brokeByClose ? 'close break' : 'wick break';
+      return {
+        matched: true,
+        reason: `${dirLabel} broke ${lvlName} of last ${r.windowSize} candles | level ${fmt(r.breakLevel)} | broke ${r.candlesAgo === 0 ? 'now' : `${r.candlesAgo}c ago`} | ${r.excursionPct >= 0 ? '+' : ''}${r.excursionPct.toFixed(2)}% ${sideWord} | ${closeNote} | ${hold}`,
+      };
+    }
 
     case 'smart-bullish': {
       const patternFound = values.smart_bullish_pattern_found;
