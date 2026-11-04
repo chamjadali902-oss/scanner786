@@ -53,6 +53,12 @@ const expect = (name: string, got: boolean, want: boolean) => {
   expect('windowSize 300', r.windowSize, 300);
 }
 
+console.log(fails === 0 ? 'ALL PASS' : `${fails} FAILURES`);
+if (fails > 0) process.exit(1);
+
+  expect('windowSize 300', r.windowSize, 300);
+}
+
 // Case 5: break older than maxAge -> not detected
 {
   const base = Array.from({ length: 5 }, () => mk(100, 90, 95));
