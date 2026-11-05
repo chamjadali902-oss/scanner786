@@ -32,6 +32,13 @@ const STEPS_CLAUDE = [
   'Ask Claude to analyse any coin using your live data',
 ];
 
+const STEPS_GEMINI = [
+  'Open gemini.google.com with a personal Google Account; custom apps are currently limited by Google’s account, location, age and language requirements',
+  'Open Settings → Connected Apps → add a custom app, then paste the MCP URL below',
+  'Continue through the secure sign-in and approve the requested access in this app',
+  'Ask Gemini to analyse a coin, check futures data or run a scanner search',
+];
+
 export default function ConnectAI() {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -115,6 +122,21 @@ export default function ConnectAI() {
               ))}
             </ol>
           </Card>
+
+          <Card className="p-4 border-border space-y-3">
+            <div className="flex items-center gap-2">
+              <Brain className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Gemini</h3>
+            </div>
+            <ol className="space-y-2">
+              {STEPS_GEMINI.map((s, i) => (
+                <li key={i} className="flex gap-2 text-[11px] text-muted-foreground">
+                  <span className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  {s}
+                </li>
+              ))}
+            </ol>
+          </Card>
         </div>
 
         {/* What the AI can do */}
@@ -132,7 +154,7 @@ export default function ConnectAI() {
 
         <Card className="p-4 border-border bg-muted/30">
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            <span className="font-semibold text-foreground">Note:</span> ChatGPT requires a paid plan for custom connectors. Claude supports custom connectors on its app. Gemini does not currently support external connectors. After connecting, you can chat with your AI normally and share screenshots — it will combine them with this app's live data.
+            <span className="font-semibold text-foreground">Note:</span> This server already supports standard OAuth sign-in; use the MCP URL above and choose Gemini’s custom app connection, not an API-key option. Google currently limits Gemini custom apps by account, region, age and language, and requires Keep Activity to be on. If Gemini still reports that OAuth is missing, confirm you pasted the exact MCP URL above and try again from a supported personal account. ChatGPT custom connectors may require a paid plan. After connecting, you can chat with your AI normally and share screenshots.
           </p>
           <Button variant="outline" size="sm" className="mt-3 gap-1.5 text-xs" asChild>
             <a href="https://modelcontextprotocol.io" target="_blank" rel="noreferrer">
