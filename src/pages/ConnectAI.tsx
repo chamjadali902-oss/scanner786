@@ -34,10 +34,10 @@ const STEPS_CLAUDE = [
 ];
 
 const STEPS_GEMINI = [
-  'Open gemini.google.com with a personal Google Account; custom apps are currently limited by Google’s account, location, age and language requirements',
-  'Open Settings → Connected Apps → add a custom app, then paste the MCP URL below',
-  'Continue through the secure sign-in and approve the requested access in this app',
-  'Ask Gemini to analyse a coin, check futures data or run a scanner search',
+  'Gemini custom apps require an eligible personal Google Account, supported location and language, and Keep Activity turned on',
+  'Open Gemini on the web → Settings → Connected Apps → Custom apps, then enter the complete MCP URL',
+  'If Gemini says the server uses an unsupported authentication method, the URL is not the issue; stop retrying it',
+  'Review Google’s OAuth connection requirements below; this app’s Gemini connection is not yet confirmed working',
 ];
 
 export default function ConnectAI() {
@@ -65,7 +65,7 @@ export default function ConnectAI() {
           <div>
             <h1 className="text-lg font-bold text-foreground">Connect your AI</h1>
             <p className="text-xs text-muted-foreground">
-              Link ChatGPT or Claude to this app so it can analyse with your live market data, watchlist, trades and strategies.
+              Connect an AI assistant to this app’s market tools, watchlist, trades and strategies.
             </p>
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function ConnectAI() {
             When the AI connects, it signs in as you — it only sees your own data, never anyone else's.
           </p>
           <p className="text-[11px] text-muted-foreground">
-            Gemini must receive the complete address ending in <code className="font-semibold text-foreground">{MCP_URL_SUFFIX}</code>. The screenshot shows an address ending in <code className="font-semibold text-foreground">/functions/v1</code>; that is incomplete. Use Copy above and replace the old address in Gemini.
+            The complete address ends in <code className="font-semibold text-foreground">{MCP_URL_SUFFIX}</code>. Your latest screenshot already includes it, so the address is not the cause of Gemini’s current error.
           </p>
         </Card>
 
@@ -156,15 +156,28 @@ export default function ConnectAI() {
           </div>
         </Card>
 
-        <Card className="p-4 border-border bg-muted/30">
+        <Card className="p-4 border-destructive/40 bg-destructive/5 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Gemini connection status</h3>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+              The app’s secure sign-in, OAuth discovery, and automatic client registration are enabled. Gemini is still rejecting this server before sign-in with “authentication method … doesn’t support.” That is a Gemini compatibility error—not a missing <code className="font-semibold text-foreground">/mcp</code> suffix. There is no separate Gemini URL that fixes it, and repeating the same connection will not help. I can’t confirm Gemini access until its OAuth check accepts this server.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
+              <a href="https://developers.google.com/connected-apps/mcp/oauth" target="_blank" rel="noreferrer">
+                Google OAuth requirements <ExternalLink className="w-3 h-3" />
+              </a>
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
+              <a href="https://support.google.com/gemini/answer/17209137?hl=en" target="_blank" rel="noreferrer">
+                Gemini custom app requirements <ExternalLink className="w-3 h-3" />
+              </a>
+            </Button>
+          </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            <span className="font-semibold text-foreground">Note:</span> This server already supports standard OAuth sign-in; use the complete MCP URL above (including <code className="font-semibold text-foreground">/mcp</code>) and choose Gemini’s custom app connection, not an API-key option. Remove the incomplete server entry in Gemini and add it again with the copied URL. Google currently limits Gemini custom apps by account, region, age and language, and requires Keep Activity to be on. ChatGPT custom connectors may require a paid plan. After connecting, you can chat with your AI normally and share screenshots.
+            ChatGPT and Claude have separate connector flows. Gemini custom apps also have Google account, region, age, language and activity requirements. You can still share screenshots in Gemini itself, but this app’s live tools will not be available there until the connection succeeds.
           </p>
-          <Button variant="outline" size="sm" className="mt-3 gap-1.5 text-xs" asChild>
-            <a href="https://modelcontextprotocol.io" target="_blank" rel="noreferrer">
-              Learn more about MCP <ExternalLink className="w-3 h-3" />
-            </a>
-          </Button>
         </Card>
       </div>
     </AppLayout>
