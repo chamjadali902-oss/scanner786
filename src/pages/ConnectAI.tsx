@@ -7,6 +7,7 @@ import { Plug, Copy, Check, Brain, MessageSquare, ShieldCheck, ExternalLink } fr
 import { useToast } from '@/hooks/use-toast';
 
 const MCP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mcp`;
+const MCP_URL_SUFFIX = '/mcp';
 
 const TOOLS = [
   { name: 'get_market_snapshot', desc: 'Live Binance price, 24h stats, EMA20/50, RSI, swing levels for any coin & timeframe' },
@@ -78,7 +79,7 @@ export default function ConnectAI() {
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-[11px] bg-muted/60 border border-border rounded-lg px-3 py-2.5 overflow-x-auto whitespace-nowrap">
+              <code className="flex-1 text-[11px] bg-muted/60 border border-border rounded-lg px-3 py-2.5 overflow-x-auto whitespace-nowrap">
               {MCP_URL}
             </code>
             <Button size="sm" onClick={copyUrl} className="gap-1.5 shrink-0">
@@ -88,6 +89,9 @@ export default function ConnectAI() {
           </div>
           <p className="text-[11px] text-muted-foreground">
             When the AI connects, it signs in as you — it only sees your own data, never anyone else's.
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Gemini must receive the complete address ending in <code className="font-semibold text-foreground">{MCP_URL_SUFFIX}</code>. The screenshot shows an address ending in <code className="font-semibold text-foreground">/functions/v1</code>; that is incomplete. Use Copy above and replace the old address in Gemini.
           </p>
         </Card>
 
@@ -154,7 +158,7 @@ export default function ConnectAI() {
 
         <Card className="p-4 border-border bg-muted/30">
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            <span className="font-semibold text-foreground">Note:</span> This server already supports standard OAuth sign-in; use the MCP URL above and choose Gemini’s custom app connection, not an API-key option. Google currently limits Gemini custom apps by account, region, age and language, and requires Keep Activity to be on. If Gemini still reports that OAuth is missing, confirm you pasted the exact MCP URL above and try again from a supported personal account. ChatGPT custom connectors may require a paid plan. After connecting, you can chat with your AI normally and share screenshots.
+            <span className="font-semibold text-foreground">Note:</span> This server already supports standard OAuth sign-in; use the complete MCP URL above (including <code className="font-semibold text-foreground">/mcp</code>) and choose Gemini’s custom app connection, not an API-key option. Remove the incomplete server entry in Gemini and add it again with the copied URL. Google currently limits Gemini custom apps by account, region, age and language, and requires Keep Activity to be on. ChatGPT custom connectors may require a paid plan. After connecting, you can chat with your AI normally and share screenshots.
           </p>
           <Button variant="outline" size="sm" className="mt-3 gap-1.5 text-xs" asChild>
             <a href="https://modelcontextprotocol.io" target="_blank" rel="noreferrer">
